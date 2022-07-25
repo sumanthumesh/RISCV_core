@@ -24,6 +24,7 @@ CFLAGS =  -mno-relax -march=rv32im -mabi=ilp32 -nostartfiles -std=gnu11 -mstrict
 OFLAGS = -O0
 ASFLAGS = -mno-relax -march=rv32im -mabi=ilp32 -nostartfiles -Wno-main -mstrict-align
 OBJFLAGS = -SD -M no-aliases 
+OBJCFLAGS = --set-section-flags .bss=contents,alloc,readonly
 OBJDFLAGS = -SD -M numeric,no-aliases
 
 ##########################################################################
@@ -32,11 +33,13 @@ CAEN = 1
 ##########################################################################
 ifeq (1, $(CAEN))
 	GCC = riscv gcc
+	OBJCOPY = riscv objcopy
 	OBJDUMP = riscv objdump
 	AS = riscv as
 	ELF2HEX = riscv elf2hex
 else
 	GCC = riscv64-unknown-elf-gcc
+	OBJCOPY = riscv64-unknown-elf-objcopy
 	OBJDUMP = riscv64-unknown-elf-objdump
 	AS = riscv64-unknown-elf-as
 	ELF2HEX = elf2hex
@@ -51,6 +54,7 @@ assemble: $(ASLINKERS)
 	$(GCC) $(ASFLAGS) $(SOURCE) -T $(ASLINKERS) -o program.elf 
 	cp program.elf program.debug.elf
 disassemble: program.debug.elf
+	$(OBJCOPY) $(OBJCFLAGS) program.debug.elf
 	$(OBJDUMP) $(OBJFLAGS) program.debug.elf > program.dump
 	$(OBJDUMP) $(OBJDFLAGS) program.debug.elf > program.debug.dump
 	rm program.debug.elf

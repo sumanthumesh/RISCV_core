@@ -65,8 +65,9 @@ debug_program:
 assembly: assemble disassemble hex
 	@:
 
-VCS = vcs -V -sverilog +vc -Mupdate -line -full64 +vcs+vcdpluson -debug_access+all 
+VCS = vcs -V -sverilog +vc -Mupdate -line -full64 +vcs+vcdpluson -kdb -lca -debug_access+all 
 LIB = /afs/umich.edu/class/eecs470/lib/verilog/lec25dscc25.v
+VERDI_PATH = VERDI_HOME=/usr/caen/verdi-2017.12-SP2-1/
 
 # For visual debugger
 VISFLAGS = -lncurses
@@ -108,9 +109,11 @@ synth/pipeline.vg:        $(SIMFILES) synth/pipeline.tcl
 simv:	$(SIMFILES) $(TESTBENCH)
 	$(VCS) $(TESTBENCH) $(SIMFILES)	-o simv
 
-dve:	$(SIMFILES) $(TESTBENCH)
-	$(VCS) +memcbk $(TESTBENCH) $(SIMFILES) -o dve -R -gui
-.PHONY:	dve
+verdi:	simv
+	$(VERDI_PATH) ./simv -gui=verdi
+
+verdi_syn:	syn_simv
+	$(VERDI_PATH) ./syn_simv -gui=verdi
 
 # For visual debugger
 vis_simv:	$(SIMFILES) $(VTUBER)
@@ -131,6 +134,7 @@ clean:
 	rm -rf syn_simv syn_simv.daidir syn_program.out
 	rm -rf synsimv synsimv.daidir csrc vcdplus.vpd vcs.key synprog.out pipeline.out writeback.out vc_hdrs.h
 	rm -f *.elf *.dump *.mem debug_bin
+	rm -rf verdi* novas* *fsdb*
 
 nuke:	clean
 	rm -rf synth/*.vg synth/*.rep synth/*.ddc synth/*.chk synth/command.log synth/*.syn

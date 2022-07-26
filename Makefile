@@ -71,7 +71,7 @@ assembly: assemble disassemble hex
 
 VCS = vcs -V -sverilog +vc -Mupdate -line -full64 +vcs+vcdpluson -kdb -lca -debug_access+all 
 LIB = /afs/umich.edu/class/eecs470/lib/verilog/lec25dscc25.v
-VERDI_PATH = VERDI_HOME=/usr/caen/verdi-2017.12-SP2-1/
+VERDI_PATH = VERDI_HOME=/usr/caen/verdi-2020.12-SP2-1/
 
 # For visual debugger
 VISFLAGS = -lncurses

@@ -71,7 +71,6 @@ assembly: assemble disassemble hex
 
 VCS = vcs -V -sverilog +vc -Mupdate -line -full64 +vcs+vcdpluson -kdb -lca -debug_access+all 
 LIB = /afs/umich.edu/class/eecs470/lib/verilog/lec25dscc25.v
-VERDI_PATH = VERDI_HOME=/usr/caen/verdi-2020.12-SP2-1/
 
 # For visual debugger
 VISFLAGS = -lncurses
@@ -113,11 +112,16 @@ synth/pipeline.vg:        $(SIMFILES) synth/pipeline.tcl
 simv:	$(SIMFILES) $(TESTBENCH)
 	$(VCS) $(TESTBENCH) $(SIMFILES)	-o simv
 
-verdi:	simv
-	$(VERDI_PATH) ./simv -gui=verdi
+novas.rc: initialnovas.rc
+	sed s/UNIQNAME/$$USER/ initialnovas.rc > novas.rc
 
-verdi_syn:	syn_simv
-	$(VERDI_PATH) ./syn_simv -gui=verdi
+verdi:	simv novas.rc
+	if [[ ! -d /tmp/$${USER}470 ]] ; then mkdir /tmp/$${USER}470 ; fi
+	./simv -gui=verdi
+
+verdi_syn:	syn_simv novas.rc
+	if [[ ! -d /tmp/$${USER}470 ]] ; then mkdir /tmp/$${USER}470 ; fi
+	./syn_simv -gui=verdi
 
 # For visual debugger
 vis_simv:	$(SIMFILES) $(VTUBER)

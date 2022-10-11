@@ -297,4 +297,11 @@ typedef struct packed {
 	logic [2:0]       mem_size; // byte, half-word or word
 } EX_MEM_PACKET;
 
+//OOO
+`define N_WAY 3
+`define CDB_BITS 7
+`define N_ROB 64
+`define FIFO_BITS 6
+
+
 `endif // __SYS_DEFS_VH__

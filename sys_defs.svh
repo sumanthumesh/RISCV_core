@@ -316,4 +316,11 @@ typedef struct packed {
 	logic valid;
 } DISPATCH_ROB_PACKET;
 
+typedef struct packed {
+	logic [`CDB_BITS-1:0] tag; // physical registor number
+	logic [`CDB_BITS-1:0] tag_old; // physical registor number
+	logic valid;
+} RETIRE_ROB_PACKET;
+
+
 `endif // __SYS_DEFS_VH__

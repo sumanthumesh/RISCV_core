@@ -302,6 +302,18 @@ typedef struct packed {
 `define CDB_BITS 7
 `define N_ROB 64
 `define FIFO_BITS 6
+`define XLEN_BITS 5
 
+typedef struct packed {
+	logic [`CDB_BITS-1:0] phy_reg; // physical registor number
+	logic 		      status; //status of completion
+} PR_PACKET;
+
+typedef struct packed {
+	logic [`XLEN_BITS-1 :0] src1;
+	logic [`XLEN_BITS-1 :0] src2;
+	logic [`XLEN_BITS-1 :0] dest;
+	logic valid;
+} DISPATCH_ROB_PACKET;
 
 `endif // __SYS_DEFS_VH__

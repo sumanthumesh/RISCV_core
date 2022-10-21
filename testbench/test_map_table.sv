@@ -5,13 +5,16 @@ module test_map_table;
 
  // Inputs
  logic clock;
- DISPATCH_ROB_PACKET dis_packet[`N_WAY];
- logic [`CDB_BITS -1 :0] pr_freelist[`N_WAY];
- logic [`CDB_BITS-1 :0] pr_reg_complete[`N_WAY];
+ DISPATCH_ROB_PACKET [`N_WAY-1 : 0] dis_packet;
+ logic [`N_WAY-1 : 0] [`CDB_BITS -1 :0] pr_freelist;
+ logic [`N_WAY-1 : 0] [`CDB_BITS-1 :0] pr_reg_complete;
  logic reset;
  // Outputs
- PR_PACKET pr_packet_out1[`N_WAY];
- PR_PACKET pr_packet_out2[`N_WAY];
+ PR_PACKET [`N_WAY-1 : 0] pr_packet_out1;
+ PR_PACKET [`N_WAY-1 : 0] pr_packet_out2;
+//logic [`N_WAY-1 : 0] src1_match;
+//logic [`N_WAY-1 : 0] src2_match;
+//logic [`N_WAY-1 :0] valid_comp;
 
  // Instantiate the Unit Under Test (UUT)
 
@@ -23,7 +26,10 @@ module test_map_table;
 		  .pr_freelist(pr_freelist),
 		  .pr_reg_complete(pr_reg_complete),
 		  .pr_packet_out1(pr_packet_out1), 
-		  .pr_packet_out2(pr_packet_out2) 
+		  .pr_packet_out2(pr_packet_out2)
+		  //.src1_match(src1_match),
+		  //.src2_match(src2_match),
+		  //.valid_comp(valid_comp)
                   );
 
  initial begin
@@ -116,16 +122,16 @@ module test_map_table;
   pr_reg_complete[0] = 33;
   pr_freelist[0] = 39;
   dis_packet[0].valid = 1;
-  dis_packet[0].src1 = 2;
-  dis_packet[0].src2 = 3;
-  dis_packet[0].dest = 4;
+  dis_packet[0].src1 = 5;
+  dis_packet[0].src2 = 6;
+  dis_packet[0].dest = 8;
 
   pr_reg_complete[1] = 34;
   pr_freelist[1] = 40;
   dis_packet[1].valid = 1;
-  dis_packet[1].src1 = 5;
-  dis_packet[1].src2 = 6;
-  dis_packet[1].dest = 8;
+  dis_packet[1].src1 = 2;
+  dis_packet[1].src2 = 3;
+  dis_packet[1].dest = 4;
 
   pr_reg_complete[2] = 0;
   pr_freelist[2] = 41;

@@ -20,69 +20,56 @@ module reservation_station(
 	input           clock,
 	input           reset,
 	input RS_PACKET_DISPATCH [`N_WAY-1:0] rs_packet_dispatch,
+	input		issue_valid,
 	input   [`N_WAY-1:0] [`CDB_BITS-1:0]  ex_rs_dest_idx,      
 	input   [`N_WAY-1:0][`CDB_BITS-1:0] cdb_rs_reg_idx,    
-	input [$clog2(`N_WAY)-1:0] issue_num,
-	output  RS_PACKET_ISSUE [`N_WAY-1:0]    rs_packet_issue,
-	//output  PR_PACKET       [`N_WAY-1:0]    pr_packet_out1,
-	//output  PR_PACKET       [`N_WAY-1:0]    pr_packet_out2,
-	//output  logic [`N_WAY-1:0] [`CDB_BITS-1:0]    pr_dest_tag,
-	//output  logic [`N_WAY-1:0] [6:0]    issue_opcode,
-	//output  logic [`N_WAY-1:0] issue_valid,
-	//`ifdef TESTBENCH
-	output RS_PACKET   [`N_RS-1:0] rs_data,
-	//`endif
-	output logic [$clog2(`N_RS):0]  rs_empty
-	//output logic [$clog2(`N_WAY):0] count_reg
-	
+	output  PR_PACKET       [`N_WAY-1:0]    pr_packet_out1,
+	output  PR_PACKET       [`N_WAY-1:0]    pr_packet_out2,
+	output  [`N_WAY-1:0] [`CDB_BITS-1:0]    pr_dest_tag,
+	output  [`N_WAY-1:0] [6:0]    issue_opcode,
+	output [$clog2(`N_RS)-1:0]  rs_empty
 );
-	//RS_PACKET   [`N_RS-1:0] rs_data;
-	// `ifndef TESTBENCH
-	// RS_PACKET   [`N_RS-1:0] rs_data;
-	// `endif
+	RS_PACKET   [`N_RS-1:0] rs_data;
 	RS_PACKET   [`N_RS-1:0] rs_data_wire;
 	RS_PACKET   [`N_RS-1:0] rs_data_next;
 	logic [`N_RS-1:0] [$clog2(`N_RS):0] order_idx_ex; //to track the oldest instruction
-
-	logic [$clog2(`N_WAY)-1:0] latched_issue_num;
-
-	RS_PACKET_DISPATCH [`N_WAY-1:0] rs_packet_dispatch_reg;
-	logic   [`N_WAY-1:0] [`CDB_BITS-1:0]  ex_rs_dest_idx_reg;      
-	logic   [`N_WAY-1:0][`CDB_BITS-1:0] cdb_rs_reg_idx_reg;    
+    logic       [`N_RS-1:0] ex_flush;
+    logic       [`N_RS-1:0] ready_to_issue;
+    logic       [`N_RS-1:0] next_ready_to_issue;
+    logic       [`N_RS-1:0] rs_entry_flush;
+    logic       [$clog2(`N_WAY)-1:0] dispatch_counter;
 	
 	//completet stage logic
-	logic [$clog2(`N_RS):0] i_c1,i1;
-	logic [$clog2(`N_WAY):0] i_c2;
+	logic [$clog2(`N_RS)-1:0] i_c1;
+	logic [$clog2(`N_WAY)-1:0] i_c2;
 	always_comb begin
-		for(i1=0; i1<`N_RS; i1=i1+1) begin
-			rs_data_wire[i1].source_tag_1_plus = rs_data[i1].source_tag_1_plus;
-			rs_data_wire[i1].source_tag_2_plus = rs_data[i1].source_tag_2_plus;
-		end
+		rs_data_wire.source_tag_1_plus = rs_data.source_tag_1_plus;
+		rs_data_wire.source_tag_2_plus = rs_data.source_tag_2_plus;
 		for (i_c1=0; i_c1 < `N_RS; i_c1=i_c1+1) begin
 			for (i_c2=0; i_c2 < `N_WAY; i_c2=i_c2+1) begin
 				if(rs_data[i_c1].busy) begin
-					if(cdb_rs_reg_idx_reg[i_c2] == rs_data[i_c1].source_tag_1) begin
+					if(cdb_rs_reg_idx[i_c2] == rs_data[i_c1].source_tag_1) begin
 						rs_data_wire[i_c1].source_tag_1_plus = 1;
 					end
-					if(cdb_rs_reg_idx_reg[i_c2] == rs_data[i_c1].source_tag_2) begin
+					if(cdb_rs_reg_idx[i_c2] == rs_data[i_c1].source_tag_2) begin
 						rs_data_wire[i_c1].source_tag_2_plus = 1;
 					end
 				end
+
 			end	
 		end
 	end
+
 	//execute stage logic
-	logic [$clog2(`N_RS):0] i_x1,i2;
-	logic [$clog2(`N_WAY):0] i_x2;
+	logic [$clog2(`N_RS)-1:0] i_x1;
+	logic [$clog2(`N_WAY)-1:0] i_x2;
 	always_comb begin
-		for(i2=0; i2<`N_RS; i2=i2+1) begin
-			rs_data_wire[i2].busy = rs_data[i2].busy;
-			order_idx_ex[i2]=rs_data[i2].order_idx;
-		end
+		rs_data_wire.busy = rs_data.busy;
+		order_idx_ex=rs_data.order_idx;
 		for (i_x1=0; i_x1 < `N_RS; i_x1=i_x1+1) begin
 			for (i_x2=0; i_x2 < `N_WAY; i_x2=i_x2+1) begin
 				if(rs_data[i_x1].busy) begin
-					if(ex_rs_dest_idx_reg[i_x2] == rs_data[i_x1].dest_tag) begin
+					if(ex_rs_dest_idx[i_x2] == rs_data[i_x1].dest_tag) begin
 						rs_data_wire[i_x1].busy=0;
 						order_idx_ex[i_x1] = 0;
 					end
@@ -90,131 +77,77 @@ module reservation_station(
 			end
 		end
 	end
+
  	//order tracking logci for oldest inst issue first
-	logic [$clog2(`N_RS):0] i_ix, k,i3;
+	logic [$clog2(`N_RS)-1:0] i_ix, k;
 	always_comb begin
-		rs_empty = `N_RS;
-		for(i3=0; i3<`N_RS; i3=i3+1) begin
-			rs_data_wire[i3].order_idx= rs_data[i3].order_idx;
-		end
+		rs_data_wire.order_idx= rs_data.order_idx;
 		for(i_ix=0; i_ix<`N_RS; i_ix=i_ix+1) begin
-			if(rs_data[i_ix].busy) begin
-				rs_empty = rs_empty - 1;
-				if(rs_data[i_ix].order_idx != order_idx_ex[i_ix]) begin
-					rs_data_wire[i_ix].order_idx = order_idx_ex[i_ix];
-					for (k=0;k<`N_RS; k=k+1) begin
-						if(rs_data[k].order_idx > rs_data[i_ix].order_idx) begin
-							rs_data_wire[k].order_idx = rs_data_wire[k].order_idx - 1;
-						end
+			if(rs_data[i_ix].order_idx != order_idx_ex[i_ix]) begin
+				rs_data_wire[i_ix].order_idx = order_idx_ex[i_ix];
+				for (k=0;k<`N_RS; k=k+1) begin
+					if(rs_data[k].order_idx > rs_data[i_ix].order_idx) begin
+						rs_data_wire[k].order_idx = rs_data[k].order_idx - 1;
 					end
 				end
 			end
 		end
 	end
+
 	//issue stage logic
-	logic [$clog2(`N_RS):0] i_o, i_is,i5;
-	logic [$clog2(`N_WAY):0] count;
-	logic [`N_WAY-1 : 0] [`CDB_BITS:0] issued_dest_tag;
-	//logic tmp1;
+	logic [$clog2(`N_RS)-1:0] i_o, i_is;
+	logic [$clog2(`N_WAY)-1:0] count;
 	always_comb begin
 		count = 0;
-		//rs_packet_issue = 0;
-		//for(i8=0; i8<`N_WAY; i8=i8+1) begin
-		//	rs_packet_issue[i8].valid = 0;
-		//end
-		//for(i5=0; i5<`N_RS; i5=i5+1) begin
-		//	rs_data_wire[i5].issued= rs_data[i5].issued;
-		//end
-		//for(integer i8=0; i8<`N_WAY; i8=i8+1) begin
-		//	issued_idx[i8] = `N_RS;
-		//end
 		for (i_o=1; i_o<=`N_RS; i_o=i_o+1) begin
-			//tmp1 = 0;
 			for(i_is=0; i_is<`N_RS; i_is=i_is+1) begin
-				if(rs_data[i_is].busy) begin
-					if((rs_data_wire[i_is].source_tag_1_plus && rs_data_wire[i_is].source_tag_2_plus) && (!rs_data[i_is].issued) && (rs_data_wire[i_is].order_idx == i_o) && (count < latched_issue_num)) begin
-					//if((rs_data_wire[i_is].source_tag_1_plus && rs_data_wire[i_is].source_tag_2_plus) && (rs_data_wire[i_is].order_idx == i_o) && (count <issue_num)) begin
-						rs_packet_issue[count].source_tag_1 = rs_data[i_is].source_tag_1;
-						rs_packet_issue[count].source_tag_2 = rs_data[i_is].source_tag_2;
-						rs_packet_issue[count].dest_tag = rs_data[i_is].dest_tag;
-						rs_packet_issue[count].inst = rs_data[i_is].inst;
-						rs_packet_issue[count].valid = 1;
-						//rs_data_wire[i_is].issued = 1;
-						issued_dest_tag[count] = rs_data[i_is].dest_tag;
-						count= count+1;
-						//tmp1 = 1;
-					end
-					//if(!tmp1) begin
-					//	rs_packet_issue[count].valid = 0;
-					//end
+				if((rs_data_wire[i_is].source_tag_1_plus && rs_data_wire[i_is].source_tag_2_plus) && (rs_data_wire[i_is].order_idx == i_o) && (count <`N_WAY)) begin
+					pr_packet_out1[count].phy_reg = rs_data[i_is].source_tag_1;
+					pr_packet_out2[count].phy_reg = rs_data[i_is].source_tag_2;
+					pr_dest_tag[count] = rs_data[i_is].dest_tag;
+					issue_opcode[count] = rs_data[i_is].opcode;
+					count= count+1;
 				end
 			end
 		end
-		for(int i8=0; i8<`N_WAY; i8=i8+1) begin
-			if(i8 >= count )
-				rs_packet_issue[i8].valid = 0;
-		end
 	end
+
 	//dispatch state logic
-	logic [$clog2(`N_RS):0] i_d2,i4,i7;
-	logic [$clog2(`N_WAY):0] i_d1,i6;
+	logic [$clog2(`N_RS)-1:0] i_d2;
+	logic [$clog2(`N_WAY)-1:0] i_d1;
 	logic tmp;
 	always_comb begin
 		rs_data_next= rs_data;
-		for(i4=0; i4<`N_RS; i4=i4+1) begin
-			rs_data_next[i4].source_tag_1_plus= rs_data_wire[i4].source_tag_1_plus;
-			rs_data_next[i4].source_tag_2_plus= rs_data_wire[i4].source_tag_2_plus;
-			rs_data_next[i4].busy = rs_data_wire[i4].busy;
-			rs_data_next[i4].order_idx = rs_data_wire[i4].order_idx;
-			rs_data_next[i4].issued = rs_data[i4].issued;
-		end
-		for(integer i6=0;i6<`N_WAY;i6=i6+1) begin
-			for(integer i7=0; i7<`N_RS;i7=i7+1) begin
-				if((rs_data[i7].dest_tag == issued_dest_tag[i6])) begin
-					rs_data_next[i7].issued = 1;
-				end
-			end
-		end
+		rs_data_next.source_tag_1_plus= rs_data_wire.source_tag_1_plus;
+		rs_data_next.source_tag_2_plus= rs_data_wire.source_tag_2_plus;
+		rs_data_next.busy = rs_data_wire.busy;
+		rs_data_next.order_idx = rs_data_wire.order_idx;
 		for (i_d1=0; i_d1 < `N_WAY ; i_d1=i_d1+1) begin
 			tmp = 1;
-			if (rs_packet_dispatch_reg[i_d1].valid) begin
+			if (rs_packet_dispatch[i_d1].valid) begin
 				for (i_d2=0; i_d2<`N_RS; i_d2=i_d2+1) begin
-					if(!rs_data_next[i_d2].busy && tmp) begin
-						rs_data_next[i_d2].busy = rs_packet_dispatch_reg[i_d1].busy;
-						rs_data_next[i_d2].inst= rs_packet_dispatch_reg[i_d1].inst;
-						rs_data_next[i_d2].dest_tag= rs_packet_dispatch_reg[i_d1].dest_tag;
-						rs_data_next[i_d2].source_tag_1= rs_packet_dispatch_reg[i_d1].source_tag_1;
-						rs_data_next[i_d2].source_tag_2= rs_packet_dispatch_reg[i_d1].source_tag_2;
-						rs_data_next[i_d2].source_tag_1_plus= rs_packet_dispatch_reg[i_d1].source_tag_1_plus;
-						rs_data_next[i_d2].source_tag_2_plus= rs_packet_dispatch_reg[i_d1].source_tag_2_plus;
-						rs_data_next[i_d2].order_idx = rs_packet_dispatch_reg[i_d1].order_idx;
-						rs_data_next[i_d2].issued = 0;
+					if(!rs_data_next.busy && tmp) begin
+						rs_data_next[i_d2].busy = rs_packet_dispatch[i_d1].busy;
+						rs_data_next[i_d2].opcode= rs_packet_dispatch[i_d1].opcode;
+						rs_data_next[i_d2].dest_tag= rs_packet_dispatch[i_d1].dest_tag;
+						rs_data_next[i_d2].source_tag_1= rs_packet_dispatch[i_d1].source_tag_1;
+						rs_data_next[i_d2].source_tag_2= rs_packet_dispatch[i_d1].source_tag_2;
+						rs_data_next[i_d2].source_tag_1_plus= rs_packert_dispatch[i_d1].source_tag_1_plus;
+						rs_data_next[i_d2].source_tag_2_plus= rs_packet_dispatch[i_d1].source_tag_2_plus;
+						rs_data_next[i_d2].order_idx = rs_packet_dispatch[i_d1].order_idx;
 						tmp = 0;
 					end
-					//else begin
-					//	rs_data_next[i_d2].issued = rs_data_wire[i_d2].issued;
-					//end
 				end
 			end
 		end
 	end	
 		
        //clocked register 
-	always_ff @ (posedge clock) begin
+	always _ff @ (posedge clock) begin
 		if(reset) begin
 			rs_data <= `SD 0;
-			latched_issue_num <= `SD 0;
-			rs_packet_dispatch_reg <= `SD 0;
-			ex_rs_dest_idx_reg <= `SD 0;
-			cdb_rs_reg_idx_reg <= `SD 0;
-			//count_reg <= `SD 0;
 		end else begin
 			rs_data <= `SD rs_data_next;
-			latched_issue_num <= `SD issue_num;
-			rs_packet_dispatch_reg <= `SD rs_packet_dispatch;
-			ex_rs_dest_idx_reg <= `SD ex_rs_dest_idx;
-			cdb_rs_reg_idx_reg <= `SD cdb_rs_reg_idx;
-			//count_reg <= `SD count;
 		end	
 	end
     

@@ -412,4 +412,13 @@ typedef struct packed {
 	ISSUE_EX_PACKET		issue_ex_packet;
 } ISSUE_PACKET;
 
+typedef struct packed {
+	logic [`CDB_BITS-1 : 0] source_tag_1;
+	logic [`CDB_BITS-1 : 0] source_tag_2;
+	logic [`CDB_BITS-1 : 0] dest_tag;
+	logic [6 : 0] 		opcode;
+	logic valid;
+
+} RS_PACKET_ISSUE; //output packet from RS to issue
+
 `endif // __SYS_DEFS_VH__

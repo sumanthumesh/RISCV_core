@@ -1,5 +1,8 @@
 `timescale 1ns/100ps
+
+
 module test_rs;
+
  // Inputs
 	logic	          clock;
 	logic	          reset;
@@ -15,8 +18,11 @@ module test_rs;
 	//logic [`N_WAY-1:0] issue_valid;
 	RS_PACKET_ISSUE [`N_WAY-1:0]    rs_packet_issue;
 	
+
  // Instantiate the Unit Under Test (UUT)
+
 reservation_station rs0 (
+
                 .clock(clock), 
                 .reset(reset),
 		.rs_packet_dispatch(rs_packet_dispatch),
@@ -31,8 +37,11 @@ reservation_station rs0 (
 		//.issue_valid(issue_valid)
 		.rs_packet_issue(rs_packet_issue)
                   );
+
  initial begin
+
   // Initialize Inputs
+
 	clock  = 1'b0;
 	reset  = 1'b1;
 	
@@ -71,14 +80,24 @@ reservation_station rs0 (
 	ex_rs_dest_idx[0] = 0;
 	ex_rs_dest_idx[1] = 0;
 	ex_rs_dest_idx[2] = 0;
+
 	cdb_rs_reg_idx[0] = 0;
 	cdb_rs_reg_idx[1] = 0;
 	cdb_rs_reg_idx[2] = 0;
+
+
+
   // Wait 100 ns for global reset to finish
+
   #20;        
+
   // Add stimulus here
+
+
   reset  = 1'b1;
+
   #20;
+
   reset  = 1'b0;
 	
 	issue_num = 3;
@@ -112,7 +131,7 @@ reservation_station rs0 (
 	rs_packet_dispatch[2].source_tag_2_plus= 1;
 	rs_packet_dispatch[2].valid= 1;
 	rs_packet_dispatch[2].order_idx= 3;
-  
+
   #20;
 	rs_packet_dispatch[0].busy = 1;
 	rs_packet_dispatch[0].opcode= 1;
@@ -182,9 +201,11 @@ reservation_station rs0 (
 	cdb_rs_reg_idx[0] = 33;
 	cdb_rs_reg_idx[1] = 34;
 	cdb_rs_reg_idx[2] = 35;
+
 	ex_rs_dest_idx[0] = 0;
 	ex_rs_dest_idx[1] = 0;
 	ex_rs_dest_idx[2] = 0;
+
 	rs_packet_dispatch[0].busy = 1;
 	rs_packet_dispatch[0].opcode= 1;
 	rs_packet_dispatch[0].dest_tag= 42;
@@ -216,9 +237,11 @@ reservation_station rs0 (
 	rs_packet_dispatch[2].order_idx= 9;
   
   #20;
+
 	cdb_rs_reg_idx[0] = 0;
 	cdb_rs_reg_idx[1] = 0;
 	cdb_rs_reg_idx[2] = 0;
+
 	rs_packet_dispatch[0].busy = 1;
 	rs_packet_dispatch[0].opcode= 1;
 	rs_packet_dispatch[0].dest_tag= 45;
@@ -248,9 +271,17 @@ reservation_station rs0 (
 	rs_packet_dispatch[2].source_tag_2_plus= 1;
 	rs_packet_dispatch[2].valid= 1;
 	rs_packet_dispatch[2].order_idx= 12;
+
+
   #20;
+
   $finish;
+
  end 
+
    always #10 clock = ~clock;    
+
 endmodule
+
+
 

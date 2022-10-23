@@ -303,6 +303,8 @@ typedef struct packed {
 `define N_ROB 64
 `define FIFO_BITS 6
 `define XLEN_BITS 5
+`define N_RS 16
+`define N_RS_IDX 4
 
 typedef struct packed {
 	logic [`CDB_BITS-1:0] phy_reg; // physical registor number
@@ -322,5 +324,36 @@ typedef struct packed {
 	logic valid;
 } RETIRE_ROB_PACKET;
 
+typedef struct packed {
+	logic busy; // alu_result
+	logic [6:0] opcode; //pc + 4
+	logic [`CDB_BITS-1:0] dest_tag; // is this a taken branch?
+	//logic dest_tag_plus;
+	logic [`CDB_BITS-1:0] source_tag_1; // is this a taken branch?
+	logic source_tag_1_plus;
+	logic [`CDB_BITS-1:0] source_tag_2; // is this a taken branch?
+	logic source_tag_2_plus;
+	logic issued;
+	logic [$clog2(`N_RS)-1:0] order_idx; //to track the oldest instruction 
+} RS_PACKET;  
+typedef struct packed {
+	logic busy; // alu_result
+	logic [6:0] opcode; //pc + 4
+	logic [`CDB_BITS-1:0] dest_tag; // is this a taken branch?
+	//logic dest_tag_plus;
+	logic [`CDB_BITS-1:0] source_tag_1; // is this a taken branch?
+	logic source_tag_1_plus;
+	logic [`CDB_BITS-1:0] source_tag_2; // is this a taken branch?
+	logic source_tag_2_plus;
+	logic valid;
+	logic [$clog2(`N_RS):0] order_idx; //to track the oldest instruction 
+} RS_PACKET_DISPATCH;  
+typedef struct packed {
+	logic [`CDB_BITS-1 : 0] source_tag_1;
+	logic [`CDB_BITS-1 : 0] source_tag_2;
+	logic [`CDB_BITS-1 : 0] dest_tag;
+	logic [6 : 0] 		opcode;
+	logic valid;
+} RS_PACKET_ISSUE; //output packet from RS to issue
 
 `endif // __SYS_DEFS_VH__

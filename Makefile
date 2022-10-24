@@ -45,7 +45,7 @@ else
 	ELF2HEX = elf2hex
 endif
 all: simv
-	./simv | tee program.out
+	./simv -cm line+cond+fsm+tgl+assert+path | tee program.out
 
 compile: $(CRT) $(LINKERS)
 	$(GCC) $(CFLAGS) $(OFLAGS) $(CRT) $(SOURCE) -T $(LINKERS) -o program.elf
@@ -69,7 +69,7 @@ debug_program:
 assembly: assemble disassemble hex
 	@:
 
-VCS = vcs -V -sverilog +vc -Mupdate -line -full64 +vcs+vcdpluson -kdb -lca -debug_access+all 
+VCS = vcs -V -sverilog +vc -Mupdate -line -full64 +vcs+vcdpluson -kdb -lca -debug_access+all -cm line+cond+fsm+tgl+assert+path
 LIB = /afs/umich.edu/class/eecs470/lib/verilog/lec25dscc25.v
 
 # For visual debugger
@@ -138,3 +138,8 @@ clean:
 nuke:	clean
 	rm -rf synth/*.vg synth/*.rep synth/*.ddc synth/*.chk synth/command.log synth/*.syn
 	rm -rf synth/*.out command.log synth/*.db synth/*.svf synth/*.mr synth/*.pvl
+
+verdi_cov:	all novas.rc
+	if [[ ! -d /tmp/$${USER}470 ]] ; then mkdir /tmp/$${USER}470 ; fi
+	./simv -cm line+cond+fsm+tgl+assert+path -gui=verdi -cov -covdir simv.vdb
+

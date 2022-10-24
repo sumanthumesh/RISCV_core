@@ -81,19 +81,10 @@ VISFLAGS = -lncurses
 #####
 
 TESTBENCH = 	sys_defs.svh	\
-		ISA.svh         \
-		testbench/mem.sv  \
-		testbench/testbench.sv	\
-		testbench/pipe_print.c	 
-SIMFILES =	verilog/pipeline.sv	\
-		verilog/regfile.sv	\
-		verilog/if_stage.sv	\
-		verilog/id_stage.sv	\
-		verilog/ex_stage.sv	\
-		verilog/mem_stage.sv	\
-		verilog/wb_stage.sv	\
+		testbench/test_reservation_station.sv	 
+SIMFILES =	verilog/reservation_station.sv
 
-SYNFILES = synth/pipeline.vg
+SYNFILES = synth/reservation_station.vg
 
 # Don't ask me why spell VisUal TestBenchER like this...
 VTUBER = sys_defs.svh	\
@@ -103,8 +94,8 @@ VTUBER = sys_defs.svh	\
 		testbench/visual_c_hooks.cpp \
 		testbench/pipe_print.c
 
-synth/pipeline.vg:        $(SIMFILES) synth/pipeline.tcl
-	cd synth && dc_shell-t -f ./pipeline.tcl | tee synth.out 
+synth/reservation_station.vg:        $(SIMFILES) synth/rs.tcl
+	cd synth && dc_shell-t -f ./rs.tcl | tee synth.out 
 
 #####
 # Should be no need to modify after here

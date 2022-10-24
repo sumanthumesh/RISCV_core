@@ -17,11 +17,11 @@ suppress_message {"VER-130"}
 #/* The following five lines must be updated for every      */
 #/* new design                                              */
 #/***********************************************************/
-analyze -f sverilog [list "../sys_defs.svh" "../ISA.svh" "../verilog/pipeline.sv" "../verilog/if_stage.sv" "../verilog/id_stage.sv" "../verilog/ex_stage.sv" "../verilog/mem_stage.sv" "../verilog/wb_stage.sv" "../verilog/regfile.sv"]
-elaborate pipeline
-set design_name pipeline
+analyze -f sverilog [list "../sys_defs.svh" "../verilog/reservation_station.sv"]
+elaborate reservation_station
+set design_name reservation_station
 set clock_name clock
-set CLK_PERIOD 30
+set CLK_PERIOD 10
 
 
 #/***********************************************************/

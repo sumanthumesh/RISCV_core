@@ -29,14 +29,22 @@ module reservation_station(
 	//output  logic [`N_WAY-1:0] [`CDB_BITS-1:0]    pr_dest_tag,
 	//output  logic [`N_WAY-1:0] [6:0]    issue_opcode,
 	//output  logic [`N_WAY-1:0] issue_valid,
-	output logic [$clog2(`N_RS):0]  rs_empty,
+	//`ifdef TESTBENCH
+	output RS_PACKET   [`N_RS-1:0] rs_data,
+	//`endif
+	output logic [$clog2(`N_RS):0]  rs_empty
 	//output logic [$clog2(`N_WAY):0] count_reg
-	output RS_PACKET   [`N_RS-1:0] rs_data
+	
 );
 	//RS_PACKET   [`N_RS-1:0] rs_data;
+	// `ifndef TESTBENCH
+	// RS_PACKET   [`N_RS-1:0] rs_data;
+	// `endif
 	RS_PACKET   [`N_RS-1:0] rs_data_wire;
 	RS_PACKET   [`N_RS-1:0] rs_data_next;
 	logic [`N_RS-1:0] [$clog2(`N_RS):0] order_idx_ex; //to track the oldest instruction
+
+	logic [$clog2(`N_WAY)-1:0] latched_issue_num;
 	
 	//completet stage logic
 	logic [$clog2(`N_RS):0] i_c1,i1;
@@ -118,7 +126,7 @@ module reservation_station(
 		for (i_o=1; i_o<=`N_RS; i_o=i_o+1) begin
 			for(i_is=0; i_is<`N_RS; i_is=i_is+1) begin
 				if(rs_data[i_is].busy) begin
-					if((rs_data_wire[i_is].source_tag_1_plus && rs_data_wire[i_is].source_tag_2_plus) && (!rs_data[i_is].issued) && (rs_data_wire[i_is].order_idx == i_o) && (count <issue_num)) begin
+					if((rs_data_wire[i_is].source_tag_1_plus && rs_data_wire[i_is].source_tag_2_plus) && (!rs_data[i_is].issued) && (rs_data_wire[i_is].order_idx == i_o) && (count < latched_issue_num)) begin
 					//if((rs_data_wire[i_is].source_tag_1_plus && rs_data_wire[i_is].source_tag_2_plus) && (rs_data_wire[i_is].order_idx == i_o) && (count <issue_num)) begin
 						rs_packet_issue[count].source_tag_1 = rs_data[i_is].source_tag_1;
 						rs_packet_issue[count].source_tag_2 = rs_data[i_is].source_tag_2;
@@ -181,9 +189,11 @@ module reservation_station(
 	always_ff @ (posedge clock) begin
 		if(reset) begin
 			rs_data <= `SD 0;
+			latched_issue_num <= `SD 0;
 			//count_reg <= `SD 0;
 		end else begin
 			rs_data <= `SD rs_data_next;
+			latched_issue_num <= `SD issue_num;
 			//count_reg <= `SD count;
 		end	
 	end

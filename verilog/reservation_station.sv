@@ -29,9 +29,11 @@ module reservation_station(
 	//output  logic [`N_WAY-1:0] [`CDB_BITS-1:0]    pr_dest_tag,
 	//output  logic [`N_WAY-1:0] [6:0]    issue_opcode,
 	//output  logic [`N_WAY-1:0] issue_valid,
-	output logic [$clog2(`N_RS):0]  rs_empty
+	output logic [$clog2(`N_RS):0]  rs_empty,
+	//output logic [$clog2(`N_WAY):0] count_reg
+	output RS_PACKET   [`N_RS-1:0] rs_data
 );
-	RS_PACKET   [`N_RS-1:0] rs_data;
+	//RS_PACKET   [`N_RS-1:0] rs_data;
 	RS_PACKET   [`N_RS-1:0] rs_data_wire;
 	RS_PACKET   [`N_RS-1:0] rs_data_next;
 	logic [`N_RS-1:0] [$clog2(`N_RS):0] order_idx_ex; //to track the oldest instruction
@@ -98,28 +100,33 @@ module reservation_station(
 		end
 	end
 	//issue stage logic
-	logic [$clog2(`N_RS):0] i_o, i_is,i5,i6;
+	logic [$clog2(`N_RS):0] i_o, i_is,i5;
 	logic [$clog2(`N_WAY):0] count;
+	logic [`N_WAY-1 : 0] [`CDB_BITS:0] issued_dest_tag;
 	always_comb begin
 		count = 0;
 		//rs_packet_issue = 0;
-		for(i6=0; i6<`N_WAY; i6=i6+1) begin
-			rs_packet_issue[i6].valid = 0;
-		end
-		for(i5=0; i5<`N_RS; i5=i5+1) begin
-			rs_data_wire[i5].issued= rs_data[i5].issued;
-		end
+		//for(i8=0; i8<`N_WAY; i8=i8+1) begin
+		//	rs_packet_issue[i8].valid = 0;
+		//end
+		//for(i5=0; i5<`N_RS; i5=i5+1) begin
+		//	rs_data_wire[i5].issued= rs_data[i5].issued;
+		//end
+		//for(integer i8=0; i8<`N_WAY; i8=i8+1) begin
+		//	issued_idx[i8] = `N_RS;
+		//end
 		for (i_o=1; i_o<=`N_RS; i_o=i_o+1) begin
 			for(i_is=0; i_is<`N_RS; i_is=i_is+1) begin
 				if(rs_data[i_is].busy) begin
-					if((rs_data_wire[i_is].source_tag_1_plus && rs_data_wire[i_is].source_tag_2_plus) && (!rs_data_wire[i_is].issued) && (rs_data_wire[i_is].order_idx == i_o) && (count <issue_num)) begin
+					if((rs_data_wire[i_is].source_tag_1_plus && rs_data_wire[i_is].source_tag_2_plus) && (!rs_data[i_is].issued) && (rs_data_wire[i_is].order_idx == i_o) && (count <issue_num)) begin
 					//if((rs_data_wire[i_is].source_tag_1_plus && rs_data_wire[i_is].source_tag_2_plus) && (rs_data_wire[i_is].order_idx == i_o) && (count <issue_num)) begin
 						rs_packet_issue[count].source_tag_1 = rs_data[i_is].source_tag_1;
 						rs_packet_issue[count].source_tag_2 = rs_data[i_is].source_tag_2;
 						rs_packet_issue[count].dest_tag = rs_data[i_is].dest_tag;
 						rs_packet_issue[count].opcode = rs_data[i_is].opcode;
 						//rs_packet_issue[count].valid = 1;
-						rs_data_wire[i_is].issued = 1;
+						//rs_data_wire[i_is].issued = 1;
+						issued_dest_tag[count] = rs_data[i_is].dest_tag;
 						count= count+1;
 					end
 				end
@@ -127,8 +134,8 @@ module reservation_station(
 		end
 	end
 	//dispatch state logic
-	logic [$clog2(`N_RS):0] i_d2,i4;
-	logic [$clog2(`N_WAY):0] i_d1;
+	logic [$clog2(`N_RS):0] i_d2,i4,i7;
+	logic [$clog2(`N_WAY):0] i_d1,i6;
 	logic tmp;
 	always_comb begin
 		rs_data_next= rs_data;
@@ -137,7 +144,14 @@ module reservation_station(
 			rs_data_next[i4].source_tag_2_plus= rs_data_wire[i4].source_tag_2_plus;
 			rs_data_next[i4].busy = rs_data_wire[i4].busy;
 			rs_data_next[i4].order_idx = rs_data_wire[i4].order_idx;
-			//rs_data_next[i4].issued = rs_data_wire[i4].issued;
+			rs_data_next[i4].issued = rs_data[i4].issued;
+		end
+		for(integer i6=0;i6<`N_WAY;i6=i6+1) begin
+			for(integer i7=0; i7<`N_RS;i7=i7+1) begin
+				if((rs_data[i7].dest_tag == issued_dest_tag[i6])) begin
+					rs_data_next[i7].issued = 1;
+				end
+			end
 		end
 		for (i_d1=0; i_d1 < `N_WAY ; i_d1=i_d1+1) begin
 			tmp = 1;
@@ -152,8 +166,12 @@ module reservation_station(
 						rs_data_next[i_d2].source_tag_1_plus= rs_packet_dispatch[i_d1].source_tag_1_plus;
 						rs_data_next[i_d2].source_tag_2_plus= rs_packet_dispatch[i_d1].source_tag_2_plus;
 						rs_data_next[i_d2].order_idx = rs_packet_dispatch[i_d1].order_idx;
+						rs_data_next[i_d2].issued = 0;
 						tmp = 0;
 					end
+					//else begin
+					//	rs_data_next[i_d2].issued = rs_data_wire[i_d2].issued;
+					//end
 				end
 			end
 		end
@@ -163,8 +181,10 @@ module reservation_station(
 	always_ff @ (posedge clock) begin
 		if(reset) begin
 			rs_data <= `SD 0;
+			//count_reg <= `SD 0;
 		end else begin
 			rs_data <= `SD rs_data_next;
+			//count_reg <= `SD count;
 		end	
 	end
     

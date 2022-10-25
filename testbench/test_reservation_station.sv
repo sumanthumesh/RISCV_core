@@ -17,6 +17,7 @@ module testbench;
     RS_PACKET   [`N_RS-1:0] rs_expected_data;
     RS_PACKET_ISSUE [`N_WAY-1:0]    rs_expected_packet_issue;
     logic [$clog2(`N_RS):0] count;
+    integer currentFlag;
 
     // `ifndef TESTBENCH
     // `define TESTBENCH
@@ -35,7 +36,7 @@ module testbench;
 	.rs_empty(rs_empty)
     );
 
-    always #10 clock = ~clock;
+    always #5 clock = ~clock;
 
     always_ff @ (negedge clock)
     begin
@@ -75,26 +76,31 @@ module testbench;
                     if(rs_expected_data[j].busy && rs_expected_data[j].dest_tag == ex_rs_dest_idx[i])
                     begin
                         rs_expected_data[j].busy = 0;
+			for(int k = 0; k<`N_RS; k++) begin
+				if((rs_expected_data[k].order_idx > rs_expected_data[j].order_idx) && (rs_expected_data[k].busy) )
+                    			rs_expected_data[k].order_idx = rs_expected_data[k].order_idx - 1;
+					
+			end
                         count = count+1;
                         break;                   
                     end
                 end
             end
 
-            for(int i = 0; i < `N_RS; i++)
-            begin
-                if(rs_expected_data[i].busy)
-                begin
-                    rs_expected_data[i].order_idx = rs_expected_data[i].order_idx - count;
-                end
-            end
+           // for(int i = 0; i < `N_RS; i++)
+           // begin
+           //     if(rs_expected_data[i].busy)
+           //     begin
+           //         rs_expected_data[i].order_idx = rs_expected_data[i].order_idx - count;
+           //     end
+           // end
 
 
             for(int i = 0; i < `N_WAY; i++)
             begin
                 for(int j = 0; j < `N_RS; j++)
                 begin
-                    if(!rs_expected_data[j].busy)
+                    if(!rs_expected_data[j].busy && (rs_packet_dispatch[i].valid))
                     begin
                         rs_expected_data[j].busy = rs_packet_dispatch[i].busy;
                         rs_expected_data[j].opcode = rs_packet_dispatch[i].opcode;
@@ -116,18 +122,32 @@ module testbench;
             begin
                 for(int j = 0; j < `N_RS; j++)
                 begin
-                    if(rs_expected_data[j].order_idx == i)
+                    if((rs_expected_data[j].order_idx == i) && rs_expected_data[j].busy)
                     begin
-                        // This is the instruction which shall be examined for ready to issue. 
-                        if(rs_expected_data[j].busy && rs_expected_data[j].source_tag_1_plus && rs_expected_data[j].source_tag_2_plus && count < previous_issue_num && (!rs_expected_data[j].issued))
+                        //$display("Currently checking for %d", i);
+                        //$display("Found order_idx in %d", j);
+                        currentFlag = 0;
+                        for(int k = 0; k < `N_WAY; k++)
                         begin
-                            rs_expected_data[j].issued = 1;
-                            count = count + 1;
+                            if(rs_expected_data[j].dest_tag == rs_packet_dispatch[k].dest_tag)
+                                currentFlag = 1;
+                        end
+                        //$display("Current flag: %d",currentFlag);
+                        if(currentFlag == 0)
+                        begin
+                            // This is the instruction which shall be examined for ready to issue. 
+                            if(rs_expected_data[j].busy && rs_expected_data[j].source_tag_1_plus && rs_expected_data[j].source_tag_2_plus && count < previous_issue_num && (!rs_expected_data[j].issued))
+                            begin
+                                rs_expected_data[j].issued = 1;
+                                count = count + 1;
+                            end
                         end
                         break;
                     end
                 end
             end
+
+
 
             count = 0;
             $display("The number of instructions issued in the previous cycle are: %h", previous_issue_num);
@@ -211,8 +231,8 @@ module testbench;
 
 
         end
-
-        if(rs_expected_data!=rs_data)
+	for (integer i = 0; i< `N_RS ; i=i+1) begin
+        	if(rs_expected_data[i].busy && (rs_expected_data[i] != rs_data[i]))
         begin
             $display("The reservation station data is inaccurate.");
 
@@ -259,6 +279,7 @@ module testbench;
             
             $finish;
         end
+	end
 
     endtask
 
@@ -407,9 +428,202 @@ module testbench;
         @(negedge clock);
         @(negedge clock);
 
+        `SD 
         reset = 1'b0;
 
-        issue_num = 3;
+	issue_num = 3;
+		
+	rs_packet_dispatch[0].busy = 1;
+	rs_packet_dispatch[0].opcode= 1;
+	rs_packet_dispatch[0].dest_tag= 33;
+	rs_packet_dispatch[0].source_tag_1= 1;
+	rs_packet_dispatch[0].source_tag_1_plus= 1;
+	rs_packet_dispatch[0].source_tag_2= 2;
+	rs_packet_dispatch[0].source_tag_2_plus= 1;
+	rs_packet_dispatch[0].valid= 1;
+	rs_packet_dispatch[0].order_idx= 1;
+  
+	rs_packet_dispatch[1].busy = 1;
+	rs_packet_dispatch[1].opcode= 2;
+	rs_packet_dispatch[1].dest_tag= 34;
+	rs_packet_dispatch[1].source_tag_1= 4;
+	rs_packet_dispatch[1].source_tag_1_plus= 1;
+	rs_packet_dispatch[1].source_tag_2= 5;
+	rs_packet_dispatch[1].source_tag_2_plus= 1;
+	rs_packet_dispatch[1].valid= 1;
+	rs_packet_dispatch[1].order_idx= 2;
+  
+	rs_packet_dispatch[2].busy = 1;
+	rs_packet_dispatch[2].opcode= 3;
+	rs_packet_dispatch[2].dest_tag= 35;
+	rs_packet_dispatch[2].source_tag_1= 7;
+	rs_packet_dispatch[2].source_tag_1_plus= 1;
+	rs_packet_dispatch[2].source_tag_2= 8;
+	rs_packet_dispatch[2].source_tag_2_plus= 1;
+	rs_packet_dispatch[2].valid= 1;
+	rs_packet_dispatch[2].order_idx= 3;
+
+
+        @(negedge clock);
+        check_all();
+        `SD 
+	rs_packet_dispatch[0].busy = 1;
+	rs_packet_dispatch[0].opcode= 1;
+	rs_packet_dispatch[0].dest_tag= 36;
+	rs_packet_dispatch[0].source_tag_1= 33;
+	rs_packet_dispatch[0].source_tag_1_plus= 0;
+	rs_packet_dispatch[0].source_tag_2= 1;
+	rs_packet_dispatch[0].source_tag_2_plus= 1;
+	rs_packet_dispatch[0].valid= 1;
+	rs_packet_dispatch[0].order_idx= 4;
+  
+	rs_packet_dispatch[1].busy = 1;
+	rs_packet_dispatch[1].opcode= 2;
+	rs_packet_dispatch[1].dest_tag= 37;
+	rs_packet_dispatch[1].source_tag_1= 34;
+	rs_packet_dispatch[1].source_tag_1_plus= 0;
+	rs_packet_dispatch[1].source_tag_2= 2;
+	rs_packet_dispatch[1].source_tag_2_plus= 1;
+	rs_packet_dispatch[1].valid= 1;
+	rs_packet_dispatch[1].order_idx= 5;
+  
+	rs_packet_dispatch[2].busy = 1;
+	rs_packet_dispatch[2].opcode= 3;
+	rs_packet_dispatch[2].dest_tag= 38;
+	rs_packet_dispatch[2].source_tag_1= 35;
+	rs_packet_dispatch[2].source_tag_1_plus= 0;
+	rs_packet_dispatch[2].source_tag_2= 4;
+	rs_packet_dispatch[2].source_tag_2_plus= 1;
+	rs_packet_dispatch[2].valid= 1;
+	rs_packet_dispatch[2].order_idx= 6;
+
+
+        @(negedge clock);
+        check_all();
+        `SD 
+	ex_rs_dest_idx[0] = 33;
+	ex_rs_dest_idx[1] = 34;
+	ex_rs_dest_idx[2] = 35;
+	rs_packet_dispatch[0].busy = 1;
+	rs_packet_dispatch[0].opcode= 1;
+	rs_packet_dispatch[0].dest_tag= 39;
+	rs_packet_dispatch[0].source_tag_1= 13;
+	rs_packet_dispatch[0].source_tag_1_plus= 1;
+	rs_packet_dispatch[0].source_tag_2= 14;
+	rs_packet_dispatch[0].source_tag_2_plus= 1;
+	rs_packet_dispatch[0].valid= 1;
+	rs_packet_dispatch[0].order_idx= 4;
+  
+	rs_packet_dispatch[1].busy = 1;
+	rs_packet_dispatch[1].opcode= 2;
+	rs_packet_dispatch[1].dest_tag= 40;
+	rs_packet_dispatch[1].source_tag_1= 16;
+	rs_packet_dispatch[1].source_tag_1_plus= 1;
+	rs_packet_dispatch[1].source_tag_2= 39;
+	rs_packet_dispatch[1].source_tag_2_plus= 0;
+	rs_packet_dispatch[1].valid= 1;
+	rs_packet_dispatch[1].order_idx= 5;
+  
+	rs_packet_dispatch[2].busy = 1;
+	rs_packet_dispatch[2].opcode= 3;
+	rs_packet_dispatch[2].dest_tag= 41;
+	rs_packet_dispatch[2].source_tag_1= 40;
+	rs_packet_dispatch[2].source_tag_1_plus= 0;
+	rs_packet_dispatch[2].source_tag_2= 18;
+	rs_packet_dispatch[2].source_tag_2_plus= 1;
+	rs_packet_dispatch[2].valid= 1;
+	rs_packet_dispatch[2].order_idx= 6;
+
+
+        @(negedge clock);
+        check_all();
+        `SD 
+	cdb_rs_reg_idx[0] = 33;
+	cdb_rs_reg_idx[1] = 34;
+	cdb_rs_reg_idx[2] = 35;
+	ex_rs_dest_idx[0] = 0;
+	ex_rs_dest_idx[1] = 0;
+	ex_rs_dest_idx[2] = 0;
+	rs_packet_dispatch[0].busy = 1;
+	rs_packet_dispatch[0].opcode= 1;
+	rs_packet_dispatch[0].dest_tag= 42;
+	rs_packet_dispatch[0].source_tag_1= 20;
+	rs_packet_dispatch[0].source_tag_1_plus= 1;
+	rs_packet_dispatch[0].source_tag_2= 21;
+	rs_packet_dispatch[0].source_tag_2_plus= 1;
+	rs_packet_dispatch[0].valid= 1;
+	rs_packet_dispatch[0].order_idx= 7;
+  
+	rs_packet_dispatch[1].busy = 1;
+	rs_packet_dispatch[1].opcode= 2;
+	rs_packet_dispatch[1].dest_tag= 43;
+	rs_packet_dispatch[1].source_tag_1= 23;
+	rs_packet_dispatch[1].source_tag_1_plus= 1;
+	rs_packet_dispatch[1].source_tag_2= 24;
+	rs_packet_dispatch[1].source_tag_2_plus= 1;
+	rs_packet_dispatch[1].valid= 1;
+	rs_packet_dispatch[1].order_idx= 8;
+  
+	rs_packet_dispatch[2].busy = 1;
+	rs_packet_dispatch[2].opcode= 3;
+	rs_packet_dispatch[2].dest_tag= 44;
+	rs_packet_dispatch[2].source_tag_1= 26;
+	rs_packet_dispatch[2].source_tag_1_plus= 1;
+	rs_packet_dispatch[2].source_tag_2= 27;
+	rs_packet_dispatch[2].source_tag_2_plus= 1;
+	rs_packet_dispatch[2].valid= 1;
+	rs_packet_dispatch[2].order_idx= 9;
+
+
+        @(negedge clock);
+        check_all();
+        `SD 
+	cdb_rs_reg_idx[0] = 0;
+	cdb_rs_reg_idx[1] = 0;
+	cdb_rs_reg_idx[2] = 0;
+	ex_rs_dest_idx[0] = 39;
+	ex_rs_dest_idx[1] = 40;
+	ex_rs_dest_idx[2] = 41;
+	rs_packet_dispatch[0].busy = 1;
+	rs_packet_dispatch[0].opcode= 1;
+	rs_packet_dispatch[0].dest_tag= 45;
+	rs_packet_dispatch[0].source_tag_1= 1;
+	rs_packet_dispatch[0].source_tag_1_plus= 1;
+	rs_packet_dispatch[0].source_tag_2= 2;
+	rs_packet_dispatch[0].source_tag_2_plus= 1;
+	rs_packet_dispatch[0].valid= 1;
+	rs_packet_dispatch[0].order_idx= 10;
+  
+	rs_packet_dispatch[1].busy = 1;
+	rs_packet_dispatch[1].opcode= 2;
+	rs_packet_dispatch[1].dest_tag= 46;
+	rs_packet_dispatch[1].source_tag_1= 4;
+	rs_packet_dispatch[1].source_tag_1_plus= 1;
+	rs_packet_dispatch[1].source_tag_2= 5;
+	rs_packet_dispatch[1].source_tag_2_plus= 1;
+	rs_packet_dispatch[1].valid= 1;
+	rs_packet_dispatch[1].order_idx= 11;
+  
+	rs_packet_dispatch[2].busy = 1;
+	rs_packet_dispatch[2].opcode= 3;
+	rs_packet_dispatch[2].dest_tag= 47;
+	rs_packet_dispatch[2].source_tag_1= 7;
+	rs_packet_dispatch[2].source_tag_1_plus= 1;
+	rs_packet_dispatch[2].source_tag_2= 8;
+	rs_packet_dispatch[2].source_tag_2_plus= 1;
+	rs_packet_dispatch[2].valid= 1;
+	rs_packet_dispatch[2].order_idx= 12;
+
+
+        @(negedge clock);
+        check_all();
+
+        reset = 1;
+        @(negedge clock);
+        check_all();
+        reset = 0;
+		
+        issue_num = 2;
 
         rs_packet_dispatch[0].busy = 1;
         rs_packet_dispatch[0].opcode= $random%128;
@@ -455,7 +669,7 @@ module testbench;
         `SD 
         // Send the same instructions once again.
 
-        issue_num = 2;
+        issue_num = 3;
         rs_packet_dispatch[0].dest_tag= 35;
         rs_packet_dispatch[1].dest_tag= 36;
         rs_packet_dispatch[2].dest_tag= 37;
@@ -510,14 +724,11 @@ module testbench;
         @(negedge clock);
         check_all();
 
-        @(negedge clock);
-        check_all();
-
 
         $display("@@@Passed");
         $finish;
 
-        
+
 
 
     end

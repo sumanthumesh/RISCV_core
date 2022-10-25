@@ -430,7 +430,8 @@ module testbench;
 
         `SD 
         reset = 1'b0;
-
+    //The following testcase covers Hazards (RAW and structural)
+    //first dispatch, no dependencies
 	issue_num = 3;
 		
 	rs_packet_dispatch[0].busy = 1;
@@ -463,7 +464,8 @@ module testbench;
 	rs_packet_dispatch[2].valid= 1;
 	rs_packet_dispatch[2].order_idx= 3;
 
-
+    // RAW hazard dependency
+    //issue stall for the next 3 instructions
         @(negedge clock);
         check_all();
         `SD 
@@ -497,7 +499,9 @@ module testbench;
 	rs_packet_dispatch[2].valid= 1;
 	rs_packet_dispatch[2].order_idx= 6;
 
-
+    //instructions get executed in this cycle
+    //checks correct entry of instructions to the RS
+    //New instruction is ready to be issued in next cycle
         @(negedge clock);
         check_all();
         `SD 
@@ -535,6 +539,9 @@ module testbench;
 	rs_packet_dispatch[2].order_idx= 6;
 
 
+    //inputs from the complete stage
+    //clears the issue stall from the previous inst
+    //check The previous inst should be issued in the same cycle
         @(negedge clock);
         check_all();
         `SD 
@@ -574,7 +581,8 @@ module testbench;
 	rs_packet_dispatch[2].valid= 1;
 	rs_packet_dispatch[2].order_idx= 9;
 
-
+    //dispatch and RS ready for issuing > `N_WAY instruction
+    //But inst should be issued in order of their dispatch
         @(negedge clock);
         check_all();
         `SD 
@@ -622,7 +630,10 @@ module testbench;
         @(negedge clock);
         check_all();
         reset = 0;
-		
+		//these series of instructions check different issues
+        // it covers where issue can be from 0 to max
+
+        //also covers execute stall if issue_num < `N_WAY
         issue_num = 2;
 
         rs_packet_dispatch[0].busy = 1;
@@ -667,7 +678,7 @@ module testbench;
         check_all();
         
         `SD 
-        // Send the same instructions once again.
+        // clear execute stall and issue 3 new instructions
 
         issue_num = 3;
         rs_packet_dispatch[0].dest_tag= 35;
@@ -682,6 +693,7 @@ module testbench;
         check_all();
 
         `SD 
+        //execute stall
         issue_num = 1;
         rs_packet_dispatch[0].dest_tag= 38;
         rs_packet_dispatch[1].dest_tag= 39;

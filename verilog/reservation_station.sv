@@ -45,6 +45,10 @@ module reservation_station(
 	logic [`N_RS-1:0] [$clog2(`N_RS):0] order_idx_ex; //to track the oldest instruction
 
 	logic [$clog2(`N_WAY)-1:0] latched_issue_num;
+
+	RS_PACKET_DISPATCH [`N_WAY-1:0] rs_packet_dispatch_reg;
+	logic   [`N_WAY-1:0] [`CDB_BITS-1:0]  ex_rs_dest_idx_reg;      
+	logic   [`N_WAY-1:0][`CDB_BITS-1:0] cdb_rs_reg_idx_reg;    
 	
 	//completet stage logic
 	logic [$clog2(`N_RS):0] i_c1,i1;
@@ -57,10 +61,10 @@ module reservation_station(
 		for (i_c1=0; i_c1 < `N_RS; i_c1=i_c1+1) begin
 			for (i_c2=0; i_c2 < `N_WAY; i_c2=i_c2+1) begin
 				if(rs_data[i_c1].busy) begin
-					if(cdb_rs_reg_idx[i_c2] == rs_data[i_c1].source_tag_1) begin
+					if(cdb_rs_reg_idx_reg[i_c2] == rs_data[i_c1].source_tag_1) begin
 						rs_data_wire[i_c1].source_tag_1_plus = 1;
 					end
-					if(cdb_rs_reg_idx[i_c2] == rs_data[i_c1].source_tag_2) begin
+					if(cdb_rs_reg_idx_reg[i_c2] == rs_data[i_c1].source_tag_2) begin
 						rs_data_wire[i_c1].source_tag_2_plus = 1;
 					end
 				end
@@ -78,7 +82,7 @@ module reservation_station(
 		for (i_x1=0; i_x1 < `N_RS; i_x1=i_x1+1) begin
 			for (i_x2=0; i_x2 < `N_WAY; i_x2=i_x2+1) begin
 				if(rs_data[i_x1].busy) begin
-					if(ex_rs_dest_idx[i_x2] == rs_data[i_x1].dest_tag) begin
+					if(ex_rs_dest_idx_reg[i_x2] == rs_data[i_x1].dest_tag) begin
 						rs_data_wire[i_x1].busy=0;
 						order_idx_ex[i_x1] = 0;
 					end
@@ -163,17 +167,17 @@ module reservation_station(
 		end
 		for (i_d1=0; i_d1 < `N_WAY ; i_d1=i_d1+1) begin
 			tmp = 1;
-			if (rs_packet_dispatch[i_d1].valid) begin
+			if (rs_packet_dispatch_reg[i_d1].valid) begin
 				for (i_d2=0; i_d2<`N_RS; i_d2=i_d2+1) begin
 					if(!rs_data_next[i_d2].busy && tmp) begin
-						rs_data_next[i_d2].busy = rs_packet_dispatch[i_d1].busy;
-						rs_data_next[i_d2].opcode= rs_packet_dispatch[i_d1].opcode;
-						rs_data_next[i_d2].dest_tag= rs_packet_dispatch[i_d1].dest_tag;
-						rs_data_next[i_d2].source_tag_1= rs_packet_dispatch[i_d1].source_tag_1;
-						rs_data_next[i_d2].source_tag_2= rs_packet_dispatch[i_d1].source_tag_2;
-						rs_data_next[i_d2].source_tag_1_plus= rs_packet_dispatch[i_d1].source_tag_1_plus;
-						rs_data_next[i_d2].source_tag_2_plus= rs_packet_dispatch[i_d1].source_tag_2_plus;
-						rs_data_next[i_d2].order_idx = rs_packet_dispatch[i_d1].order_idx;
+						rs_data_next[i_d2].busy = rs_packet_dispatch_reg[i_d1].busy;
+						rs_data_next[i_d2].opcode= rs_packet_dispatch_reg[i_d1].opcode;
+						rs_data_next[i_d2].dest_tag= rs_packet_dispatch_reg[i_d1].dest_tag;
+						rs_data_next[i_d2].source_tag_1= rs_packet_dispatch_reg[i_d1].source_tag_1;
+						rs_data_next[i_d2].source_tag_2= rs_packet_dispatch_reg[i_d1].source_tag_2;
+						rs_data_next[i_d2].source_tag_1_plus= rs_packet_dispatch_reg[i_d1].source_tag_1_plus;
+						rs_data_next[i_d2].source_tag_2_plus= rs_packet_dispatch_reg[i_d1].source_tag_2_plus;
+						rs_data_next[i_d2].order_idx = rs_packet_dispatch_reg[i_d1].order_idx;
 						rs_data_next[i_d2].issued = 0;
 						tmp = 0;
 					end
@@ -190,10 +194,16 @@ module reservation_station(
 		if(reset) begin
 			rs_data <= `SD 0;
 			latched_issue_num <= `SD 0;
+			rs_packet_dispatch_reg <= `SD 0;
+			ex_rs_dest_idx_reg <= `SD 0;
+			cdb_rs_reg_idx_reg <= `SD 0;
 			//count_reg <= `SD 0;
 		end else begin
 			rs_data <= `SD rs_data_next;
 			latched_issue_num <= `SD issue_num;
+			rs_packet_dispatch_reg <= `SD rs_packet_dispatch;
+			ex_rs_dest_idx_reg <= `SD ex_rs_dest_idx;
+			cdb_rs_reg_idx_reg <= `SD cdb_rs_reg_idx;
 			//count_reg <= `SD count;
 		end	
 	end

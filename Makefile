@@ -69,7 +69,7 @@ debug_program:
 assembly: assemble disassemble hex
 	@:
 
-VCS = vcs -V -sverilog +vc -Mupdate -line -full64 +vcs+vcdpluson -kdb -lca -debug_access+all -cm line+cond+fsm+tgl+assert+path
+VCS = vcs -V -sverilog +vc -Mupdate -line -full64 +vcs+vcdpluson -kdb -lca -debug_access+all -cm line+cond+fsm+tgl+assert+path +lint=TFIPC-L
 LIB = /afs/umich.edu/class/eecs470/lib/verilog/lec25dscc25.v
 
 # For visual debugger
@@ -81,10 +81,11 @@ VISFLAGS = -lncurses
 #####
 
 TESTBENCH = 	sys_defs.svh	\
-		testbench/test_reservation_station.sv	 
-SIMFILES =	verilog/reservation_station.sv
+				ISA.svh	\
+		testbench/test_regfile.sv
+SIMFILES =	verilog/regfile.sv
 
-SYNFILES = synth/reservation_station.vg
+SYNFILES = synth/regfile.vg
 
 # Don't ask me why spell VisUal TestBenchER like this...
 VTUBER = sys_defs.svh	\
@@ -94,8 +95,8 @@ VTUBER = sys_defs.svh	\
 		testbench/visual_c_hooks.cpp \
 		testbench/pipe_print.c
 
-synth/reservation_station.vg:        $(SIMFILES) synth/rs.tcl
-	cd synth && dc_shell-t -f ./rs.tcl | tee synth.out 
+synth/regfile.vg:        $(SIMFILES) synth/regfile.tcl
+	cd synth && dc_shell-t -f ./regfile.tcl | tee synth.out 
 
 #####
 # Should be no need to modify after here

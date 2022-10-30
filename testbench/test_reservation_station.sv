@@ -14,7 +14,7 @@ module testbench;
     RS_PACKET   [`N_RS-1:0] rs_data;
 
     logic [$clog2(`N_RS):0] rs_empty_count;
-    RS_PACKET   [`N_RS-1:0] rs_expected_data;
+    RS_PACKET   [`N_RS-1:0] rs_expected_data, rs_expected_data_reg;
     RS_PACKET_ISSUE [`N_WAY-1:0]    rs_expected_packet_issue;
     logic [$clog2(`N_RS):0] count;
     integer currentFlag;
@@ -38,7 +38,16 @@ module testbench;
 
     always #5 clock = ~clock;
 
-    always_ff @ (negedge clock)
+    always @(posedge clock) begin
+	if(reset) begin
+		rs_expected_data_reg <= `SD 0;
+	end else begin
+		rs_expected_data_reg <= `SD rs_expected_data;
+	end
+    end
+
+
+    always_ff @ (posedge clock)
     begin
         previous_issue_num <= `SD issue_num;
     end
@@ -139,6 +148,10 @@ module testbench;
                             if(rs_expected_data[j].busy && rs_expected_data[j].source_tag_1_plus && rs_expected_data[j].source_tag_2_plus && count < previous_issue_num && (!rs_expected_data[j].issued))
                             begin
                                 rs_expected_data[j].issued = 1;
+                            	rs_expected_packet_issue[count].source_tag_1 = rs_expected_data[j].source_tag_1;
+			    	rs_expected_packet_issue[count].source_tag_2 = rs_expected_data[j].source_tag_2;
+			    	rs_expected_packet_issue[count].dest_tag = rs_expected_data[j].dest_tag;
+			    	rs_expected_packet_issue[count].opcode = rs_expected_data[j].opcode;
                                 count = count + 1;
                             end
                         end
@@ -149,23 +162,12 @@ module testbench;
 
 
 
-            count = 0;
             $display("The number of instructions issued in the previous cycle are: %h", previous_issue_num);
-            for(int i = 1; i <= `N_RS; i++)
-            begin
-                for(int j = 0; j < `N_RS; j++)
+                for(int j = 0; j < issue_num; j++)
                 begin
-                    if(rs_expected_data[j].order_idx == i)
-                    begin
-                        // This is the instruction which shall be examined for ready to issue. 
-                        if(rs_expected_data[j].busy && rs_expected_data[j].source_tag_1_plus && rs_expected_data[j].source_tag_2_plus && count < issue_num && (!rs_expected_data[j].issued))
-                        begin
-                            //if(!((rs_packet_issue[count].valid == 1) && (rs_packet_issue[count].source_tag_1 == rs_expected_data[j].source_tag_1) && (rs_packet_issue[count].source_tag_2 == rs_expected_data[j].source_tag_2) && (rs_packet_issue[count].dest_tag == rs_expected_data[j].dest_tag) && (rs_packet_issue[count].opcode == rs_expected_data[j].opcode)))
-                            if(!((rs_packet_issue[count].source_tag_1 == rs_expected_data[j].source_tag_1) && (rs_packet_issue[count].source_tag_2 == rs_expected_data[j].source_tag_2) && (rs_packet_issue[count].dest_tag == rs_expected_data[j].dest_tag) && (rs_packet_issue[count].opcode == rs_expected_data[j].opcode)))
+                	if(!((rs_packet_issue[j].source_tag_1 == rs_expected_packet_issue[j].source_tag_1) && (rs_packet_issue[j].source_tag_2 == rs_expected_packet_issue[j].source_tag_2) && (rs_packet_issue[j].dest_tag == rs_expected_packet_issue[j].dest_tag) && (rs_packet_issue[j].opcode == rs_expected_packet_issue[j].opcode)))
                             begin
-                                $display("The issue packet row number %h is wrong.", count);
-                                $display("%d", i);
-                                $display("%d", j);
+                                $display("The issue packet row number %h is wrong.", j);
                                 $display("|%b    |%02h   |%02h    |%02h   |", 
 				                rs_packet_issue[count].valid, 
 				                rs_packet_issue[count].source_tag_1, 
@@ -182,16 +184,16 @@ module testbench;
                                 for(integer i = 0; i < `N_RS; i++)
                                 begin
                                     $display("|%b    |%08h |%02h   |%02h    |%b      |%02H    |%b      |%02H         | %01h        |%b     |", 
-                                    rs_expected_data[i].busy, 
-                                    rs_expected_data[i].opcode, 
-                                    rs_expected_data[i].dest_tag, 
-                                    rs_expected_data[i].source_tag_1, 
-                                    rs_expected_data[i].source_tag_1_plus, 
-                                    rs_expected_data[i].source_tag_2, 
-                                    rs_expected_data[i].source_tag_2_plus,
-                                    rs_expected_data[i].order_idx,
+                                    rs_expected_data_reg[i].busy, 
+                                    rs_expected_data_reg[i].opcode, 
+                                    rs_expected_data_reg[i].dest_tag, 
+                                    rs_expected_data_reg[i].source_tag_1, 
+                                    rs_expected_data_reg[i].source_tag_1_plus, 
+                                    rs_expected_data_reg[i].source_tag_2, 
+                                    rs_expected_data_reg[i].source_tag_2_plus,
+                                    rs_expected_data_reg[i].order_idx,
                                     rs_empty,
-                                    rs_expected_data[i].issued);
+                                    rs_expected_data_reg[i].issued);
                                 end
 
                                 
@@ -219,20 +221,15 @@ module testbench;
                                 $display("@@@Failed");
 
                                 $finish;
-                            end
-                            count = count + 1;
-                        end
-                        break;
-                    end
+                       end
                 end
-            end
 
 
 
 
         end
 	for (integer i = 0; i< `N_RS ; i=i+1) begin
-        	if(rs_expected_data[i].busy && (rs_expected_data[i] != rs_data[i]))
+        	if(rs_expected_data_reg[i].busy && (rs_expected_data_reg[i] != rs_data[i]))
         begin
             $display("The reservation station data is inaccurate.");
 
@@ -241,16 +238,16 @@ module testbench;
 			for(integer i = 0; i < `N_RS; i++)
 			begin
 				$display("|%b    |%08h |%02h   |%02h    |%b      |%02H    |%b      |%02H         | %01h        |%b     |", 
-				rs_expected_data[i].busy, 
-				rs_expected_data[i].opcode, 
-				rs_expected_data[i].dest_tag, 
-				rs_expected_data[i].source_tag_1, 
-				rs_expected_data[i].source_tag_1_plus, 
-				rs_expected_data[i].source_tag_2, 
-				rs_expected_data[i].source_tag_2_plus,
-				rs_expected_data[i].order_idx,
+				rs_expected_data_reg[i].busy, 
+				rs_expected_data_reg[i].opcode, 
+				rs_expected_data_reg[i].dest_tag, 
+				rs_expected_data_reg[i].source_tag_1, 
+				rs_expected_data_reg[i].source_tag_1_plus, 
+				rs_expected_data_reg[i].source_tag_2, 
+				rs_expected_data_reg[i].source_tag_2_plus,
+				rs_expected_data_reg[i].order_idx,
 				rs_empty,
-                rs_expected_data[i].issued);
+                rs_expected_data_reg[i].issued);
 			end
 
             
@@ -288,7 +285,7 @@ module testbench;
         rs_empty_count = 0;
         for(int i = 0 ; i < `N_RS; i++)
         begin
-           if(!rs_expected_data[i].busy) rs_empty_count = rs_empty_count + 1;
+           if(!rs_expected_data_reg[i].busy) rs_empty_count = rs_empty_count + 1;
         end
         if(rs_empty_count != rs_empty)
         begin
@@ -299,16 +296,16 @@ module testbench;
 			for(integer i = 0; i < `N_RS; i++)
 			begin
 				$display("|%b    |%08h |%02h   |%02h    |%b      |%02H    |%b      |%02H         | %01h        |%b     |", 
-				rs_expected_data[i].busy, 
-				rs_expected_data[i].opcode, 
-				rs_expected_data[i].dest_tag, 
-				rs_expected_data[i].source_tag_1, 
-				rs_expected_data[i].source_tag_1_plus, 
-				rs_expected_data[i].source_tag_2, 
-				rs_expected_data[i].source_tag_2_plus,
-				rs_expected_data[i].order_idx,
+				rs_expected_data_reg[i].busy, 
+				rs_expected_data_reg[i].opcode, 
+				rs_expected_data_reg[i].dest_tag, 
+				rs_expected_data_reg[i].source_tag_1, 
+				rs_expected_data_reg[i].source_tag_1_plus, 
+				rs_expected_data_reg[i].source_tag_2, 
+				rs_expected_data_reg[i].source_tag_2_plus,
+				rs_expected_data_reg[i].order_idx,
 				rs_empty,
-                rs_expected_data[i].issued);
+                rs_expected_data_reg[i].issued);
 			end
 
 
@@ -430,8 +427,7 @@ module testbench;
 
         `SD 
         reset = 1'b0;
-    //The following testcase covers Hazards (RAW and structural)
-    //first dispatch, no dependencies
+
 	issue_num = 3;
 		
 	rs_packet_dispatch[0].busy = 1;
@@ -464,8 +460,7 @@ module testbench;
 	rs_packet_dispatch[2].valid= 1;
 	rs_packet_dispatch[2].order_idx= 3;
 
-    // RAW hazard dependency
-    //issue stall for the next 3 instructions
+
         @(negedge clock);
         check_all();
         `SD 
@@ -499,9 +494,7 @@ module testbench;
 	rs_packet_dispatch[2].valid= 1;
 	rs_packet_dispatch[2].order_idx= 6;
 
-    //instructions get executed in this cycle
-    //checks correct entry of instructions to the RS
-    //New instruction is ready to be issued in next cycle
+
         @(negedge clock);
         check_all();
         `SD 
@@ -539,16 +532,13 @@ module testbench;
 	rs_packet_dispatch[2].order_idx= 6;
 
 
-    //inputs from the complete stage
-    //clears the issue stall from the previous inst
-    //check The previous inst should be issued in the same cycle
         @(negedge clock);
         check_all();
         `SD 
 	cdb_rs_reg_idx[0] = 33;
 	cdb_rs_reg_idx[1] = 34;
 	cdb_rs_reg_idx[2] = 35;
-	ex_rs_dest_idx[0] = 0;
+	ex_rs_dest_idx[0] = 39;
 	ex_rs_dest_idx[1] = 0;
 	ex_rs_dest_idx[2] = 0;
 	rs_packet_dispatch[0].busy = 1;
@@ -581,17 +571,16 @@ module testbench;
 	rs_packet_dispatch[2].valid= 1;
 	rs_packet_dispatch[2].order_idx= 9;
 
-    //dispatch and RS ready for issuing > `N_WAY instruction
-    //But inst should be issued in order of their dispatch
+
         @(negedge clock);
         check_all();
         `SD 
-	cdb_rs_reg_idx[0] = 0;
+	cdb_rs_reg_idx[0] = 39;
 	cdb_rs_reg_idx[1] = 0;
 	cdb_rs_reg_idx[2] = 0;
-	ex_rs_dest_idx[0] = 39;
-	ex_rs_dest_idx[1] = 40;
-	ex_rs_dest_idx[2] = 41;
+	ex_rs_dest_idx[0] = 36;
+	ex_rs_dest_idx[1] = 37;
+	ex_rs_dest_idx[2] = 38;
 	rs_packet_dispatch[0].busy = 1;
 	rs_packet_dispatch[0].opcode= 1;
 	rs_packet_dispatch[0].dest_tag= 45;
@@ -627,14 +616,12 @@ module testbench;
         check_all();
 
         reset = 1;
+        rs_expected_data = 0;
         @(negedge clock);
         check_all();
         reset = 0;
-		//these series of instructions check different issues
-        // it covers where issue can be from 0 to max
-
-        //also covers execute stall if issue_num < `N_WAY
-        issue_num = 2;
+		
+        issue_num = 3;
 
         rs_packet_dispatch[0].busy = 1;
         rs_packet_dispatch[0].opcode= $random%128;
@@ -678,9 +665,9 @@ module testbench;
         check_all();
         
         `SD 
-        // clear execute stall and issue 3 new instructions
+        // Send the same instructions once again.
 
-        issue_num = 3;
+        issue_num = 2;
         rs_packet_dispatch[0].dest_tag= 35;
         rs_packet_dispatch[1].dest_tag= 36;
         rs_packet_dispatch[2].dest_tag= 37;
@@ -693,7 +680,6 @@ module testbench;
         check_all();
 
         `SD 
-        //execute stall
         issue_num = 1;
         rs_packet_dispatch[0].dest_tag= 38;
         rs_packet_dispatch[1].dest_tag= 39;

@@ -313,7 +313,7 @@ typedef struct packed {
 //OOO
 `define N_WAY 3
 `define CDB_BITS 7
-`define N_ROB 64
+`define N_ROB 9
 `define FIFO_BITS 6
 `define XLEN_BITS 5
 `define N_RS 16
@@ -329,19 +329,19 @@ typedef struct packed {
 typedef struct packed {
 	logic [`CDB_BITS-1:0] phy_reg; // physical registor number
 	logic 		      status; //status of completion
-} PR_PACKET;
+} PR_PACKET; //source tag and reg number to RS
 
 typedef struct packed {
 	logic [`XLEN_BITS-1 :0] src1;
 	logic [`XLEN_BITS-1 :0] src2;
 	logic [`XLEN_BITS-1 :0] dest;
 	logic valid;
-} DISPATCH_ROB_PACKET;
+} DISPATCH_PACKET;
 
 typedef struct packed {
 	logic [`CDB_BITS-1:0] tag; // physical registor number
 	logic [`CDB_BITS-1:0] tag_old; // physical registor number
-	logic valid;
+	logic ret_valid;
 } RETIRE_ROB_PACKET;
 
 typedef struct packed {
@@ -420,5 +420,22 @@ typedef struct packed {
 	logic valid;
 
 } RS_PACKET_ISSUE; //output packet from RS to issue
+
+typedef struct packed {
+	logic [`CDB_BITS-1 : 0] tag;
+	logic [`CDB_BITS-1 : 0] tag_old;
+	logic head;
+	logic tail;
+	logic completed;
+
+} ROB_PACKET; //Rob packet
+
+typedef struct packed {
+	logic [`CDB_BITS-1:0] tag; 
+	logic [`CDB_BITS-1:0] tag_old; 
+	logic valid;
+} ROB_PACKET_DISPATCH;
+
+
 
 `endif // __SYS_DEFS_VH__

@@ -5,8 +5,10 @@ module free_list(
 	input reset,
 	input [`N_WAY-1:0][`CDB_BITS-1 : 0] rob_told,
 	input [$clog2(`N_WAY):0] dispatch_num,
+	input [`N_WAY-1:0]dispatched,
 	output logic [`N_WAY-1:0][`CDB_BITS-1 : 0] free_list_out,
-	output logic [$clog2(`N_WAY) : 0] free_num
+	output logic [$clog2(`N_WAY) : 0] free_num,
+	output logic [`N_ROB+32-1 : 0] free //debug
 	//output full
 );
 
@@ -14,7 +16,8 @@ module free_list(
 	logic tmp,tmp1;
 	logic [$clog2(`N_WAY):0] count;
 	logic [`N_WAY-1:0] rob_told_used;
-	logic [`N_ROB+32-1 : 0] free, free_next;
+	//logic [`N_ROB+32-1 : 0] free, free_next,free_next_handshake;
+	logic [`N_ROB+32-1 : 0] free_next,free_next_handshake;
 	logic [$clog2(`N_ROB+32):0] free_num_int, free_num_int_reg;
 	//logic [`N_ROB+32-1 : 0] [`CDB_BITS-1 : 0] free_list;
 	assign free_num = (free_num_int_reg <=`N_WAY ) ?  free_num_int_reg : `N_WAY;
@@ -24,7 +27,8 @@ module free_list(
 		free_next = free;
 		free_num_int = free_num_int_reg;
 		count = 0;
-	 	rob_told_used = 0;	
+	 	rob_told_used = 0;
+		free_list_out = 0;	
 		for (int i=0; i<`N_WAY; i=i+1) begin
 			tmp = 0;
 			if(i < dispatch_num && free_num_int > 0) begin
@@ -58,7 +62,15 @@ module free_list(
 				free_num_int = free_num_int + 1;
 			end
 		end//retire_stage
+	end
+
+	always_comb begin
+		free_next_handshake = free_next;
+		for (int i=0; i<`N_WAY; i=i+1) begin
+			if (!dispatched[i]) free_next_handshake[free_list_out[i]-1] = 1;	
+		end
 	end	
+
 	always_ff @(posedge clock) begin
 		if(reset) begin
 			free_num_int_reg <= `SD `N_ROB;
@@ -71,7 +83,7 @@ module free_list(
 			end
 		end else begin
 			free_num_int_reg <= `SD free_num_int;
-			free <= `SD free_next;
+			free <= `SD free_next_handshake;
 		end
 	end
 

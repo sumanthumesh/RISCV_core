@@ -7,10 +7,13 @@ module test_free_list;
 	logic clock;
 	logic reset;
 	logic [`N_WAY-1:0][`CDB_BITS-1 : 0] rob_told;
+	logic [`N_WAY-1:0] dispatched;
 	logic [$clog2(`N_WAY):0] dispatch_num;
  // Outputs
 	logic [`N_WAY-1:0][`CDB_BITS-1 : 0] free_list_out;
 	logic [$clog2(`N_WAY) : 0] free_num;
+	logic [`N_ROB+32-1 : 0] free; //debug
+	
 
  // Instantiate the Unit Under Test (UUT)
 
@@ -20,7 +23,9 @@ module test_free_list;
 		  .rob_told(rob_told),
 		  .dispatch_num(dispatch_num),
 		  .free_list_out(free_list_out),
-		  .free_num(free_num)	
+		  .free_num(free_num),
+		  .dispatched(dispatched),
+		  .free(free)	
                   );
 
  initial begin
@@ -33,13 +38,14 @@ module test_free_list;
   rob_told[1] = 0;
   rob_told[2] = 0;
   dispatch_num = 0;
-
+  dispatched = 0 ;
   // Wait 100 ns for global reset to finish
 
 	#51;        
 
 	reset  = 1'b0;
 	dispatch_num = 3;
+  	dispatched = 7 ;
 	#200;
 	rob_told[0] = 1;
 	rob_told[1] = 2;
@@ -71,6 +77,8 @@ module test_free_list;
 	rob_told[0] = 13;
 	rob_told[1] = 14;
 	rob_told[2] = 15;
+	#4
+  	dispatched = 3 ;
 	#40;
   $finish;
 

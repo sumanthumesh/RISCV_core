@@ -3,7 +3,7 @@
 module map_table(
 	input clock,
 	input reset,
-	input DISPATCH_ROB_PACKET [`N_WAY -1 : 0] dis_packet,
+	input DISPATCH_PACKET [`N_WAY -1 : 0] dis_packet,
 	input [`N_WAY-1 : 0] [`CDB_BITS -1 :0] pr_freelist,
 	input [`N_WAY-1 : 0] [`CDB_BITS-1 :0] pr_reg_complete,
 	output PR_PACKET [`N_WAY-1 : 0] pr_packet_out1,
@@ -26,7 +26,7 @@ module map_table(
 			end
 		end else begin
 			for (n1=0; n1<`N_WAY; n1=n1+1) begin
-				if(dis_packet[n1].valid) begin //updating the map table in dispatch stage based on the inst
+				if(dis_packet[n1].valid && (pr_freelist[n1] !=0)) begin //updating the map table in dispatch stage based on the inst
 					map_reg[dis_packet[n1].dest].phy_reg <= `SD pr_freelist[n1];
 					if (dis_packet[n1].dest!=0)
 						map_reg[dis_packet[n1].dest].status <= `SD 0;

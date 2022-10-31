@@ -110,7 +110,8 @@ map_table map_table0 (
 		  .dispatch_num(dispatch_num),
 		  .free_list_out(free_list_out),
 		  .free_num(free_num),
-		  .free(free)	
+		  .free(free),
+		  .dispatched(dispatched)	
                   );
 
  cdb cdb0 (

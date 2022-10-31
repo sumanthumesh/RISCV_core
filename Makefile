@@ -94,11 +94,23 @@ VISFLAGS = -lncurses
 ##		verilog/wb_stage.sv	\
 
 TESTBENCH =     sys_defs.svh	\
-		testbench/test_free_list.sv
-SIMFILES =	verilog/free_list.sv	
+		testbench/test_top_rob.sv
+##SIMFILES =	verilog/top_rob.sv	\
+##		verilog/map_table.sv	\
+##		verilog/architecture_table.sv	\
+##		verilog/cdb.sv	\
+##		verilog/free_list.sv	\
+##		verilog/rob.sv		
+##SIMFILES =	verilog/free_list.sv
+SIMFILES =	verilog/top_rob.sv	\
+		verilog/map_table.sv	\
+		verilog/architecture_table.sv	\
+		verilog/cdb.sv	\
+		verilog/free_list.sv	\
+		verilog/rob.sv			
 
 ##SYNFILES = synth/pipeline.vg
-SYNFILES = synth/free_list.vg
+SYNFILES = synth/top_rob.vg
 
 # Don't ask me why spell VisUal TestBenchER like this...
 VTUBER = sys_defs.svh	\
@@ -110,8 +122,8 @@ VTUBER = sys_defs.svh	\
 
 ##synth/pipeline.vg:        $(SIMFILES) synth/pipeline.tcl
 ##	cd synth && dc_shell-t -f ./pipeline.tcl | tee synth.out 
-synth/free_list.vg:        $(SIMFILES) synth/free_list.tcl
-	cd synth && dc_shell-t -f ./free_list.tcl | tee synth.out 
+synth/top_rob.vg:        $(SIMFILES) synth/top_rob.tcl
+	cd synth && dc_shell-t -f ./top_rob.tcl | tee synth.out 
 
 
 #####

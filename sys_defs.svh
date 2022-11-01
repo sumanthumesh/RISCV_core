@@ -382,6 +382,7 @@ typedef struct packed {
 } ROB_PACKET_ISSUE;
 
 typedef struct packed {
+	logic	valid;
 	logic [`XLEN-1:0] rs1_value;    // reg A value                                  
 	logic [`XLEN-1:0] rs2_value;    // reg B value                                  
 	                                                                                
@@ -403,5 +404,12 @@ typedef struct packed {
 typedef struct packed {
 	logic	[`CDB_BITS-1:0] dest_tag;
 } RS_PACKET_RETIRE;
+
+
+typedef struct packed {
+	logic	busy;
+	logic	[$clog2(`N_WAY):0]	order_idx;
+	ISSUE_EX_PACKET		issue_ex_packet;
+} ISSUE_PACKET;
 
 `endif // __SYS_DEFS_VH__

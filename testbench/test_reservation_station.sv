@@ -127,6 +127,9 @@ module testbench;
 
 
             count = 0;
+	    for(int k=0; k<`N_WAY; k=k+1) begin
+	    	rs_expected_packet_issue[k].valid = 0;
+	    end
             for(int i = 1; i <= `N_RS; i++)
             begin
                 for(int j = 0; j < `N_RS; j++)
@@ -152,6 +155,7 @@ module testbench;
 			    	rs_expected_packet_issue[count].source_tag_2 = rs_expected_data[j].source_tag_2;
 			    	rs_expected_packet_issue[count].dest_tag = rs_expected_data[j].dest_tag;
 			    	rs_expected_packet_issue[count].opcode = rs_expected_data[j].opcode;
+			    	rs_expected_packet_issue[count].valid = 1;
                                 count = count + 1;
                             end
                         end
@@ -165,7 +169,8 @@ module testbench;
             $display("The number of instructions issued in the previous cycle are: %h", previous_issue_num);
                 for(int j = 0; j < issue_num; j++)
                 begin
-                	if(!((rs_packet_issue[j].source_tag_1 == rs_expected_packet_issue[j].source_tag_1) && (rs_packet_issue[j].source_tag_2 == rs_expected_packet_issue[j].source_tag_2) && (rs_packet_issue[j].dest_tag == rs_expected_packet_issue[j].dest_tag) && (rs_packet_issue[j].opcode == rs_expected_packet_issue[j].opcode)))
+                	if(!((rs_packet_issue[j].source_tag_1 == rs_expected_packet_issue[j].source_tag_1) && (rs_packet_issue[j].source_tag_2 == rs_expected_packet_issue[j].source_tag_2) && (rs_packet_issue[j].dest_tag == rs_expected_packet_issue[j].dest_tag) && (rs_packet_issue[j].opcode == rs_expected_packet_issue[j].opcode) && (rs_packet_issue[j].valid == rs_expected_packet_issue[j].valid)))
+                	//if(!((rs_packet_issue[j].source_tag_1 == rs_expected_packet_issue[j].source_tag_1) && (rs_packet_issue[j].source_tag_2 == rs_expected_packet_issue[j].source_tag_2) && (rs_packet_issue[j].dest_tag == rs_expected_packet_issue[j].dest_tag) && (rs_packet_issue[j].opcode == rs_expected_packet_issue[j].opcode)))
                             begin
                                 $display("The issue packet row number %h is wrong.", j);
                                 $display("|%b    |%02h   |%02h    |%02h   |", 
@@ -538,7 +543,7 @@ module testbench;
 	cdb_rs_reg_idx[0] = 33;
 	cdb_rs_reg_idx[1] = 34;
 	cdb_rs_reg_idx[2] = 35;
-	ex_rs_dest_idx[0] = 39;
+	ex_rs_dest_idx[0] = 0;
 	ex_rs_dest_idx[1] = 0;
 	ex_rs_dest_idx[2] = 0;
 	rs_packet_dispatch[0].busy = 1;
@@ -575,7 +580,7 @@ module testbench;
         @(negedge clock);
         check_all();
         `SD 
-	cdb_rs_reg_idx[0] = 39;
+	cdb_rs_reg_idx[0] = 0;
 	cdb_rs_reg_idx[1] = 0;
 	cdb_rs_reg_idx[2] = 0;
 	ex_rs_dest_idx[0] = 36;

@@ -1,1 +1,6 @@
 *.out
+.fsm*
+cm*
+.vcs*
+simv.vdb/
+syn_simv.vdb/

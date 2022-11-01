@@ -115,6 +115,7 @@ module reservation_station(
 	logic [$clog2(`N_RS):0] i_o, i_is,i5;
 	logic [$clog2(`N_WAY):0] count;
 	logic [`N_WAY-1 : 0] [`CDB_BITS:0] issued_dest_tag;
+	//logic tmp1;
 	always_comb begin
 		count = 0;
 		//rs_packet_issue = 0;
@@ -128,6 +129,7 @@ module reservation_station(
 		//	issued_idx[i8] = `N_RS;
 		//end
 		for (i_o=1; i_o<=`N_RS; i_o=i_o+1) begin
+			//tmp1 = 0;
 			for(i_is=0; i_is<`N_RS; i_is=i_is+1) begin
 				if(rs_data[i_is].busy) begin
 					if((rs_data_wire[i_is].source_tag_1_plus && rs_data_wire[i_is].source_tag_2_plus) && (!rs_data[i_is].issued) && (rs_data_wire[i_is].order_idx == i_o) && (count < latched_issue_num)) begin
@@ -136,13 +138,21 @@ module reservation_station(
 						rs_packet_issue[count].source_tag_2 = rs_data[i_is].source_tag_2;
 						rs_packet_issue[count].dest_tag = rs_data[i_is].dest_tag;
 						rs_packet_issue[count].opcode = rs_data[i_is].opcode;
-						//rs_packet_issue[count].valid = 1;
+						rs_packet_issue[count].valid = 1;
 						//rs_data_wire[i_is].issued = 1;
 						issued_dest_tag[count] = rs_data[i_is].dest_tag;
 						count= count+1;
+						//tmp1 = 1;
 					end
+					//if(!tmp1) begin
+					//	rs_packet_issue[count].valid = 0;
+					//end
 				end
 			end
+		end
+		for(int i8=0; i8<`N_WAY; i8=i8+1) begin
+			if(i8 >= count )
+				rs_packet_issue[i8].valid = 0;
 		end
 	end
 	//dispatch state logic

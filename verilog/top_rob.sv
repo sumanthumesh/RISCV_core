@@ -14,31 +14,31 @@ module top_rob (
 	output logic [`N_WAY-1 : 0] [`CDB_BITS-1 : 0] cdb_tag,  // to reservation station
 	//output logic [$clog2(`N_WAY) : 0] free_num, //to dispatch stage
 	//debug signals
-	output ROB_PACKET_DISPATCH [`N_WAY-1:0] rob_packet_dis,//generated from dis packet and free list output
-	output logic [`N_WAY-1:0][`CDB_BITS-1:0] retire_tag, 
-	output logic [`N_WAY-1:0][`CDB_BITS-1:0] retire_told,
-	output logic [`N_WAY-1:0]retire_valid,
+	//output ROB_PACKET_DISPATCH [`N_WAY-1:0] rob_packet_dis,//generated from dis packet and free list output
+	//output logic [`N_WAY-1:0][`CDB_BITS-1:0] retire_tag, 
+	//output logic [`N_WAY-1:0][`CDB_BITS-1:0] retire_told,
+	//output logic [`N_WAY-1:0]retire_valid,
 	output logic [`N_WAY-1:0][`CDB_BITS-1 : 0] free_list_out,
-	output logic [$clog2(`N_WAY) : 0] free_num, //to dispatch stage
-	output logic [$clog2(`N_WAY):0] empty_rob, //to dispatch stage
-	output RETIRE_ROB_PACKET [`N_WAY-1:0] retire_packet,
-	output logic [`N_ROB+32-1 : 0] free, //debug
-	output DISPATCH_PACKET [`N_WAY-1:0] dis_packet, // to map table
-	output logic [`N_WAY-1:0][`CDB_BITS-1:0] pr_old
+	//output logic [$clog2(`N_WAY) : 0] free_num, //to dispatch stage
+	//output logic [$clog2(`N_WAY):0] empty_rob, //to dispatch stage
+	//output RETIRE_ROB_PACKET [`N_WAY-1:0] retire_packet,
+	output logic [`N_ROB+32-1 : 0] free //debug
+	//output DISPATCH_PACKET [`N_WAY-1:0] dis_packet, // to map table
+	//output logic [`N_WAY-1:0][`CDB_BITS-1:0] pr_old
 );
 
-//	ROB_PACKET_DISPATCH [`N_WAY-1:0] rob_packet_dis;//generated from dis packet and free list output
-//	logic [`N_WAY-1:0][`CDB_BITS-1:0] retire_tag; 
-//	logic [`N_WAY-1:0][`CDB_BITS-1:0] retire_told;
-//	logic [`N_WAY-1:0]retire_valid;
-//	logic [`N_WAY-1:0][`CDB_BITS-1 : 0] free_list_out;
-//	logic [$clog2(`N_WAY) : 0] free_num; //to dispatch stage
-//	logic [$clog2(`N_WAY):0] empty_rob; //to dispatch stage
-//	RETIRE_ROB_PACKET [`N_WAY-1:0] retire_packet;
-//	logic [`N_ROB+32-1 : 0] free; //debug
-//	DISPATCH_PACKET [`N_WAY-1:0] dis_packet; // to map table
-//	logic [`N_WAY-1:0][`CDB_BITS-1:0] pr_old;
-//
+	ROB_PACKET_DISPATCH [`N_WAY-1:0] rob_packet_dis;//generated from dis packet and free list output
+	logic [`N_WAY-1:0][`CDB_BITS-1:0] retire_tag; 
+	logic [`N_WAY-1:0][`CDB_BITS-1:0] retire_told;
+	logic [`N_WAY-1:0]retire_valid;
+	//logic [`N_WAY-1:0][`CDB_BITS-1 : 0] free_list_out;
+	logic [$clog2(`N_WAY) : 0] free_num; //to dispatch stage
+	logic [$clog2(`N_WAY):0] empty_rob; //to dispatch stage
+	RETIRE_ROB_PACKET [`N_WAY-1:0] retire_packet;
+	//logic [`N_ROB+32-1 : 0] free; //debug
+	DISPATCH_PACKET [`N_WAY-1:0] dis_packet; // to map table
+	logic [`N_WAY-1:0][`CDB_BITS-1:0] pr_old;
+
 	
 	always_comb begin // to rob 
 		for (int i=0; i<`N_WAY ; i=i+1) begin

@@ -316,7 +316,7 @@ typedef struct packed {
 `define N_ROB 9
 `define FIFO_BITS 6
 `define XLEN_BITS 5
-`define N_RS 16
+`define N_RS 8
 `define N_RS_IDX 4
 `define ARCH_REG 32
 `define N_PHY_REG `ARCH_REG+`N_ROB
@@ -337,6 +337,15 @@ typedef struct packed {
 	logic [`XLEN_BITS-1 :0] dest;
 	logic valid;
 } DISPATCH_PACKET;
+
+typedef struct packed {
+	logic [`XLEN_BITS-1 :0] src1;
+	logic [`XLEN_BITS-1 :0] src2;
+	logic [`XLEN_BITS-1 :0] dest;
+	logic [6:0] opcode;
+	logic valid;
+} DISPATCH_PACKET_R10K;
+
 
 typedef struct packed {
 	logic [`CDB_BITS-1:0] tag; // physical registor number
@@ -361,12 +370,12 @@ typedef struct packed {
 	INST inst; //pc + 4
 	logic [`CDB_BITS-1:0] dest_tag; // is this a taken branch?
 	//logic dest_tag_plus;
-	logic [`CDB_BITS-1:0] source_tag_1; // is this a taken branch?
+	logic [`CDB_BITS-1:0] source_tag_1; 
 	logic source_tag_1_plus;
-	logic [`CDB_BITS-1:0] source_tag_2; // is this a taken branch?
+	logic [`CDB_BITS-1:0] source_tag_2; 
 	logic source_tag_2_plus;
 	logic valid;
-	logic [$clog2(`N_RS):0] order_idx; //to track the oldest instruction 
+	logic [$clog2(`N_RS):0] order_idx;  
 } RS_PACKET_DISPATCH;  
 typedef struct packed {
 	logic [`CDB_BITS-1 : 0] source_tag_1;

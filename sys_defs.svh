@@ -318,6 +318,13 @@ typedef struct packed {
 `define XLEN_BITS 5
 `define N_RS 16
 `define N_RS_IDX 4
+`define ARCH_REG 32
+`define N_PHY_REG `ARCH_REG+`N_ROB
+
+// Functional unit macros
+`define EX_MULT_UNITS	1
+`define EX_ALU_UNITS	2
+
 
 typedef struct packed {
 	logic [`CDB_BITS-1:0] phy_reg; // physical registor number
@@ -339,7 +346,7 @@ typedef struct packed {
 
 typedef struct packed {
 	logic busy; // alu_result
-	logic [6:0] opcode; //pc + 4
+	INST inst; //pc + 4
 	logic [`CDB_BITS-1:0] dest_tag; // is this a taken branch?
 	//logic dest_tag_plus;
 	logic [`CDB_BITS-1:0] source_tag_1; // is this a taken branch?
@@ -351,7 +358,7 @@ typedef struct packed {
 } RS_PACKET;  
 typedef struct packed {
 	logic busy; // alu_result
-	logic [6:0] opcode; //pc + 4
+	INST inst; //pc + 4
 	logic [`CDB_BITS-1:0] dest_tag; // is this a taken branch?
 	//logic dest_tag_plus;
 	logic [`CDB_BITS-1:0] source_tag_1; // is this a taken branch?
@@ -365,8 +372,44 @@ typedef struct packed {
 	logic [`CDB_BITS-1 : 0] source_tag_1;
 	logic [`CDB_BITS-1 : 0] source_tag_2;
 	logic [`CDB_BITS-1 : 0] dest_tag;
-	logic [6 : 0] 		opcode;
+	INST 		inst;
 	logic valid;
 } RS_PACKET_ISSUE; //output packet from RS to issue
+
+typedef struct packed {
+	logic busy;
+	logic [`CDB_BITS-1:0] phy_reg_idx;
+} ROB_PACKET_ISSUE;
+
+typedef struct packed {
+	logic	valid;
+	logic [`XLEN-1:0] rs1_value;    // reg A value                                  
+	logic [`XLEN-1:0] rs2_value;    // reg B value                                  
+	                                                                                
+	ALU_OPA_SELECT opa_select; // ALU opa mux select (ALU_OPA_xxx *)
+	ALU_OPB_SELECT opb_select; // ALU opb mux select (ALU_OPB_xxx *)
+	INST inst;                 // instruction
+	
+	logic [`CDB_BITS-1:0] dest_reg_idx;  // destination (writeback) register index      
+	ALU_FUNC    alu_func;      // ALU function select (ALU_xxx *)
+	logic       rd_mem;        // does inst read memory?
+	logic       wr_mem;        // does inst write memory?
+	logic       cond_branch;   // is inst a conditional branch?
+	logic       uncond_branch; // is inst an unconditional branch?
+	logic       halt;          // is this a halt?
+	logic       illegal;       // is this instruction illegal?
+	logic       csr_op;        // is this a CSR operation? (we only used this as a cheap way to get return code)
+} ISSUE_EX_PACKET;
+
+typedef struct packed {
+	logic	[`CDB_BITS-1:0] dest_tag;
+} RS_PACKET_RETIRE;
+
+
+typedef struct packed {
+	logic	busy;
+	logic	[$clog2(`N_WAY):0]	order_idx;
+	ISSUE_EX_PACKET		issue_ex_packet;
+} ISSUE_PACKET;
 
 `endif // __SYS_DEFS_VH__

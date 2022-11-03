@@ -48,7 +48,7 @@ reservation_station rs0 (
 	issue_num = 0;
 	
 	rs_packet_dispatch[0].busy = 0;
-	rs_packet_dispatch[0].opcode= 0;
+	rs_packet_dispatch[0].inst= 0;
 	rs_packet_dispatch[0].dest_tag= 0;
 	rs_packet_dispatch[0].source_tag_1= 0;
 	rs_packet_dispatch[0].source_tag_1_plus= 0;
@@ -58,7 +58,7 @@ reservation_station rs0 (
 	rs_packet_dispatch[0].order_idx= 0;
   
 	rs_packet_dispatch[1].busy = 0;
-	rs_packet_dispatch[1].opcode= 0;
+	rs_packet_dispatch[1].inst= 0;
 	rs_packet_dispatch[1].dest_tag= 0;
 	rs_packet_dispatch[1].source_tag_1= 0;
 	rs_packet_dispatch[1].source_tag_1_plus= 0;
@@ -68,7 +68,7 @@ reservation_station rs0 (
 	rs_packet_dispatch[1].order_idx= 0;
   
 	rs_packet_dispatch[2].busy = 0;
-	rs_packet_dispatch[2].opcode= 0;
+	rs_packet_dispatch[2].inst= 0;
 	rs_packet_dispatch[2].dest_tag= 0;
 	rs_packet_dispatch[2].source_tag_1= 0;
 	rs_packet_dispatch[2].source_tag_1_plus= 0;
@@ -103,7 +103,7 @@ reservation_station rs0 (
 	issue_num = 3;
 		
 	rs_packet_dispatch[0].busy = 1;
-	rs_packet_dispatch[0].opcode= 1;
+	rs_packet_dispatch[0].inst= 1;
 	rs_packet_dispatch[0].dest_tag= 33;
 	rs_packet_dispatch[0].source_tag_1= 1;
 	rs_packet_dispatch[0].source_tag_1_plus= 1;
@@ -113,7 +113,7 @@ reservation_station rs0 (
 	rs_packet_dispatch[0].order_idx= 1;
   
 	rs_packet_dispatch[1].busy = 1;
-	rs_packet_dispatch[1].opcode= 2;
+	rs_packet_dispatch[1].inst= 2;
 	rs_packet_dispatch[1].dest_tag= 34;
 	rs_packet_dispatch[1].source_tag_1= 4;
 	rs_packet_dispatch[1].source_tag_1_plus= 1;
@@ -123,7 +123,7 @@ reservation_station rs0 (
 	rs_packet_dispatch[1].order_idx= 2;
   
 	rs_packet_dispatch[2].busy = 1;
-	rs_packet_dispatch[2].opcode= 3;
+	rs_packet_dispatch[2].inst= 3;
 	rs_packet_dispatch[2].dest_tag= 35;
 	rs_packet_dispatch[2].source_tag_1= 7;
 	rs_packet_dispatch[2].source_tag_1_plus= 1;
@@ -134,7 +134,7 @@ reservation_station rs0 (
 
   #20;
 	rs_packet_dispatch[0].busy = 1;
-	rs_packet_dispatch[0].opcode= 1;
+	rs_packet_dispatch[0].inst= 1;
 	rs_packet_dispatch[0].dest_tag= 36;
 	rs_packet_dispatch[0].source_tag_1= 33;
 	rs_packet_dispatch[0].source_tag_1_plus= 0;
@@ -144,7 +144,7 @@ reservation_station rs0 (
 	rs_packet_dispatch[0].order_idx= 4;
   
 	rs_packet_dispatch[1].busy = 1;
-	rs_packet_dispatch[1].opcode= 2;
+	rs_packet_dispatch[1].inst= 2;
 	rs_packet_dispatch[1].dest_tag= 37;
 	rs_packet_dispatch[1].source_tag_1= 34;
 	rs_packet_dispatch[1].source_tag_1_plus= 0;
@@ -154,7 +154,7 @@ reservation_station rs0 (
 	rs_packet_dispatch[1].order_idx= 5;
   
 	rs_packet_dispatch[2].busy = 1;
-	rs_packet_dispatch[2].opcode= 3;
+	rs_packet_dispatch[2].inst= 3;
 	rs_packet_dispatch[2].dest_tag= 38;
 	rs_packet_dispatch[2].source_tag_1= 35;
 	rs_packet_dispatch[2].source_tag_1_plus= 0;
@@ -168,7 +168,7 @@ reservation_station rs0 (
 	ex_rs_dest_idx[1] = 34;
 	ex_rs_dest_idx[2] = 35;
 	rs_packet_dispatch[0].busy = 1;
-	rs_packet_dispatch[0].opcode= 1;
+	rs_packet_dispatch[0].inst= 1;
 	rs_packet_dispatch[0].dest_tag= 39;
 	rs_packet_dispatch[0].source_tag_1= 13;
 	rs_packet_dispatch[0].source_tag_1_plus= 1;
@@ -178,7 +178,7 @@ reservation_station rs0 (
 	rs_packet_dispatch[0].order_idx= 4;
   
 	rs_packet_dispatch[1].busy = 1;
-	rs_packet_dispatch[1].opcode= 2;
+	rs_packet_dispatch[1].inst= 2;
 	rs_packet_dispatch[1].dest_tag= 40;
 	rs_packet_dispatch[1].source_tag_1= 39;
 	rs_packet_dispatch[1].source_tag_1_plus= 0;
@@ -188,7 +188,7 @@ reservation_station rs0 (
 	rs_packet_dispatch[1].order_idx= 5;
   
 	rs_packet_dispatch[2].busy = 1;
-	rs_packet_dispatch[2].opcode= 3;
+	rs_packet_dispatch[2].inst= 3;
 	rs_packet_dispatch[2].dest_tag= 41;
 	rs_packet_dispatch[2].source_tag_1= 40;
 	rs_packet_dispatch[2].source_tag_1_plus= 0;
@@ -207,7 +207,7 @@ reservation_station rs0 (
 	ex_rs_dest_idx[2] = 0;
 
 	rs_packet_dispatch[0].busy = 1;
-	rs_packet_dispatch[0].opcode= 1;
+	rs_packet_dispatch[0].inst= 1;
 	rs_packet_dispatch[0].dest_tag= 42;
 	rs_packet_dispatch[0].source_tag_1= 20;
 	rs_packet_dispatch[0].source_tag_1_plus= 1;
@@ -217,7 +217,7 @@ reservation_station rs0 (
 	rs_packet_dispatch[0].order_idx= 7;
   
 	rs_packet_dispatch[1].busy = 1;
-	rs_packet_dispatch[1].opcode= 2;
+	rs_packet_dispatch[1].inst= 2;
 	rs_packet_dispatch[1].dest_tag= 43;
 	rs_packet_dispatch[1].source_tag_1= 23;
 	rs_packet_dispatch[1].source_tag_1_plus= 1;
@@ -227,7 +227,7 @@ reservation_station rs0 (
 	rs_packet_dispatch[1].order_idx= 8;
   
 	rs_packet_dispatch[2].busy = 1;
-	rs_packet_dispatch[2].opcode= 3;
+	rs_packet_dispatch[2].inst= 3;
 	rs_packet_dispatch[2].dest_tag= 44;
 	rs_packet_dispatch[2].source_tag_1= 26;
 	rs_packet_dispatch[2].source_tag_1_plus= 1;
@@ -243,7 +243,7 @@ reservation_station rs0 (
 	cdb_rs_reg_idx[2] = 0;
 
 	rs_packet_dispatch[0].busy = 1;
-	rs_packet_dispatch[0].opcode= 1;
+	rs_packet_dispatch[0].inst= 1;
 	rs_packet_dispatch[0].dest_tag= 45;
 	rs_packet_dispatch[0].source_tag_1= 1;
 	rs_packet_dispatch[0].source_tag_1_plus= 1;
@@ -253,7 +253,7 @@ reservation_station rs0 (
 	rs_packet_dispatch[0].order_idx= 10;
   
 	rs_packet_dispatch[1].busy = 1;
-	rs_packet_dispatch[1].opcode= 2;
+	rs_packet_dispatch[1].inst= 2;
 	rs_packet_dispatch[1].dest_tag= 46;
 	rs_packet_dispatch[1].source_tag_1= 4;
 	rs_packet_dispatch[1].source_tag_1_plus= 1;
@@ -263,7 +263,7 @@ reservation_station rs0 (
 	rs_packet_dispatch[1].order_idx= 11;
   
 	rs_packet_dispatch[2].busy = 1;
-	rs_packet_dispatch[2].opcode= 3;
+	rs_packet_dispatch[2].inst= 3;
 	rs_packet_dispatch[2].dest_tag= 47;
 	rs_packet_dispatch[2].source_tag_1= 7;
 	rs_packet_dispatch[2].source_tag_1_plus= 1;

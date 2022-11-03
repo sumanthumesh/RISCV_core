@@ -42,7 +42,7 @@ module top_r10k (
 		for (int i=0; i<`N_WAY ; i=i+1) begin
 			if(dispatch_packet[i].valid) begin
 			//	rs_packet_dispatch[i].busy = 1; 
-				rs_packet_dispatch[i].opcode = dispatch_packet[i].opcode;
+				rs_packet_dispatch[i].inst = dispatch_packet[i].inst;
 				//rs_packet_dispatch[i].valid = 1;
 				rs_packet_dispatch[i].source_tag_1 = pr_packet_out1[i].phy_reg ;
 				rs_packet_dispatch[i].source_tag_1_plus = pr_packet_out1[i].status ;

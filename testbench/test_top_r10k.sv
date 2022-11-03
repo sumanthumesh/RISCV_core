@@ -58,19 +58,19 @@ module test_top_r10k;
 	dispatch_packet[0].src1 = 0;
 	dispatch_packet[0].src2 = 0;
 	dispatch_packet[0].dest = 0;
-	dispatch_packet[0].opcode = 56;
+	dispatch_packet[0].inst = 56;
 	dispatch_packet[0].valid= 0;
 
 	dispatch_packet[1].src1 = 0;
 	dispatch_packet[1].src2 = 0;
 	dispatch_packet[1].dest = 0;
-	dispatch_packet[1].opcode = 57;
+	dispatch_packet[1].inst = 57;
 	dispatch_packet[1].valid= 0;
 
 	dispatch_packet[2].src1 = 0;
 	dispatch_packet[2].src2 = 0;
 	dispatch_packet[2].dest = 0;
-	dispatch_packet[2].opcode = 58;
+	dispatch_packet[2].inst = 58;
 	dispatch_packet[2].valid= 0;
 
   // Wait 100 ns for global reset to finish

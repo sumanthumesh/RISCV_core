@@ -12,6 +12,7 @@ module test_map_table;
  // Outputs
  PR_PACKET [`N_WAY-1 : 0] pr_packet_out1;
  PR_PACKET [`N_WAY-1 : 0] pr_packet_out2;
+logic [`N_WAY-1:0][`CDB_BITS-1:0] pr_old;
 //logic [`N_WAY-1 : 0] src1_match;
 //logic [`N_WAY-1 : 0] src2_match;
 //logic [`N_WAY-1 :0] valid_comp;
@@ -26,7 +27,8 @@ module test_map_table;
 		  .pr_freelist(pr_freelist),
 		  .pr_reg_complete(pr_reg_complete),
 		  .pr_packet_out1(pr_packet_out1), 
-		  .pr_packet_out2(pr_packet_out2)
+		  .pr_packet_out2(pr_packet_out2),
+		  .pr_old(pr_old)
 		  //.src1_match(src1_match),
 		  //.src2_match(src2_match),
 		  //.valid_comp(valid_comp)
@@ -94,7 +96,7 @@ module test_map_table;
   dis_packet[2].valid = 1;
   dis_packet[2].src1 = 6;
   dis_packet[2].src2 = 7;
-  dis_packet[2].dest = 8;
+  dis_packet[2].dest = 2;
 
   #20;
   pr_reg_complete[0] = 0;
@@ -116,7 +118,7 @@ module test_map_table;
   dis_packet[2].valid = 1;
   dis_packet[2].src1 = 7;
   dis_packet[2].src2 = 5;
-  dis_packet[2].dest = 8;
+  dis_packet[2].dest = 5;
 
   #20;
   pr_reg_complete[0] = 33;

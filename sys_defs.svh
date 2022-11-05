@@ -311,7 +311,7 @@ typedef struct packed {
 } EX_MEM_PACKET;
 
 //OOO
-`define N_WAY 3
+`define N_WAY_3
 `define CDB_BITS 7
 `define N_ROB 9
 `define FIFO_BITS 6
@@ -322,8 +322,81 @@ typedef struct packed {
 `define N_PHY_REG `ARCH_REG+`N_ROB
 
 // Functional unit macros
+`ifdef N_WAY_1
+`define N_WAY 1
+`define EX_MULT_UNITS	1
+`define EX_ALU_UNITS	1
+`define EX_LOAD_UNITS	1
+`define EX_STORE_UNITS	1
+`define EX_BRANCH_UNITS	1
+
+`elsif N_WAY_2
+`define N_WAY 2
 `define EX_MULT_UNITS	1
 `define EX_ALU_UNITS	2
+`define EX_LOAD_UNITS	1
+`define EX_STORE_UNITS	1
+`define EX_BRANCH_UNITS	1
+
+`elsif N_WAY_3
+`define N_WAY 3
+`define EX_MULT_UNITS	2
+`define EX_ALU_UNITS	3
+`define EX_LOAD_UNITS	1
+`define EX_STORE_UNITS	1
+`define EX_BRANCH_UNITS	1
+
+`elsif N_WAY_4
+`define N_WAY 4
+`define EX_MULT_UNITS	2
+`define EX_ALU_UNITS	3
+`define EX_LOAD_UNITS	1
+`define EX_STORE_UNITS	1
+`define EX_BRANCH_UNITS	1
+
+`elsif N_WAY_5
+`define N_WAY 5
+`define EX_MULT_UNITS	3
+`define EX_ALU_UNITS	5
+`define EX_LOAD_UNITS	1
+`define EX_STORE_UNITS	1
+`define EX_BRANCH_UNITS	1
+
+`elsif N_WAY_6
+`define N_WAY 6
+`define EX_MULT_UNITS	3
+`define EX_ALU_UNITS	5
+`define EX_LOAD_UNITS	1
+`define EX_STORE_UNITS	1
+`define EX_BRANCH_UNITS	1
+
+`elsif N_WAY_7
+`define N_WAY 7
+`define EX_MULT_UNITS	3
+`define EX_ALU_UNITS	5
+`define EX_LOAD_UNITS	1
+`define EX_STORE_UNITS	1
+`define EX_BRANCH_UNITS	1
+
+`elsif N_WAY_8
+`define N_WAY 8
+`define EX_MULT_UNITS	3
+`define EX_ALU_UNITS	5
+`define EX_LOAD_UNITS	1
+`define EX_STORE_UNITS	1
+`define EX_BRANCH_UNITS	1
+
+`endif
+
+typedef enum logic [2:0] {
+	ALU  	= 3'h0,
+	MULT   	= 3'h1,
+	LOAD	= 3'h2,
+	STORE	= 3'h3,
+	BRANCH  = 3'h4
+} EXECUTION_UNIT;
+
+
 
 
 typedef struct packed {
@@ -383,6 +456,8 @@ typedef struct packed {
 	logic [`CDB_BITS-1 : 0] dest_tag;
 	INST 		inst;
 	logic valid;
+	logic [`XLEN-1:0] NPC; // PC + 4
+	logic [`XLEN-1:0] PC;  // PC 
 } RS_PACKET_ISSUE; //output packet from RS to issue
 
 typedef struct packed {
@@ -408,6 +483,9 @@ typedef struct packed {
 	logic       halt;          // is this a halt?
 	logic       illegal;       // is this instruction illegal?
 	logic       csr_op;        // is this a CSR operation? (we only used this as a cheap way to get return code)
+	EXECUTION_UNIT execution_unit;
+	logic [`XLEN-1:0] NPC; // PC + 4
+	logic [`XLEN-1:0] PC;  // PC 
 } ISSUE_EX_PACKET;
 
 typedef struct packed {

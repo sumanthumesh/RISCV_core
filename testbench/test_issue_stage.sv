@@ -22,7 +22,7 @@ module testbench;
     logic                   [35:0]      enable_test;
     logic                   [35:0]      memory_index;
     logic                   [35:0]      memory_data;
-
+    logic   [`N_WAY-1:0][`CDB_BITS-1:0] ex_dest_tag;
     int inst_counter;
 
 
@@ -34,9 +34,9 @@ module testbench;
 	.wb_reg_wr_idx_out(wb_reg_wr_idx_out),
     .wb_reg_wr_data_out(wb_reg_wr_data_out),
 	.issue_packet(issue_packet),
-    .count(count),
     .issue_num(issue_num),
-    .zero_reg_pr(zero_reg_pr)
+    .zero_reg_pr(zero_reg_pr),
+    .ex_dest_tag(ex_dest_tag)
     );
 
     always #5 clock = ~clock;

@@ -230,16 +230,31 @@ module issue_stage(
     
 	// Outputs
 	output	ISSUE_EX_PACKET		[`N_WAY-1:0]	issue_packet,
-	output logic	[$clog2(`N_WAY):0] count,
-	output logic	[$clog2(`N_WAY):0] issue_num
+	//output logic	[$clog2(`N_WAY):0] count,
+	output logic	[$clog2(`N_WAY):0] issue_num,
+	output logic	[`N_WAY-1:0][`CDB_BITS-1:0] ex_dest_tag
 );
 
 	RS_PACKET_ISSUE   [`N_WAY-1:0]  	rs_packet_issue_reg;
+
 	logic	[$clog2(`EX_MULT_UNITS):0]	mult_inst_counter;
 	logic	[$clog2(`EX_ALU_UNITS):0]	alu_inst_counter;
+	logic	[$clog2(`EX_MULT_UNITS):0]	load_inst_counter;
+	logic	[$clog2(`EX_ALU_UNITS):0]	store_inst_counter;
+	logic	[$clog2(`EX_MULT_UNITS):0]	branch_inst_counter;
+	logic	[$clog2(`N_WAY):0] count;
+
 	logic [`N_PHY_REG-1:0] [`XLEN-1:0] registers;
+
+
 	logic	[`N_WAY-1:0] rs_packet_inst_is_mult;
-	logic	[`N_WAY-1:0] ready_to_execute_inst_is_mult;
+	logic[`N_WAY-1:0] ready_to_execute_inst_is_mult;
+	logic	[`N_WAY-1:0] rs_packet_inst_is_load;
+	logic	[`N_WAY-1:0] ready_to_execute_inst_is_load;
+	logic	[`N_WAY-1:0] rs_packet_inst_is_store;
+	logic	[`N_WAY-1:0] ready_to_execute_inst_is_store;
+	logic	[`N_WAY-1:0] rs_packet_inst_is_branch;
+	logic	[`N_WAY-1:0] ready_to_execute_inst_is_branch;
 
 	ISSUE_PACKET	[`N_WAY-1:0] ready_to_execute;
 	ISSUE_PACKET	[`N_WAY-1:0] next_ready_to_execute;
@@ -283,6 +298,10 @@ module issue_stage(
 								(rs_packet_issue_reg[i].inst.r.funct3 == `MD_MULH_FUN3)||
 								(rs_packet_issue_reg[i].inst.r.funct3 == `MD_MULHSU_FUN3)||
 								(rs_packet_issue_reg[i].inst.r.funct3 == `MD_MULHU_FUN3));
+			rs_packet_inst_is_load[i] = rs_packet_issue_reg[i].inst.i.opcode == `RV32_LOAD;
+			rs_packet_inst_is_store[i] = rs_packet_issue_reg[i].inst.i.opcode == `RV32_STORE;
+			rs_packet_inst_is_branch[i] = rs_packet_issue_reg[i].inst.i.opcode == `RV32_BRANCH;
+
 		end
 
 
@@ -293,6 +312,10 @@ module issue_stage(
 								(ready_to_execute[i].issue_ex_packet.inst.r.funct3 == `MD_MULH_FUN3)||
 								(ready_to_execute[i].issue_ex_packet.inst.r.funct3 == `MD_MULHSU_FUN3)||
 								(ready_to_execute[i].issue_ex_packet.inst.r.funct3 == `MD_MULHU_FUN3));
+			ready_to_execute_inst_is_load[i] = ready_to_execute[i].issue_ex_packet.inst.i.opcode == `RV32_LOAD;
+			ready_to_execute_inst_is_store[i] = ready_to_execute[i].issue_ex_packet.inst.i.opcode == `RV32_STORE;
+			ready_to_execute_inst_is_branch[i] = ready_to_execute[i].issue_ex_packet.inst.i.opcode == `RV32_BRANCH;
+
 		end
 
 
@@ -305,6 +328,9 @@ module issue_stage(
 		count = 0;
 		mult_inst_counter = `EX_MULT_UNITS;
 		alu_inst_counter = `EX_ALU_UNITS;
+		load_inst_counter = `EX_LOAD_UNITS;
+		store_inst_counter = `EX_STORE_UNITS;
+		branch_inst_counter = `EX_BRANCH_UNITS;
 		for(i1 = 1; i1 <= `N_WAY; i1++)
 		begin
 			for(int j = 0; j < `N_WAY; j++)
@@ -313,35 +339,44 @@ module issue_stage(
 				begin
 					// We need to now decide for this row whether to send this row to the execution stage. 
 					if((ready_to_execute_inst_is_mult[j] && mult_inst_counter >0)||
-					(!ready_to_execute_inst_is_mult[j] && alu_inst_counter >0))
+					(ready_to_execute_inst_is_load[j] && load_inst_counter > 0)||
+					(ready_to_execute_inst_is_store[j] && store_inst_counter > 0)||
+					(ready_to_execute_inst_is_branch[j] && branch_inst_counter > 0)||
+					(!(ready_to_execute_inst_is_mult[j]||ready_to_execute_inst_is_load[j]||ready_to_execute_inst_is_store[j]||ready_to_execute_inst_is_branch[j]) && alu_inst_counter > 0))
 					begin
 						if(count < `N_WAY)
 						begin
-							issue_packet[count] = {
-								1'b1, 		// valid
-								ready_to_execute[j].issue_ex_packet.rs1_value,// rs1_value
-								ready_to_execute[j].issue_ex_packet.rs2_value,// rs2_value
-								ready_to_execute[j].issue_ex_packet.opa_select,	// opa_select
-								ready_to_execute[j].issue_ex_packet.opb_select,	// opb_select
-								ready_to_execute[j].issue_ex_packet.inst,	// instruction
-								ready_to_execute[j].issue_ex_packet.dest_reg_idx, 		// destination register index
-								ready_to_execute[j].issue_ex_packet.alu_func,		// alu_func
-								ready_to_execute[j].issue_ex_packet.rd_mem,			// rd_mem
-								ready_to_execute[j].issue_ex_packet.wr_mem,			// wr_mem
-								ready_to_execute[j].issue_ex_packet.cond_branch,		// boolean for conditional branch
-								ready_to_execute[j].issue_ex_packet.uncond_branch,	// boolean for unconditional branch
-								ready_to_execute[j].issue_ex_packet.halt,				// whether to halt execution
-								ready_to_execute[j].issue_ex_packet.illegal,				// whether the current instruction is illegal
-								ready_to_execute[j].issue_ex_packet.csr_op				// whether the current instruction is a CSR operation
-							};
+							issue_packet[count].valid = 1'b1;
+							issue_packet[count].rs1_value = ready_to_execute[j].issue_ex_packet.rs1_value;
+							issue_packet[count].rs2_value = ready_to_execute[j].issue_ex_packet.rs2_value;
+							issue_packet[count].opa_select = ready_to_execute[j].issue_ex_packet.opa_select;
+							issue_packet[count].opb_select = ready_to_execute[j].issue_ex_packet.opb_select;
+							issue_packet[count].inst = ready_to_execute[j].issue_ex_packet.inst;
+							issue_packet[count].dest_reg_idx = ready_to_execute[j].issue_ex_packet.dest_reg_idx;
+							issue_packet[count].execution_unit = ready_to_execute[j].issue_ex_packet.execution_unit;
+							issue_packet[count].alu_func = ready_to_execute[j].issue_ex_packet.alu_func;
+							issue_packet[count].rd_mem = ready_to_execute[j].issue_ex_packet.rd_mem;
+							issue_packet[count].wr_mem = ready_to_execute[j].issue_ex_packet.wr_mem;
+							issue_packet[count].cond_branch = ready_to_execute[j].issue_ex_packet.cond_branch;
+							issue_packet[count].uncond_branch = ready_to_execute[j].issue_ex_packet.uncond_branch;
+							issue_packet[count].halt = ready_to_execute[j].issue_ex_packet.halt;
+							issue_packet[count].illegal = ready_to_execute[j].issue_ex_packet.illegal;
+							issue_packet[count].csr_op = ready_to_execute[j].issue_ex_packet.csr_op;
+							issue_packet[count].NPC = ready_to_execute[j].issue_ex_packet.NPC;							
+							issue_packet[count].PC = ready_to_execute[j].issue_ex_packet.PC;							
+
 							next_ready_to_execute[j].busy = 0;
 							order_idx_ex[j] = 0;
 							count = count + 1;
 							
 							if(ready_to_execute_inst_is_mult[j])
-							begin
 								mult_inst_counter = mult_inst_counter - 1;
-							end
+							else if(ready_to_execute_inst_is_load[j])
+								load_inst_counter = load_inst_counter - 1;
+							else if(ready_to_execute_inst_is_store[j])
+								store_inst_counter = store_inst_counter - 1;
+							else if(ready_to_execute_inst_is_branch[j])
+								branch_inst_counter = branch_inst_counter - 1;
 							else
 								alu_inst_counter = alu_inst_counter - 1;
 						end
@@ -389,34 +424,46 @@ module issue_stage(
 			if(rs_packet_issue_reg[i].valid)
 			begin
 				if((rs_packet_inst_is_mult[i] && mult_inst_counter >0)||
-				(!rs_packet_inst_is_mult[i] && alu_inst_counter >0))
+				(rs_packet_inst_is_branch[i] && branch_inst_counter > 0)||
+				(rs_packet_inst_is_load[i] && load_inst_counter > 0)||
+				(rs_packet_inst_is_store[i] && store_inst_counter > 0)||
+				(!(rs_packet_inst_is_mult[i]||rs_packet_inst_is_branch[i]||rs_packet_inst_is_load[i]||rs_packet_inst_is_store[i]) && alu_inst_counter >0))
 				begin
 					if(count < `N_WAY)
 					begin
-						issue_packet[count] = {
-							1'b1,		// valid
-							regfile_rda_out[i],// rs1_value
-							regfile_rdb_out[i],// rs2_value
-							opa_select[i],	// opa_select
-							opb_select[i],	// opb_select
-							rs_packet_issue_reg[i].inst,	// instruction
-							dest_reg_idx[i], 		// destination register index
-							alu_func[i],		// alu_func
-							rd_mem[i],			// rd_mem
-							wr_mem[i],			// wr_mem
-							cond_branch[i],		// boolean for conditional branch
-							uncond_branch[i],	// boolean for unconditional branch
-							halt[i],				// whether to halt execution
-							illegal[i],				// whether the current instruction is illegal
-							csr_op[i]				// whether the current instruction is a CSR operation
-						};
+						issue_packet[count].valid = 1'b1;
+						issue_packet[count].rs1_value = regfile_rda_out[i];
+						issue_packet[count].rs2_value = regfile_rdb_out[i];
+						issue_packet[count].opa_select = opa_select[i];
+						issue_packet[count].opb_select = opb_select[i];
+						issue_packet[count].inst = rs_packet_issue_reg[i].inst;
+						issue_packet[count].dest_reg_idx = dest_reg_idx[i];
+						issue_packet[count].alu_func = alu_func[i];
+						issue_packet[count].rd_mem = rd_mem[i];
+						issue_packet[count].wr_mem = wr_mem[i];
+						issue_packet[count].cond_branch = cond_branch[i];
+						issue_packet[count].uncond_branch = uncond_branch[i];
+						issue_packet[count].halt = halt[i];
+						issue_packet[count].illegal = illegal[i];
+						issue_packet[count].csr_op = csr_op[i];
+						issue_packet[count].execution_unit = 	rs_packet_inst_is_mult[i] ? MULT : 
+																rs_packet_inst_is_branch[i] ? BRANCH :
+																rs_packet_inst_is_load[i] ? LOAD :
+																rs_packet_inst_is_store[i] ? STORE :
+																ALU;
+						issue_packet[count].NPC = rs_packet_issue_reg[i].NPC;
+						issue_packet[count].PC = rs_packet_issue_reg[i].PC;
 
 						count = count + 1;
 						
 						if(rs_packet_inst_is_mult[i])
-						begin
 							mult_inst_counter = mult_inst_counter - 1;
-						end
+						else if(rs_packet_inst_is_load[i])
+							load_inst_counter = load_inst_counter - 1;
+						else if(rs_packet_inst_is_store[i])
+							store_inst_counter = store_inst_counter - 1;
+						else if(rs_packet_inst_is_branch[i])
+							branch_inst_counter = branch_inst_counter - 1;
 						else
 							alu_inst_counter = alu_inst_counter - 1;
 					end
@@ -435,22 +482,28 @@ module issue_stage(
 					fill_in_ready_to_execute_flag = 0;
 					next_ready_to_execute_wire[j].order_idx = length;
 					length = length + 1;
-					next_ready_to_execute_wire[j].issue_ex_packet = {
-						regfile_rda_out[i],// rs1_value
-						regfile_rdb_out[i],// rs2_value
-						opa_select[i],	// opa_select
-						opb_select[i],	// opb_select
-						rs_packet_issue_reg[i].inst,	// instruction
-						dest_reg_idx[i], 		// destination register index
-						alu_func[i],		// alu_func
-						rd_mem[i],			// rd_mem
-						wr_mem[i],			// wr_mem
-						cond_branch[i],		// boolean for conditional branch
-						uncond_branch[i],	// boolean for unconditional branch
-						halt[i],				// whether to halt execution
-						illegal[i],				// whether the current instruction is illegal
-						csr_op[i]				// whether the current instruction is a CSR operation
-					};
+					next_ready_to_execute_wire[j].issue_ex_packet.valid = 1'b1;
+					next_ready_to_execute_wire[j].issue_ex_packet.rs1_value = regfile_rda_out[i];
+					next_ready_to_execute_wire[j].issue_ex_packet.rs2_value = regfile_rdb_out[i];
+					next_ready_to_execute_wire[j].issue_ex_packet.opa_select = opa_select[i];
+					next_ready_to_execute_wire[j].issue_ex_packet.opb_select = opb_select[i];
+					next_ready_to_execute_wire[j].issue_ex_packet.inst = rs_packet_issue_reg[i].inst;
+					next_ready_to_execute_wire[j].issue_ex_packet.dest_reg_idx = dest_reg_idx[i];
+					next_ready_to_execute_wire[j].issue_ex_packet.alu_func = alu_func[i];
+					next_ready_to_execute_wire[j].issue_ex_packet.rd_mem = rd_mem[i];
+					next_ready_to_execute_wire[j].issue_ex_packet.wr_mem = wr_mem[i];
+					next_ready_to_execute_wire[j].issue_ex_packet.cond_branch = cond_branch[i];
+					next_ready_to_execute_wire[j].issue_ex_packet.uncond_branch = uncond_branch[i];
+					next_ready_to_execute_wire[j].issue_ex_packet.halt = halt[i];
+					next_ready_to_execute_wire[j].issue_ex_packet.illegal = illegal[i];
+					next_ready_to_execute_wire[j].issue_ex_packet.csr_op = csr_op[i];
+					next_ready_to_execute_wire[j].issue_ex_packet.execution_unit = 	rs_packet_inst_is_mult[i] ? MULT : 
+																					rs_packet_inst_is_branch[i] ? BRANCH :
+																					rs_packet_inst_is_load[i] ? LOAD :
+																					rs_packet_inst_is_store[i] ? STORE :
+																					ALU;
+					next_ready_to_execute_wire[j].issue_ex_packet.NPC = rs_packet_issue_reg[i].NPC; 
+					next_ready_to_execute_wire[j].issue_ex_packet.PC = rs_packet_issue_reg[i].PC;					
 				end
 			end
 		end
@@ -465,6 +518,14 @@ module issue_stage(
 		begin
 			if(j >= count)
 				issue_packet[j] = 0;
+		end
+
+		for(int j = 0; j < `N_WAY; j++)
+		begin
+			if(issue_packet[j].valid)
+				ex_dest_tag[j] = issue_packet[j].dest_reg_idx;
+			else
+				ex_dest_tag[j] = 0;
 		end
 		
 		issue_num = `N_WAY-(length-1);

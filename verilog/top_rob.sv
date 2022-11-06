@@ -11,7 +11,7 @@ module top_rob (
 	output PR_PACKET [`N_WAY-1 : 0] pr_packet_out2, //to reservation station
 	//output logic [$clog2(`N_WAY):0] empty_rob, //to dispatch stage
 	output logic [`N_WAY-1:0]dispatched,   //to dispatch stage
-	output logic [`N_WAY-1 : 0] [`CDB_BITS-1 : 0] cdb_tag,  // to reservation station
+	//output logic [`N_WAY-1 : 0] [`CDB_BITS-1 : 0] cdb_tag,  // to reservation station
 	//output logic [$clog2(`N_WAY) : 0] free_num, //to dispatch stage
 	//debug signals
 	//output ROB_PACKET_DISPATCH [`N_WAY-1:0] rob_packet_dis,//generated from dis packet and free list output
@@ -73,7 +73,7 @@ module top_rob (
  rob rob0 (
 		.clock(clock), 
                 .reset(reset), 
-		.complete_dest_tag(cdb_tag),
+		.complete_dest_tag(complete_dest_tag),
 		.rob_packet_dis(rob_packet_dis), //generated internally
 		.retire_tag(retire_tag),
 		.retire_told(retire_told),
@@ -89,7 +89,7 @@ map_table map_table0 (
                   .reset(reset),
 		  .dis_packet(dispatch_packet),
 		  .pr_freelist(free_list_out),
-		  .pr_reg_complete(cdb_tag),
+		  .pr_reg_complete(complete_dest_tag),
 		  .pr_packet_out1(pr_packet_out1), 
 		  .pr_packet_out2(pr_packet_out2),
 		  .pr_old(pr_old)
@@ -114,12 +114,12 @@ map_table map_table0 (
 		  .dispatched(dispatched)	
                   );
 
- cdb cdb0 (
-		.clock(clock),
-		.reset(reset),
-		.input_tag(complete_dest_tag),
-		.cdb_tag(cdb_tag)
-		 );
+// cdb cdb0 (
+//		.clock(clock),
+//		.reset(reset),
+//		.input_tag(complete_dest_tag),
+//		.cdb_tag(cdb_tag)
+//		 );
 
 endmodule
 

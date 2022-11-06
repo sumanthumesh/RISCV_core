@@ -575,7 +575,7 @@ module issue_stage(
 	begin
 		if(reset)
 		begin
-			// issued_phy_reg <= `SD 0;
+			// issued_phy_reg <= `SD 0;s
 			ready_to_execute <= `SD 0;
 			previous_issue_num <= `SD 0;
 		end

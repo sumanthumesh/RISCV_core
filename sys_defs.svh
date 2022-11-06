@@ -298,8 +298,20 @@ typedef struct packed {
 	logic       valid;         // is inst a valid instruction to be counted for CPI calculations?
 } ID_EX_PACKET;
 
+//typedef struct packedt {
+//	logic [`XLEN-1: 0] alu_result; // alu_result
+//	logic [`XLEN-1: 0] NPC; //pc + 4
+//	logic              take_branch; // is this a taken branch?
+//	//pass throughs  from decode stage
+//	logic [`XLEN-1: 0] rs2_value;
+//	logic              rd_mem, wr_mem;
+//	logic [4:0]        dest_reg_idx;
+//	logic              halt, illegal, csr_op, valid;
+//	logic [2:0]        mem_size; // byte, half-word or word
+//} EX_MEM_PACKET;     }
+
 typedef struct packed {
-	logic [`XLEN-1:0] alu_result; // alu_result
+	logic [`XLEN-1:0] result; // result
 	logic [`XLEN-1:0] NPC; //pc + 4
 	logic             take_branch; // is this a taken branch?
 	//pass throughs from decode stage
@@ -309,7 +321,6 @@ typedef struct packed {
 	logic             halt, illegal, csr_op, valid;
 	logic [2:0]       mem_size; // byte, half-word or word
 } EX_MEM_PACKET;
-
 //OOO
 `define N_WAY_3
 `define CDB_BITS 7
@@ -321,6 +332,10 @@ typedef struct packed {
 `define ARCH_REG 32
 `define N_PHY_REG `ARCH_REG+`N_ROB
 `define ZERO_REG_PR `CDB_BITS'b1
+
+`define PIPELINE_DEPTH 2
+`define MULT_WIDTH 16
+
 
 // Functional unit macros
 `ifdef N_WAY_1
@@ -472,6 +487,14 @@ typedef struct packed {
 	logic [`CDB_BITS-1:0] phy_reg_idx;
 } ROB_PACKET_ISSUE;
 
+typedef enum logic [2:0] {
+	ALU  	= 3'h0,
+	MULT   	= 3'h1,
+	LOAD	= 3'h2,
+	STORE	= 3'h3,
+	BRANCH  = 3'h4
+} EXECUTION_UNIT;
+
 typedef struct packed {
 	logic	valid;
 	logic [`XLEN-1:0] rs1_value;    // reg A value                                  
@@ -520,7 +543,6 @@ typedef struct packed {
 	logic [`CDB_BITS-1:0] tag_old; 
 	logic valid;
 } ROB_PACKET_DISPATCH;
-
 
 
 `endif // __SYS_DEFS_VH__

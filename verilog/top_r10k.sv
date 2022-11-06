@@ -3,10 +3,10 @@
 module top_r10k (
 	input clock,
 	input reset,
-	input [`N_WAY-1 : 0] [`CDB_BITS-1:0] complete_dest_tag, //i/p from complete stage to rob, not latched from the complete stage
+	input [`N_WAY-1 : 0] [`CDB_BITS-1:0] complete_dest_tag, //i/p from  execute stage to rob, not latched from the execute stage
 	input  DISPATCH_PACKET_R10K [`N_WAY-1:0] dispatch_packet, //from dispatch stage to rob and rs
 	//input [$clog2(`N_WAY):0] dispatch_num, //from dispatch stage to rob and rs
-	input   [`N_WAY-1:0] [`CDB_BITS-1:0]  ex_rs_dest_idx, 
+	input   [`N_WAY-1:0] [`CDB_BITS-1:0]  ex_rs_dest_idx, //from issue stage latched 
 	input [$clog2(`N_WAY)-1:0] issue_num,
 	input [`N_WAY-1:0] wr_en,
 	input [`N_WAY-1:0][`CDB_BITS-1:0] wr_idx,
@@ -27,7 +27,7 @@ module top_r10k (
 	DISPATCH_PACKET[`N_WAY-1:0] dispatch_packet_rob; //generated internally to rob 
 	PR_PACKET [`N_WAY-1 : 0] pr_packet_out1; //to reservation station
 	PR_PACKET [`N_WAY-1 : 0] pr_packet_out2; //to reservation station
-	logic [`N_WAY-1 : 0] [`CDB_BITS-1 : 0] cdb_tag; // to reservation station
+	//logic [`N_WAY-1 : 0] [`CDB_BITS-1 : 0] cdb_tag; // to reservation station
 	logic [`N_WAY-1:0][`CDB_BITS-1 : 0] free_list_out;
 	logic [$clog2(`N_WAY):0] ex_count;
 	logic [$clog2(`N_WAY):0] dispatch_num; //generated internally to rob and rs
@@ -89,7 +89,7 @@ module top_r10k (
 		.pr_packet_out2(pr_packet_out2),
 		.dispatched(dispatched),
 		.free_list_out(free_list_out),
-		.cdb_tag(cdb_tag),
+		//.cdb_tag(cdb_tag),
 		.free(free)
         );
 
@@ -99,7 +99,7 @@ reservation_station rs0 (
                   .reset(reset),
 		  .rs_packet_dispatch(rs_packet_dispatch), //generated internally
 		  .ex_rs_dest_idx(ex_rs_dest_idx), //from ex stage
-		  .cdb_rs_reg_idx(cdb_tag),
+		  .cdb_rs_reg_idx(complete_dest_tag),
 		  .issue_num(issue_num), //from issue stage
 		  .dispatched_rob(dispatched),
 		  .rs_packet_issue(rs_packet_issue), //to issue stage

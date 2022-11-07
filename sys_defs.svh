@@ -320,6 +320,7 @@ typedef struct packed {
 `define N_RS_IDX 4
 `define ARCH_REG 32
 `define N_PHY_REG `ARCH_REG+`N_ROB
+`define ZERO_REG_PR `CDB_BITS'b1
 
 // Functional unit macros
 `ifdef N_WAY_1
@@ -417,6 +418,8 @@ typedef struct packed {
 	logic [`XLEN_BITS-1 :0] dest;
 	INST inst;
 	logic valid;
+	logic [`XLEN-1:0]	NPC;
+	logic [`XLEN-1:0]	PC;
 } DISPATCH_PACKET_R10K;
 
 
@@ -437,6 +440,8 @@ typedef struct packed {
 	logic source_tag_2_plus;
 	logic issued;
 	logic [$clog2(`N_RS)-1:0] order_idx; //to track the oldest instruction 
+	logic [`XLEN-1:0] NPC; // PC + 4
+	logic [`XLEN-1:0] PC;  // PC
 } RS_PACKET;  
 typedef struct packed {
 	logic busy; // alu_result
@@ -448,7 +453,9 @@ typedef struct packed {
 	logic [`CDB_BITS-1:0] source_tag_2; 
 	logic source_tag_2_plus;
 	logic valid;
-	logic [$clog2(`N_RS):0] order_idx;  
+	logic [$clog2(`N_RS):0] order_idx;
+	logic [`XLEN-1:0] NPC; // PC + 4
+	logic [`XLEN-1:0] PC;  // PC
 } RS_PACKET_DISPATCH;  
 typedef struct packed {
 	logic [`CDB_BITS-1 : 0] source_tag_1;

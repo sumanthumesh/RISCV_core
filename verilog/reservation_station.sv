@@ -136,6 +136,8 @@ module reservation_station(
 						rs_packet_issue[count].dest_tag = rs_data[i_is].dest_tag;
 						rs_packet_issue[count].inst = rs_data[i_is].inst;
 						rs_packet_issue[count].valid = 1;
+						rs_packet_issue[count].NPC = rs_data[i_is].NPC;
+						rs_packet_issue[count].PC = rs_data[i_is].PC;
 						//rs_data_wire[i_is].issued = 1;
 						issued_dest_tag[count] = rs_data[i_is].dest_tag;
 						count= count+1;
@@ -185,6 +187,8 @@ module reservation_station(
 						rs_data_next[i_d2].source_tag_1_plus= rs_packet_dispatch[i_d1].source_tag_1_plus;
 						rs_data_next[i_d2].source_tag_2_plus= rs_packet_dispatch[i_d1].source_tag_2_plus;
 						rs_data_next[i_d2].order_idx = rs_packet_dispatch[i_d1].order_idx;
+						rs_data_next[i_d2].NPC = rs_packet_dispatch[i_d1].NPC;
+						rs_data_next[i_d2].PC = rs_packet_dispatch[i_d1].PC;						
 						rs_data_next[i_d2].issued = 0;
 						tmp = 0;
 					end

@@ -19,7 +19,6 @@ module regfile(
         input   [`N_WAY-1:0][`XLEN-1:0] wr_data,        // write data
         input   [`N_WAY-1:0] wr_en,
         input   wr_clk,
-        input   [$clog2(`N_PHY_REG):0]  zero_reg_pr,
         //`ifdef TESTBENCH
         output logic [`N_PHY_REG-1:0] [`XLEN-1:0] registers,
         //`endif
@@ -46,7 +45,7 @@ module regfile(
     begin
       a_write_flag = 0;
       write_value_a = 0;
-      if(rda_idx[i] == zero_reg_pr)
+      if(rda_idx[i] == `ZERO_REG_PR)
         rda_out[i] = 0;
       else if(wr_en[i])
       begin
@@ -76,7 +75,7 @@ module regfile(
     begin
       b_write_flag = 0;
       write_value_b = 0;
-      if(rdb_idx[i] == zero_reg_pr)
+      if(rdb_idx[i] == `ZERO_REG_PR)
         rdb_out[i] = 0;
       else if(wr_en[i])
       begin

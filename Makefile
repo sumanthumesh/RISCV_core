@@ -94,6 +94,7 @@ VISFLAGS = -lncurses
 ##		verilog/wb_stage.sv	\
 
 TESTBENCH =     sys_defs.svh	\
+				ISA.svh \
 		testbench/test_top_r10k.sv
 ##SIMFILES =	verilog/top_rob.sv	\
 ##		verilog/map_table.sv	\
@@ -109,7 +110,10 @@ SIMFILES =	verilog/top_r10k.sv	\
 		verilog/cdb.sv	\
 		verilog/free_list.sv	\
 		verilog/reservation_station.sv	\
-		verilog/rob.sv			
+		verilog/rob.sv \
+		verilog/regfile.sv \
+		verilog/issue_stage.sv
+
 
 ##SYNFILES = synth/pipeline.vg
 SYNFILES = synth/top_r10k.vg

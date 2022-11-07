@@ -10,6 +10,10 @@ module test_top_r10k;
 	DISPATCH_PACKET_R10K [`N_WAY-1:0] dispatch_packet; //from dispatch stage
 	logic    [`N_WAY-1:0] [`CDB_BITS-1:0]  ex_rs_dest_idx;
 	logic  [$clog2(`N_WAY)-1:0] issue_num;
+	logic [`N_WAY-1:0] wr_en;
+	logic [`N_WAY-1:0][`CDB_BITS-1:0] wr_idx;
+	logic [`N_WAY-1:0][`XLEN-1:0] wr_data;
+	ISSUE_EX_PACKET issue_packet;
 
  // Outputs
  //
@@ -30,9 +34,13 @@ module test_top_r10k;
 		.complete_dest_tag(complete_dest_tag),
 		.dispatch_packet(dispatch_packet),
 		.ex_rs_dest_idx(ex_rs_dest_idx),
+		.wr_en(wr_en),
+		.wr_idx(wr_idx),
+		.wr_data(wr_data),
 		.issue_num(issue_num),
 		.rs_packet_issue(rs_packet_issue),
 		.rs_data(rs_data),
+		.issue_packet(issue_packet),
 		.rob_packet(rob_packet),
 		.dispatched(dispatched),
 		.free(free)	
@@ -72,6 +80,10 @@ module test_top_r10k;
 	dispatch_packet[2].dest = 0;
 	dispatch_packet[2].inst = 58;
 	dispatch_packet[2].valid= 0;
+
+	wr_en[0] = 0;
+	wr_en[1] = 0;
+	wr_en[2] = 0;
 
   // Wait 100 ns for global reset to finish
 
@@ -174,6 +186,10 @@ module test_top_r10k;
 	complete_dest_tag[1] = 0;
 	complete_dest_tag[2] = 0;
 
+	wr_en[0] = 1;
+	wr_en[1] = 0;
+	wr_en[2] = 0;
+
 
 	@(posedge clock);
 	#1;        
@@ -205,6 +221,9 @@ module test_top_r10k;
 	complete_dest_tag[1] = 37;
 	complete_dest_tag[2] = 39;
 
+	wr_en[0] = 1;
+	wr_en[1] = 1;
+	wr_en[2] = 1;
 
 	@(posedge clock);
 	#1;        
@@ -217,6 +236,9 @@ module test_top_r10k;
 	complete_dest_tag[0] = 0;
 	complete_dest_tag[1] = 0;
 	complete_dest_tag[2] = 0;
+	wr_en[0] = 0;
+	wr_en[1] = 0;
+	wr_en[2] = 0;
 	@(posedge clock);
 	@(posedge clock);
 	@(posedge clock);

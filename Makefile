@@ -158,7 +158,7 @@ syn:	syn_simv
 
 
 clean:
-	rm -rf *simv *simv.daidir csrc vcs.key program.out *.key
+	rm -rf *simv *simv.daidir csrc vcs.key program.out *.key program_extracted.out ground_truth_extracted.out
 	rm -rf vis_simv vis_simv.daidir
 	rm -rf dve* inter.vpd DVEfiles
 	rm -rf syn_simv syn_simv.daidir syn_program.out

@@ -10,20 +10,33 @@
 
 `ifndef __SYS_DEFS_VH__
 `define __SYS_DEFS_VH__
+
+/* Synthesis testing definition, used in DUT module instantiation */
+
+`ifdef  SYNTH_TEST
+`define DUT(mod) mod``_svsim
+`else
+`define DUT(mod) mod
+`endif
+
 //////////////////////////////////////////////
 //
 // Memory/testbench attribute definitions
 //
 //////////////////////////////////////////////
-
-`define NUM_MEM_TAGS           8
-`define MEM_LATENCY_IN_CYCLES  0
+`define CACHE_MODE //removes the byte-level interface from the memory mode, DO NOT MODIFY!
+`define NUM_MEM_TAGS           15
 
 `define MEM_SIZE_IN_BYTES      (64*1024)
 `define MEM_64BIT_LINES        (`MEM_SIZE_IN_BYTES/8)
 
 //you can change the clock period to whatever, 10 is just fine
 `define VERILOG_CLOCK_PERIOD   10.0
+`define SYNTH_CLOCK_PERIOD     10.0 // Clock period for synth and memory latency
+
+`define MEM_LATENCY_IN_CYCLES (100.0/`SYNTH_CLOCK_PERIOD+0.49999)
+// the 0.49999 is to force ceiling(100/period).  The default behavior for
+// float to integer conversion is rounding to nearest
 
 typedef union packed {
     logic [7:0][7:0] byte_level;
@@ -285,8 +298,20 @@ typedef struct packed {
 	logic       valid;         // is inst a valid instruction to be counted for CPI calculations?
 } ID_EX_PACKET;
 
+//typedef struct packedt {
+//	logic [`XLEN-1: 0] alu_result; // alu_result
+//	logic [`XLEN-1: 0] NPC; //pc + 4
+//	logic              take_branch; // is this a taken branch?
+//	//pass throughs  from decode stage
+//	logic [`XLEN-1: 0] rs2_value;
+//	logic              rd_mem, wr_mem;
+//	logic [4:0]        dest_reg_idx;
+//	logic              halt, illegal, csr_op, valid;
+//	logic [2:0]        mem_size; // byte, half-word or word
+//} EX_MEM_PACKET;     }
+
 typedef struct packed {
-	logic [`XLEN-1:0] alu_result; // alu_result
+	logic [`XLEN-1:0] result; // result
 	logic [`XLEN-1:0] NPC; //pc + 4
 	logic             take_branch; // is this a taken branch?
 	//pass throughs from decode stage
@@ -296,37 +321,132 @@ typedef struct packed {
 	logic             halt, illegal, csr_op, valid;
 	logic [2:0]       mem_size; // byte, half-word or word
 } EX_MEM_PACKET;
-
 //OOO
-`define N_WAY 3
+`define N_WAY_3
 `define CDB_BITS 7
-`define N_ROB 64
+`define N_ROB 9
 `define FIFO_BITS 6
 `define XLEN_BITS 5
-`define N_RS 16
+`define N_RS 8
 `define N_RS_IDX 4
+`define ARCH_REG 32
+`define N_PHY_REG `ARCH_REG+`N_ROB
+`define ZERO_REG_PR `CDB_BITS'b1
+
+`define PIPELINE_DEPTH 2
+`define MULT_WIDTH 16
+
+
+// Functional unit macros
+`ifdef N_WAY_1
+`define N_WAY 1
+`define EX_MULT_UNITS	1
+`define EX_ALU_UNITS	1
+`define EX_LOAD_UNITS	1
+`define EX_STORE_UNITS	1
+`define EX_BRANCH_UNITS	1
+
+`elsif N_WAY_2
+`define N_WAY 2
+`define EX_MULT_UNITS	1
+`define EX_ALU_UNITS	2
+`define EX_LOAD_UNITS	1
+`define EX_STORE_UNITS	1
+`define EX_BRANCH_UNITS	1
+
+`elsif N_WAY_3
+`define N_WAY 3
+`define EX_MULT_UNITS	2
+`define EX_ALU_UNITS	3
+`define EX_LOAD_UNITS	1
+`define EX_STORE_UNITS	1
+`define EX_BRANCH_UNITS	1
+
+`elsif N_WAY_4
+`define N_WAY 4
+`define EX_MULT_UNITS	2
+`define EX_ALU_UNITS	3
+`define EX_LOAD_UNITS	1
+`define EX_STORE_UNITS	1
+`define EX_BRANCH_UNITS	1
+
+`elsif N_WAY_5
+`define N_WAY 5
+`define EX_MULT_UNITS	3
+`define EX_ALU_UNITS	5
+`define EX_LOAD_UNITS	1
+`define EX_STORE_UNITS	1
+`define EX_BRANCH_UNITS	1
+
+`elsif N_WAY_6
+`define N_WAY 6
+`define EX_MULT_UNITS	3
+`define EX_ALU_UNITS	5
+`define EX_LOAD_UNITS	1
+`define EX_STORE_UNITS	1
+`define EX_BRANCH_UNITS	1
+
+`elsif N_WAY_7
+`define N_WAY 7
+`define EX_MULT_UNITS	3
+`define EX_ALU_UNITS	5
+`define EX_LOAD_UNITS	1
+`define EX_STORE_UNITS	1
+`define EX_BRANCH_UNITS	1
+
+`elsif N_WAY_8
+`define N_WAY 8
+`define EX_MULT_UNITS	3
+`define EX_ALU_UNITS	5
+`define EX_LOAD_UNITS	1
+`define EX_STORE_UNITS	1
+`define EX_BRANCH_UNITS	1
+
+`endif
+
+typedef enum logic [2:0] {
+	ALU  	= 3'h0,
+	MULT   	= 3'h1,
+	LOAD	= 3'h2,
+	STORE	= 3'h3,
+	BRANCH  = 3'h4
+} EXECUTION_UNIT;
+
+
+
 
 typedef struct packed {
 	logic [`CDB_BITS-1:0] phy_reg; // physical registor number
 	logic 		      status; //status of completion
-} PR_PACKET;
+} PR_PACKET; //source tag and reg number to RS
 
 typedef struct packed {
 	logic [`XLEN_BITS-1 :0] src1;
 	logic [`XLEN_BITS-1 :0] src2;
 	logic [`XLEN_BITS-1 :0] dest;
 	logic valid;
-} DISPATCH_ROB_PACKET;
+} DISPATCH_PACKET;
+
+typedef struct packed {
+	logic [`XLEN_BITS-1 :0] src1;
+	logic [`XLEN_BITS-1 :0] src2;
+	logic [`XLEN_BITS-1 :0] dest;
+	INST inst;
+	logic valid;
+	logic [`XLEN-1:0]	NPC;
+	logic [`XLEN-1:0]	PC;
+} DISPATCH_PACKET_R10K;
+
 
 typedef struct packed {
 	logic [`CDB_BITS-1:0] tag; // physical registor number
 	logic [`CDB_BITS-1:0] tag_old; // physical registor number
-	logic valid;
+	logic ret_valid;
 } RETIRE_ROB_PACKET;
 
 typedef struct packed {
 	logic busy; // alu_result
-	logic [6:0] opcode; //pc + 4
+	INST inst; //pc + 4
 	logic [`CDB_BITS-1:0] dest_tag; // is this a taken branch?
 	//logic dest_tag_plus;
 	logic [`CDB_BITS-1:0] source_tag_1; // is this a taken branch?
@@ -335,25 +455,94 @@ typedef struct packed {
 	logic source_tag_2_plus;
 	logic issued;
 	logic [$clog2(`N_RS)-1:0] order_idx; //to track the oldest instruction 
+	logic [`XLEN-1:0] NPC; // PC + 4
+	logic [`XLEN-1:0] PC;  // PC
 } RS_PACKET;  
 typedef struct packed {
 	logic busy; // alu_result
-	logic [6:0] opcode; //pc + 4
+	INST inst; //pc + 4
 	logic [`CDB_BITS-1:0] dest_tag; // is this a taken branch?
 	//logic dest_tag_plus;
-	logic [`CDB_BITS-1:0] source_tag_1; // is this a taken branch?
+	logic [`CDB_BITS-1:0] source_tag_1; 
 	logic source_tag_1_plus;
-	logic [`CDB_BITS-1:0] source_tag_2; // is this a taken branch?
+	logic [`CDB_BITS-1:0] source_tag_2; 
 	logic source_tag_2_plus;
 	logic valid;
-	logic [$clog2(`N_RS):0] order_idx; //to track the oldest instruction 
+	logic [$clog2(`N_RS):0] order_idx;
+	logic [`XLEN-1:0] NPC; // PC + 4
+	logic [`XLEN-1:0] PC;  // PC
 } RS_PACKET_DISPATCH;  
 typedef struct packed {
 	logic [`CDB_BITS-1 : 0] source_tag_1;
 	logic [`CDB_BITS-1 : 0] source_tag_2;
 	logic [`CDB_BITS-1 : 0] dest_tag;
-	logic [6 : 0] 		opcode;
+	INST 		inst;
 	logic valid;
+	logic [`XLEN-1:0] NPC; // PC + 4
+	logic [`XLEN-1:0] PC;  // PC 
 } RS_PACKET_ISSUE; //output packet from RS to issue
+
+typedef struct packed {
+	logic busy;
+	logic [`CDB_BITS-1:0] phy_reg_idx;
+} ROB_PACKET_ISSUE;
+
+typedef enum logic [2:0] {
+	ALU  	= 3'h0,
+	MULT   	= 3'h1,
+	LOAD	= 3'h2,
+	STORE	= 3'h3,
+	BRANCH  = 3'h4
+} EXECUTION_UNIT;
+
+typedef struct packed {
+	logic	valid;
+	logic [`XLEN-1:0] rs1_value;    // reg A value                                  
+	logic [`XLEN-1:0] rs2_value;    // reg B value                                  
+	                                                                                
+	ALU_OPA_SELECT opa_select; // ALU opa mux select (ALU_OPA_xxx *)
+	ALU_OPB_SELECT opb_select; // ALU opb mux select (ALU_OPB_xxx *)
+	INST inst;                 // instruction
+	
+	logic [`CDB_BITS-1:0] dest_reg_idx;  // destination (writeback) register index      
+	ALU_FUNC    alu_func;      // ALU function select (ALU_xxx *)
+	logic       rd_mem;        // does inst read memory?
+	logic       wr_mem;        // does inst write memory?
+	logic       cond_branch;   // is inst a conditional branch?
+	logic       uncond_branch; // is inst an unconditional branch?
+	logic       halt;          // is this a halt?
+	logic       illegal;       // is this instruction illegal?
+	logic       csr_op;        // is this a CSR operation? (we only used this as a cheap way to get return code)
+	EXECUTION_UNIT execution_unit;
+	logic [`XLEN-1:0] NPC; // PC + 4
+	logic [`XLEN-1:0] PC;  // PC 
+} ISSUE_EX_PACKET;
+
+typedef struct packed {
+	logic	[`CDB_BITS-1:0] dest_tag;
+} RS_PACKET_RETIRE;
+
+
+typedef struct packed {
+	logic	busy;
+	logic	[$clog2(`N_WAY):0]	order_idx;
+	ISSUE_EX_PACKET		issue_ex_packet;
+} ISSUE_PACKET;
+
+typedef struct packed {
+	logic [`CDB_BITS-1 : 0] tag;
+	logic [`CDB_BITS-1 : 0] tag_old;
+	logic head;
+	logic tail;
+	logic completed;
+
+} ROB_PACKET; //Rob packet
+
+typedef struct packed {
+	logic [`CDB_BITS-1:0] tag; 
+	logic [`CDB_BITS-1:0] tag_old; 
+	logic valid;
+} ROB_PACKET_DISPATCH;
+
 
 `endif // __SYS_DEFS_VH__

@@ -112,7 +112,7 @@ module testbench;
                     if(!rs_expected_data[j].busy && (rs_packet_dispatch[i].valid))
                     begin
                         rs_expected_data[j].busy = rs_packet_dispatch[i].busy;
-                        rs_expected_data[j].opcode = rs_packet_dispatch[i].opcode;
+                        rs_expected_data[j].inst = rs_packet_dispatch[i].inst;
                         rs_expected_data[j].dest_tag = rs_packet_dispatch[i].dest_tag;
                         rs_expected_data[j].source_tag_1 = rs_packet_dispatch[i].source_tag_1;
                         rs_expected_data[j].source_tag_1_plus = rs_packet_dispatch[i].source_tag_1_plus;
@@ -127,6 +127,9 @@ module testbench;
 
 
             count = 0;
+	    for(int k=0; k<`N_WAY; k=k+1) begin
+	    	rs_expected_packet_issue[k].valid = 0;
+	    end
             for(int i = 1; i <= `N_RS; i++)
             begin
                 for(int j = 0; j < `N_RS; j++)
@@ -149,9 +152,10 @@ module testbench;
                             begin
                                 rs_expected_data[j].issued = 1;
                             	rs_expected_packet_issue[count].source_tag_1 = rs_expected_data[j].source_tag_1;
-			    	rs_expected_packet_issue[count].source_tag_2 = rs_expected_data[j].source_tag_2;
-			    	rs_expected_packet_issue[count].dest_tag = rs_expected_data[j].dest_tag;
-			    	rs_expected_packet_issue[count].opcode = rs_expected_data[j].opcode;
+                                rs_expected_packet_issue[count].source_tag_2 = rs_expected_data[j].source_tag_2;
+                                rs_expected_packet_issue[count].dest_tag = rs_expected_data[j].dest_tag;
+                                rs_expected_packet_issue[count].inst = rs_expected_data[j].inst;
+                                rs_expected_packet_issue[count].valid = 1;
                                 count = count + 1;
                             end
                         end
@@ -165,7 +169,8 @@ module testbench;
             $display("The number of instructions issued in the previous cycle are: %h", previous_issue_num);
                 for(int j = 0; j < issue_num; j++)
                 begin
-                	if(!((rs_packet_issue[j].source_tag_1 == rs_expected_packet_issue[j].source_tag_1) && (rs_packet_issue[j].source_tag_2 == rs_expected_packet_issue[j].source_tag_2) && (rs_packet_issue[j].dest_tag == rs_expected_packet_issue[j].dest_tag) && (rs_packet_issue[j].opcode == rs_expected_packet_issue[j].opcode)))
+                	if(!((rs_packet_issue[j].source_tag_1 == rs_expected_packet_issue[j].source_tag_1) && (rs_packet_issue[j].source_tag_2 == rs_expected_packet_issue[j].source_tag_2) && (rs_packet_issue[j].dest_tag == rs_expected_packet_issue[j].dest_tag) && (rs_packet_issue[j].inst == rs_expected_packet_issue[j].inst) && (rs_packet_issue[j].valid == rs_expected_packet_issue[j].valid)))
+                	//if(!((rs_packet_issue[j].source_tag_1 == rs_expected_packet_issue[j].source_tag_1) && (rs_packet_issue[j].source_tag_2 == rs_expected_packet_issue[j].source_tag_2) && (rs_packet_issue[j].dest_tag == rs_expected_packet_issue[j].dest_tag) && (rs_packet_issue[j].inst == rs_expected_packet_issue[j].inst)))
                             begin
                                 $display("The issue packet row number %h is wrong.", j);
                                 $display("|%b    |%02h   |%02h    |%02h   |", 
@@ -185,7 +190,7 @@ module testbench;
                                 begin
                                     $display("|%b    |%08h |%02h   |%02h    |%b      |%02H    |%b      |%02H         | %01h        |%b     |", 
                                     rs_expected_data_reg[i].busy, 
-                                    rs_expected_data_reg[i].opcode, 
+                                    rs_expected_data_reg[i].inst, 
                                     rs_expected_data_reg[i].dest_tag, 
                                     rs_expected_data_reg[i].source_tag_1, 
                                     rs_expected_data_reg[i].source_tag_1_plus, 
@@ -205,7 +210,7 @@ module testbench;
                                 begin
                                     $display("|%b    |%08h |%02h   |%02h    |%b      |%02H    |%b      |%02H         | %01h        |%b     |", 
                                     rs_data[i].busy, 
-                                    rs_data[i].opcode, 
+                                    rs_data[i].inst, 
                                     rs_data[i].dest_tag, 
                                     rs_data[i].source_tag_1, 
                                     rs_data[i].source_tag_1_plus, 
@@ -239,7 +244,7 @@ module testbench;
 			begin
 				$display("|%b    |%08h |%02h   |%02h    |%b      |%02H    |%b      |%02H         | %01h        |%b     |", 
 				rs_expected_data_reg[i].busy, 
-				rs_expected_data_reg[i].opcode, 
+				rs_expected_data_reg[i].inst, 
 				rs_expected_data_reg[i].dest_tag, 
 				rs_expected_data_reg[i].source_tag_1, 
 				rs_expected_data_reg[i].source_tag_1_plus, 
@@ -259,7 +264,7 @@ module testbench;
 			begin
 				$display("|%b    |%08h |%02h   |%02h    |%b      |%02H    |%b      |%02H         | %01h        |%b     |", 
 				rs_data[i].busy, 
-				rs_data[i].opcode, 
+				rs_data[i].inst, 
 				rs_data[i].dest_tag, 
 				rs_data[i].source_tag_1, 
 				rs_data[i].source_tag_1_plus, 
@@ -297,7 +302,7 @@ module testbench;
 			begin
 				$display("|%b    |%08h |%02h   |%02h    |%b      |%02H    |%b      |%02H         | %01h        |%b     |", 
 				rs_expected_data_reg[i].busy, 
-				rs_expected_data_reg[i].opcode, 
+				rs_expected_data_reg[i].inst, 
 				rs_expected_data_reg[i].dest_tag, 
 				rs_expected_data_reg[i].source_tag_1, 
 				rs_expected_data_reg[i].source_tag_1_plus, 
@@ -317,7 +322,7 @@ module testbench;
 			begin
 				$display("|%b    |%08h |%02h   |%02h    |%b      |%02H    |%b      |%02H         | %01h        |%b     |", 
 				rs_data[i].busy, 
-				rs_data[i].opcode, 
+				rs_data[i].inst, 
 				rs_data[i].dest_tag, 
 				rs_data[i].source_tag_1, 
 				rs_data[i].source_tag_1_plus, 
@@ -347,7 +352,7 @@ module testbench;
 			begin
 				$display("|%b    |%08h |%02h   |%02h    |%b      |%02H    |%b      |%02H         | %01h        |%b     |", 
 				rs_data[i].busy, 
-				rs_data[i].opcode, 
+				rs_data[i].inst, 
 				rs_data[i].dest_tag, 
 				rs_data[i].source_tag_1, 
 				rs_data[i].source_tag_1_plus, 
@@ -361,12 +366,12 @@ module testbench;
 			$display("----------------------------------------------------------------------------------");
 
             $display("--------------------------------------------------------------------------");
-			$display("|VALID|OPCODE|T |T1|T2|");
+			$display("|VALID|inst    |T |T1|T2|");
 			for(integer i = 0; i < `N_WAY; i++)
 			begin
-				$display("|%b    |%02h    |%02h|%02h|%02h|", 
+				$display("|%b    |%08h|%02h|%02h|%02h|", 
                 rs_packet_issue[i].valid,
-				rs_packet_issue[i].opcode,
+				rs_packet_issue[i].inst,
 				rs_packet_issue[i].dest_tag,
 				rs_packet_issue[i].source_tag_1,
 				rs_packet_issue[i].source_tag_2);
@@ -386,7 +391,7 @@ module testbench;
         rs_expected_data = 0;
 
         rs_packet_dispatch[0].busy = 0;
-        rs_packet_dispatch[0].opcode= 0;
+        rs_packet_dispatch[0].inst= 0;
         rs_packet_dispatch[0].dest_tag= 0;
         rs_packet_dispatch[0].source_tag_1= 0;
         rs_packet_dispatch[0].source_tag_1_plus= 0;
@@ -396,7 +401,7 @@ module testbench;
         rs_packet_dispatch[0].order_idx= 0;
     
         rs_packet_dispatch[1].busy = 0;
-        rs_packet_dispatch[1].opcode= 0;
+        rs_packet_dispatch[1].inst= 0;
         rs_packet_dispatch[1].dest_tag= 0;
         rs_packet_dispatch[1].source_tag_1= 0;
         rs_packet_dispatch[1].source_tag_1_plus= 0;
@@ -406,7 +411,7 @@ module testbench;
         rs_packet_dispatch[1].order_idx= 0;
     
         rs_packet_dispatch[2].busy = 0;
-        rs_packet_dispatch[2].opcode= 0;
+        rs_packet_dispatch[2].inst= 0;
         rs_packet_dispatch[2].dest_tag= 0;
         rs_packet_dispatch[2].source_tag_1= 0;
         rs_packet_dispatch[2].source_tag_1_plus= 0;
@@ -431,7 +436,7 @@ module testbench;
 	issue_num = 3;
 		
 	rs_packet_dispatch[0].busy = 1;
-	rs_packet_dispatch[0].opcode= 1;
+	rs_packet_dispatch[0].inst= 1;
 	rs_packet_dispatch[0].dest_tag= 33;
 	rs_packet_dispatch[0].source_tag_1= 1;
 	rs_packet_dispatch[0].source_tag_1_plus= 1;
@@ -441,7 +446,7 @@ module testbench;
 	rs_packet_dispatch[0].order_idx= 1;
   
 	rs_packet_dispatch[1].busy = 1;
-	rs_packet_dispatch[1].opcode= 2;
+	rs_packet_dispatch[1].inst= 2;
 	rs_packet_dispatch[1].dest_tag= 34;
 	rs_packet_dispatch[1].source_tag_1= 4;
 	rs_packet_dispatch[1].source_tag_1_plus= 1;
@@ -451,7 +456,7 @@ module testbench;
 	rs_packet_dispatch[1].order_idx= 2;
   
 	rs_packet_dispatch[2].busy = 1;
-	rs_packet_dispatch[2].opcode= 3;
+	rs_packet_dispatch[2].inst= 3;
 	rs_packet_dispatch[2].dest_tag= 35;
 	rs_packet_dispatch[2].source_tag_1= 7;
 	rs_packet_dispatch[2].source_tag_1_plus= 1;
@@ -465,7 +470,7 @@ module testbench;
         check_all();
         `SD 
 	rs_packet_dispatch[0].busy = 1;
-	rs_packet_dispatch[0].opcode= 1;
+	rs_packet_dispatch[0].inst= 1;
 	rs_packet_dispatch[0].dest_tag= 36;
 	rs_packet_dispatch[0].source_tag_1= 33;
 	rs_packet_dispatch[0].source_tag_1_plus= 0;
@@ -475,7 +480,7 @@ module testbench;
 	rs_packet_dispatch[0].order_idx= 4;
   
 	rs_packet_dispatch[1].busy = 1;
-	rs_packet_dispatch[1].opcode= 2;
+	rs_packet_dispatch[1].inst= 2;
 	rs_packet_dispatch[1].dest_tag= 37;
 	rs_packet_dispatch[1].source_tag_1= 34;
 	rs_packet_dispatch[1].source_tag_1_plus= 0;
@@ -485,7 +490,7 @@ module testbench;
 	rs_packet_dispatch[1].order_idx= 5;
   
 	rs_packet_dispatch[2].busy = 1;
-	rs_packet_dispatch[2].opcode= 3;
+	rs_packet_dispatch[2].inst= 3;
 	rs_packet_dispatch[2].dest_tag= 38;
 	rs_packet_dispatch[2].source_tag_1= 35;
 	rs_packet_dispatch[2].source_tag_1_plus= 0;
@@ -502,7 +507,7 @@ module testbench;
 	ex_rs_dest_idx[1] = 34;
 	ex_rs_dest_idx[2] = 35;
 	rs_packet_dispatch[0].busy = 1;
-	rs_packet_dispatch[0].opcode= 1;
+	rs_packet_dispatch[0].inst= 1;
 	rs_packet_dispatch[0].dest_tag= 39;
 	rs_packet_dispatch[0].source_tag_1= 13;
 	rs_packet_dispatch[0].source_tag_1_plus= 1;
@@ -512,7 +517,7 @@ module testbench;
 	rs_packet_dispatch[0].order_idx= 4;
   
 	rs_packet_dispatch[1].busy = 1;
-	rs_packet_dispatch[1].opcode= 2;
+	rs_packet_dispatch[1].inst= 2;
 	rs_packet_dispatch[1].dest_tag= 40;
 	rs_packet_dispatch[1].source_tag_1= 16;
 	rs_packet_dispatch[1].source_tag_1_plus= 1;
@@ -522,7 +527,7 @@ module testbench;
 	rs_packet_dispatch[1].order_idx= 5;
   
 	rs_packet_dispatch[2].busy = 1;
-	rs_packet_dispatch[2].opcode= 3;
+	rs_packet_dispatch[2].inst= 3;
 	rs_packet_dispatch[2].dest_tag= 41;
 	rs_packet_dispatch[2].source_tag_1= 40;
 	rs_packet_dispatch[2].source_tag_1_plus= 0;
@@ -542,7 +547,7 @@ module testbench;
 	ex_rs_dest_idx[1] = 0;
 	ex_rs_dest_idx[2] = 0;
 	rs_packet_dispatch[0].busy = 1;
-	rs_packet_dispatch[0].opcode= 1;
+	rs_packet_dispatch[0].inst= 1;
 	rs_packet_dispatch[0].dest_tag= 42;
 	rs_packet_dispatch[0].source_tag_1= 20;
 	rs_packet_dispatch[0].source_tag_1_plus= 1;
@@ -552,7 +557,7 @@ module testbench;
 	rs_packet_dispatch[0].order_idx= 7;
   
 	rs_packet_dispatch[1].busy = 1;
-	rs_packet_dispatch[1].opcode= 2;
+	rs_packet_dispatch[1].inst= 2;
 	rs_packet_dispatch[1].dest_tag= 43;
 	rs_packet_dispatch[1].source_tag_1= 23;
 	rs_packet_dispatch[1].source_tag_1_plus= 1;
@@ -562,7 +567,7 @@ module testbench;
 	rs_packet_dispatch[1].order_idx= 8;
   
 	rs_packet_dispatch[2].busy = 1;
-	rs_packet_dispatch[2].opcode= 3;
+	rs_packet_dispatch[2].inst= 3;
 	rs_packet_dispatch[2].dest_tag= 44;
 	rs_packet_dispatch[2].source_tag_1= 26;
 	rs_packet_dispatch[2].source_tag_1_plus= 1;
@@ -582,7 +587,7 @@ module testbench;
 	ex_rs_dest_idx[1] = 37;
 	ex_rs_dest_idx[2] = 38;
 	rs_packet_dispatch[0].busy = 1;
-	rs_packet_dispatch[0].opcode= 1;
+	rs_packet_dispatch[0].inst= 1;
 	rs_packet_dispatch[0].dest_tag= 45;
 	rs_packet_dispatch[0].source_tag_1= 1;
 	rs_packet_dispatch[0].source_tag_1_plus= 1;
@@ -592,7 +597,7 @@ module testbench;
 	rs_packet_dispatch[0].order_idx= 10;
   
 	rs_packet_dispatch[1].busy = 1;
-	rs_packet_dispatch[1].opcode= 2;
+	rs_packet_dispatch[1].inst= 2;
 	rs_packet_dispatch[1].dest_tag= 46;
 	rs_packet_dispatch[1].source_tag_1= 4;
 	rs_packet_dispatch[1].source_tag_1_plus= 1;
@@ -602,7 +607,7 @@ module testbench;
 	rs_packet_dispatch[1].order_idx= 11;
   
 	rs_packet_dispatch[2].busy = 1;
-	rs_packet_dispatch[2].opcode= 3;
+	rs_packet_dispatch[2].inst= 3;
 	rs_packet_dispatch[2].dest_tag= 47;
 	rs_packet_dispatch[2].source_tag_1= 7;
 	rs_packet_dispatch[2].source_tag_1_plus= 1;
@@ -624,7 +629,7 @@ module testbench;
         issue_num = 3;
 
         rs_packet_dispatch[0].busy = 1;
-        rs_packet_dispatch[0].opcode= $random%128;
+        rs_packet_dispatch[0].inst= $random%128;
         rs_packet_dispatch[0].dest_tag= 32;
         rs_packet_dispatch[0].source_tag_1= 1;
         rs_packet_dispatch[0].source_tag_1_plus= 1;
@@ -634,7 +639,7 @@ module testbench;
         rs_packet_dispatch[0].order_idx= 1;
     
         rs_packet_dispatch[1].busy = 1;
-        rs_packet_dispatch[1].opcode= $random%128;
+        rs_packet_dispatch[1].inst= $random%128;
         rs_packet_dispatch[1].dest_tag= 33;
         rs_packet_dispatch[1].source_tag_1= 4;
         rs_packet_dispatch[1].source_tag_1_plus= 1;
@@ -644,7 +649,7 @@ module testbench;
         rs_packet_dispatch[1].order_idx= 2;
     
         rs_packet_dispatch[2].busy = 1;
-        rs_packet_dispatch[2].opcode= $random%128;
+        rs_packet_dispatch[2].inst= $random%128;
         rs_packet_dispatch[2].dest_tag= 34;
         rs_packet_dispatch[2].source_tag_1= 7;
         rs_packet_dispatch[2].source_tag_1_plus= 1;

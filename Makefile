@@ -45,7 +45,7 @@ else
 	ELF2HEX = elf2hex
 endif
 all: simv
-	./simv | tee program.out
+	./simv -cm line+cond+fsm+tgl+assert+path | tee program.out
 
 compile: $(CRT) $(LINKERS)
 	$(GCC) $(CFLAGS) $(OFLAGS) $(CRT) $(SOURCE) -T $(LINKERS) -o program.elf
@@ -69,7 +69,7 @@ debug_program:
 assembly: assemble disassemble hex
 	@:
 
-VCS = vcs -V -sverilog +vc -Mupdate -line -full64 +vcs+vcdpluson -kdb -lca -debug_access+all 
+VCS = vcs -V -sverilog +vc -Mupdate -line -full64 +vcs+vcdpluson -kdb -lca -debug_access+all -cm line+cond+fsm+tgl+assert+path +lint=TFIPC-L
 LIB = /afs/umich.edu/class/eecs470/lib/verilog/lec25dscc25.v
 
 # For visual debugger
@@ -80,11 +80,45 @@ VISFLAGS = -lncurses
 # Modify starting here
 #####
 
-TESTBENCH = 	sys_defs.svh	\
-		testbench/test_reservation_station.sv	 
-SIMFILES =	verilog/reservation_station.sv
+##TESTBENCH = 	sys_defs.svh	\
+##		ISA.svh         \
+##		testbench/mem.sv  \
+##		testbench/testbench.sv	\
+##		testbench/pipe_print.c	 
+##SIMFILES =	verilog/pipeline.sv	\
+##		verilog/regfile.sv	\
+##		verilog/if_stage.sv	\
+##		verilog/id_stage.sv	\
+##		verilog/ex_stage.sv	\
+##		verilog/mem_stage.sv	\
+##		verilog/wb_stage.sv	\
 
-SYNFILES = synth/reservation_station.vg
+##TESTBENCH =     sys_defs.svh	\
+##		testbench/test_top_r10k.sv
+TESTBENCH =     sys_defs.svh	\
+				ISA.svh \
+		testbench/test_top_r10k.sv
+##SIMFILES =	verilog/top_rob.sv	\
+##		verilog/map_table.sv	\
+##		verilog/architecture_table.sv	\
+##		verilog/cdb.sv	\
+##		verilog/free_list.sv	\
+##		verilog/rob.sv		
+##SIMFILES =	verilog/free_list.sv
+SIMFILES =	verilog/top_r10k.sv	\
+		verilog/top_rob.sv	\
+		verilog/map_table.sv	\
+		verilog/architecture_table.sv	\
+		verilog/cdb.sv	\
+		verilog/free_list.sv	\
+		verilog/reservation_station.sv	\
+		verilog/rob.sv \
+		verilog/regfile.sv \
+		verilog/issue_stage.sv
+
+
+##SYNFILES = synth/pipeline.vg
+SYNFILES = synth/ex_stage.vg
 
 # Don't ask me why spell VisUal TestBenchER like this...
 VTUBER = sys_defs.svh	\
@@ -94,8 +128,13 @@ VTUBER = sys_defs.svh	\
 		testbench/visual_c_hooks.cpp \
 		testbench/pipe_print.c
 
-synth/reservation_station.vg:        $(SIMFILES) synth/rs.tcl
-	cd synth && dc_shell-t -f ./rs.tcl | tee synth.out 
+##synth/pipeline.vg:        $(SIMFILES) synth/pipeline.tcl
+##	cd synth && dc_shell-t -f ./pipeline.tcl | tee synth.out 
+##synth/top_r10k.vg:        $(SIMFILES) synth/top_r10k.tcl
+##	cd synth && dc_shell-t -f ./top_r10k.tcl | tee synth.out 
+
+synth/ex_stage.vg:        $(SIMFILES) synth/ex_stage.tcl
+	cd synth && dc_shell-t -f ./ex_stage.tcl | tee synth.out 
 
 #####
 # Should be no need to modify after here
@@ -138,3 +177,8 @@ clean:
 nuke:	clean
 	rm -rf synth/*.vg synth/*.rep synth/*.ddc synth/*.chk synth/command.log synth/*.syn
 	rm -rf synth/*.out command.log synth/*.db synth/*.svf synth/*.mr synth/*.pvl
+
+verdi_cov:	all novas.rc
+	if [[ ! -d /tmp/$${USER}470 ]] ; then mkdir /tmp/$${USER}470 ; fi
+	./simv -cm line+cond+fsm+tgl+assert+path -gui=verdi -cov -covdir simv.vdb
+

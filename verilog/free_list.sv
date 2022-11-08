@@ -3,91 +3,91 @@
 module free_list(
 	input clock,
 	input reset,
-	input [`CDB_BITS-1 : 0] data_in,
-	input rd,
-	input wr,
-	output logic [`CDB_BITS-1 : 0] data_out,
-	output logic empty
+	input [`N_WAY-1:0][`CDB_BITS-1 : 0] rob_told,
+	input [$clog2(`N_WAY):0] dispatch_num,
+	input [`N_WAY-1:0]dispatched,
+	output logic [`N_WAY-1:0][`CDB_BITS-1 : 0] free_list_out,
+	output logic [$clog2(`N_WAY) : 0] free_num,
+	output logic [`N_ROB+32-1 : 0] free //debug
 	//output full
 );
 
-	logic [`FIFO_BITS : 0] count;
-	logic [`FIFO_BITS : 0] read_count;
-	logic [`FIFO_BITS : 0] write_count;
-	logic rd_wr_prev; //1: previos read 0: previous write
-	logic rd_wr_curr; 
-	logic [`FIFO_BITS : 0] i;
-	logic full;
-	logic [`N_ROB-1 : 0] [`CDB_BITS-1 : 0] free_list;
-
-	assign empty = ((count == 0) && rd_wr_prev) ? 1 :0;
-	assign full = ((count == 0) && !rd_wr_prev) ? 1 :0;
 	
+	logic tmp,tmp1;
+	logic [$clog2(`N_WAY):0] count;
+	logic [`N_WAY-1:0] rob_told_used;
+	//logic [`N_ROB+32-1 : 0] free, free_next,free_next_handshake;
+	logic [`N_ROB+32-1 : 0] free_next,free_next_handshake;
+	logic [$clog2(`N_ROB+32):0] free_num_int, free_num_int_reg;
+	//logic [`N_ROB+32-1 : 0] [`CDB_BITS-1 : 0] free_list;
+	assign free_num = (free_num_int_reg <=`N_WAY ) ?  free_num_int_reg : `N_WAY;
+			 	
+	//dispatch stage
+	always_comb begin
+		free_next = free;
+		free_num_int = free_num_int_reg;
+		count = 0;
+	 	rob_told_used = 0;
+		free_list_out = 0;	
+		for (int i=0; i<`N_WAY; i=i+1) begin
+			tmp = 0;
+			if(i < dispatch_num && free_num_int > 0) begin
+				for (int j=0; j<(`N_ROB+32); j=j+1) begin
+					if((free_next[j]==1) && (!tmp)) begin
+						free_list_out[i] = j+1;
+						free_next[j] = 0;
+						tmp = 1;
+						count = count + 1;
+					end
+				end
+				if(tmp)	free_num_int = free_num_int - 1;
+			end 
+		end
+		for (int i=0; i<`N_WAY; i=i+1) begin
+			tmp1 = 0;
+			if(i< (dispatch_num-count)) begin
+				for (int j=0; j<`N_WAY; j=j+1) begin
+					if(!tmp1 && !rob_told_used[j]) begin
+						free_list_out[i] = rob_told[j];
+						rob_told_used[j] = 1;
+						tmp1 = 1;
+					end
+				end
+			end
+		end
+	
+		for (int i=0; i<`N_WAY; i=i+1) begin
+			if((rob_told[i] != 0) && (!rob_told_used[i])) begin
+				free_next[rob_told[i]-1] = 1;
+				free_num_int = free_num_int + 1;
+			end
+		end//retire_stage
+	end
+
+	always_comb begin
+		free_next_handshake = free_next;
+		for (int i=0; i<`N_WAY; i=i+1) begin
+			if (!dispatched[i]) free_next_handshake[free_list_out[i]-1] = 1;	
+		end
+	end	
+
 	always_ff @(posedge clock) begin
 		if(reset) begin
-			read_count <= `SD 0;
-			write_count <= `SD 0;
-			data_out <= `SD 0;
-			rd_wr_prev <= `SD 0;
-			rd_wr_curr <= `SD 0;
-			for (i=0; i<`N_ROB; i=i+1) begin
-				free_list[i] <= `SD i+33;	
+			free_num_int_reg <= `SD `N_ROB;
+			for (int i=0; i<(`N_ROB+32); i=i+1) begin
+			//	free_list[i] <= `SD i+1;
+				if(i > 31) 
+					free[i] <= `SD 1;
+				else
+					free[i] <= `SD 0;	
 			end
 		end else begin
-			if(rd == 1 && wr == 0 && empty == 0) begin
-				data_out <= `SD free_list[read_count];
-				free_list[read_count] <= `SD 0 ;
-				rd_wr_curr <= `SD 1;
-				rd_wr_prev <= `SD rd_wr_curr;
-				if(read_count < `N_ROB-1)
-					read_count <= `SD read_count + 1;
-				else 
-					read_count <= `SD 0;
-			end else if (wr == 1 && rd == 0  && full == 0) begin
-				free_list[write_count] <= `SD data_in;
-				rd_wr_curr <= `SD 0;
-				rd_wr_prev <= `SD rd_wr_curr;
-				if(write_count < `N_ROB-1)
-					write_count <= `SD write_count + 1;
-				else
-					write_count <= `SD 0;
-			end else if (rd == 1 && wr == 1) begin
-				if (full == 0) begin
-					if (empty == 0)
-						free_list[write_count] <= `SD data_in;
-					if(write_count < `N_ROB-1)
-						write_count <= `SD write_count + 1;
-					else
-						write_count <= `SD 0;
-				end
-				if (empty == 0) begin
-					data_out <= `SD free_list[read_count];
-					free_list[read_count] <= `SD 0 ;
-				end else begin
-					data_out <= `SD data_in;
-				end
-				rd_wr_curr <= `SD 1;
-				rd_wr_prev <= `SD rd_wr_curr;
-				if(read_count < `N_ROB-1)
-					read_count <= `SD read_count + 1;
-				else 
-					read_count <= `SD 0;
-			end
-			else;
-//		        if(write_count > read_count) begin
-//		        	count = write_count - read_count;
-//		        end else begin
-//		        	count = read_count - write_count;
-//		        end
+			free_num_int_reg <= `SD free_num_int;
+			free <= `SD free_next_handshake;
 		end
 	end
 
 	always_comb begin
-		if(write_count > read_count) begin
-			count = write_count - read_count;
-		end else begin
-			count = read_count - write_count;
-		end
 	end
 
 endmodule

@@ -57,10 +57,10 @@ module reservation_station(
 		for (i_c1=0; i_c1 < `N_RS; i_c1=i_c1+1) begin
 			for (i_c2=0; i_c2 < `N_WAY; i_c2=i_c2+1) begin
 				if(rs_data[i_c1].busy) begin
-					if(cdb_rs_reg_idx_reg[i_c2] == rs_data[i_c1].source_tag_1) begin
+					if(cdb_rs_reg_idx[i_c2] == rs_data[i_c1].source_tag_1) begin
 						rs_data_wire[i_c1].source_tag_1_plus = 1;
 					end
-					if(cdb_rs_reg_idx_reg[i_c2] == rs_data[i_c1].source_tag_2) begin
+					if(cdb_rs_reg_idx[i_c2] == rs_data[i_c1].source_tag_2) begin
 						rs_data_wire[i_c1].source_tag_2_plus = 1;
 					end
 				end
@@ -78,7 +78,7 @@ module reservation_station(
 		for (i_x1=0; i_x1 < `N_RS; i_x1=i_x1+1) begin
 			for (i_x2=0; i_x2 < `N_WAY; i_x2=i_x2+1) begin
 				if(rs_data[i_x1].busy) begin
-					if(ex_rs_dest_idx_reg[i_x2] == rs_data[i_x1].dest_tag) begin
+					if(ex_rs_dest_idx[i_x2] == rs_data[i_x1].dest_tag) begin
 						rs_data_wire[i_x1].busy=0;
 						order_idx_ex[i_x1] = 0;
 					end

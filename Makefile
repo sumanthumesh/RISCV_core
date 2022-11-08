@@ -109,7 +109,7 @@ SIMFILES =	verilog/top_r10k.sv	\
 		verilog/top_rob.sv	\
 		verilog/map_table.sv	\
 		verilog/architecture_table.sv	\
-		verilog/cdb.sv	\
+		verilog/ex_stage.sv	\
 		verilog/free_list.sv	\
 		verilog/reservation_station.sv	\
 		verilog/rob.sv \

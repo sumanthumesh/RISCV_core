@@ -487,13 +487,6 @@ typedef struct packed {
 	logic [`CDB_BITS-1:0] phy_reg_idx;
 } ROB_PACKET_ISSUE;
 
-typedef enum logic [2:0] {
-	ALU  	= 3'h0,
-	MULT   	= 3'h1,
-	LOAD	= 3'h2,
-	STORE	= 3'h3,
-	BRANCH  = 3'h4
-} EXECUTION_UNIT;
 
 typedef struct packed {
 	logic	valid;

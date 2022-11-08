@@ -3,14 +3,8 @@
 module top_r10k (
 	input clock,
 	input reset,
-	input [`N_WAY-1 : 0] [`CDB_BITS-1:0] complete_dest_tag, //i/p from  execute stage to rob, not latched from the execute stage
 	input  DISPATCH_PACKET_R10K [`N_WAY-1:0] dispatch_packet, //from dispatch stage to rob and rs
 	//input [$clog2(`N_WAY):0] dispatch_num, //from dispatch stage to rob and rs
-	input   [`N_WAY-1:0] [`CDB_BITS-1:0]  ex_rs_dest_idx, //from issue stage latched 
-	input [$clog2(`N_WAY)-1:0] issue_num,
-	input [`N_WAY-1:0] wr_en,
-	input [`N_WAY-1:0][`CDB_BITS-1:0] wr_idx,
-	input [`N_WAY-1:0][`XLEN-1:0] wr_data,
 	output  RS_PACKET_ISSUE [`N_WAY-1:0]    rs_packet_issue,
 	output  ISSUE_EX_PACKET issue_packet,
 	output RS_PACKET   [`N_RS-1:0] rs_data,
@@ -18,6 +12,7 @@ module top_r10k (
 	output ROB_PACKET [`N_ROB-1:0] rob_packet,//debug
 	//output logic [$clog2(`N_WAY):0] empty_rob, //to dispatch stage
 	output logic [`N_WAY-1:0]dispatched,   //to dispatch stage
+	output EX_MEM_PACKET [`N_WAY-1 : 0] ex_packet_out,
 	//output logic [$clog2(`N_WAY) : 0] free_num, //to dispatch stage
 	//debug signals
 	output logic [`N_ROB+32-1 : 0] free //debug
@@ -32,7 +27,12 @@ module top_r10k (
 	logic [$clog2(`N_WAY):0] ex_count;
 	logic [$clog2(`N_WAY):0] dispatch_num; //generated internally to rob and rs
 	logic [$clog2(`N_RS):0]  rs_empty;
-	
+	ISSUE_EX_PACKET   [`N_WAY-1 : 0] issue_ex_packet_in;
+	logic [`N_WAY-1 : 0] [`CDB_BITS-1:0] complete_dest_tag; //i/p from  execute stage to rob, not latched from the execute stage
+	logic   [`N_WAY-1:0] [`CDB_BITS-1:0]  ex_rs_dest_idx,ex_rs_dest_idx_reg; //from issue stage latched 
+	logic [$clog2(`N_WAY)-1:0] issue_num,issue_num_reg;
+	logic [`N_WAY-1:0] wr_en;
+	logic [`N_WAY-1:0][`XLEN-1:0] wr_data;
 
 	always_comb begin
 		ex_count = 0 ;
@@ -98,9 +98,9 @@ reservation_station rs0 (
                   .clock(clock), 
                   .reset(reset),
 		  .rs_packet_dispatch(rs_packet_dispatch), //generated internally
-		  .ex_rs_dest_idx(ex_rs_dest_idx), //from ex stage
+		  .ex_rs_dest_idx(ex_rs_dest_idx_reg), //from ex stage
 		  .cdb_rs_reg_idx(complete_dest_tag),
-		  .issue_num(issue_num), //from issue stage
+		  .issue_num(issue_num_reg), //from issue stage
 		  .dispatched_rob(dispatched),
 		  .rs_packet_issue(rs_packet_issue), //to issue stage
 		  .rs_data(rs_data), //debug
@@ -118,6 +118,28 @@ issue_stage		is0 (
 		.issue_packet(issue_packet),
 		.issue_num(issue_num),
 		.ex_dest_tag(ex_rs_dest_idx)
+);
+
+	always_ff @(posedge clock) begin
+		if(reset)begin
+			issue_ex_packet_in <= `SD 0;
+			issue_num_reg <= `SD 0;
+			ex_rs_dest_idx_reg <= `SD 0;
+		end else begin
+			issue_ex_packet_in <= `SD issue_packet;
+			issue_num_reg <= `SD issue_num;
+			ex_rs_dest_idx_reg <= `SD ex_rs_dest_idx;
+		end
+	end
+
+ex_stage ex0 (
+		.clock(clock),
+		.reset(reset),
+		.issue_ex_packet_in(issue_ex_packet_in),
+		.complete_dest_tag(complete_dest_tag),
+		.reg_wr_en_out(wr_en),
+		.ex_result_out(wr_data),
+		.ex_packet_out(ex_packet_out)
 );
 endmodule
 

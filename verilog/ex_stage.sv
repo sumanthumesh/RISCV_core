@@ -195,6 +195,8 @@ module ex_stage(
 	input reset,               // system reset
 	input ISSUE_EX_PACKET   [`N_WAY-1 : 0] issue_ex_packet_in,
 	output logic [`N_WAY-1 : 0] [`CDB_BITS-1:0] complete_dest_tag,//to r10k
+	output logic [`N_WAY-1 : 0]  reg_wr_en_out,//to r10k
+	output logic [`N_WAY-1 : 0] [`XLEN-1:0] ex_result_out,
 	output EX_MEM_PACKET [`N_WAY-1 : 0] ex_packet_out
 );
 	// Pass-throughs
@@ -391,10 +393,11 @@ module ex_stage(
 		head_next = head;
 		tail_next = tail;
 		count_out = 0;
+		complete_dest_tag= 0 ; 
 		for(int i=0; i<2*`N_WAY; i=i+1) begin
 			if(head_next[i] && (count_out < `N_WAY)) begin
 				complete_dest_tag[count_out] = complete_dest_tag_next[i];
-				ex_packet_out[count_out].result = result_out_next[i];
+				ex_result_out[count_out] = result_out_next[i];
 				if(complete_dest_tag_next[i] != 0) begin
 					head_next[i] = 0; 	
 					if(i == 2*`N_WAY-1)
@@ -422,6 +425,12 @@ module ex_stage(
 			end
 		end
 	end	
+
+	always_comb begin
+		for(int i=0; i<`N_WAY; i=i+1) begin
+			reg_wr_en_out[i]  = complete_dest_tag[i]!= `ZERO_REG_PR;
+		end	
+	end
 
 	always_ff @(posedge clock) begin
 		if(reset) begin

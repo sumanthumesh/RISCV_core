@@ -6,7 +6,7 @@ module top_r10k (
 	input  DISPATCH_PACKET_R10K [`N_WAY-1:0] dispatch_packet, //from dispatch stage to rob and rs
 	//input [$clog2(`N_WAY):0] dispatch_num, //from dispatch stage to rob and rs
 	output  RS_PACKET_ISSUE [`N_WAY-1:0]    rs_packet_issue,
-	output  ISSUE_EX_PACKET issue_packet,
+	output  ISSUE_EX_PACKET [`N_WAY-1:0]  issue_packet,
 	output RS_PACKET   [`N_RS-1:0] rs_data,
 	//output logic [$clog2(`N_RS):0]  rs_empty,
 	output ROB_PACKET [`N_ROB-1:0] rob_packet,//debug
@@ -122,13 +122,17 @@ issue_stage		is0 (
 
 	always_ff @(posedge clock) begin
 		if(reset)begin
-			issue_ex_packet_in <= `SD 0;
 			issue_num_reg <= `SD 0;
-			ex_rs_dest_idx_reg <= `SD 0;
+			for(int i=0; i<`N_WAY; i=i+1)begin
+				issue_ex_packet_in[i] <= `SD 0;
+				ex_rs_dest_idx_reg[i] <= `SD 0;
+			end
 		end else begin
-			issue_ex_packet_in <= `SD issue_packet;
 			issue_num_reg <= `SD issue_num;
-			ex_rs_dest_idx_reg <= `SD ex_rs_dest_idx;
+			for(int i=0; i<`N_WAY; i=i+1)begin
+				issue_ex_packet_in[i] <= `SD issue_packet[i];
+				ex_rs_dest_idx_reg[i] <= `SD ex_rs_dest_idx[i];
+			end
 		end
 	end
 

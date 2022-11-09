@@ -92,7 +92,9 @@ module mult(
   logic [`XLEN-1:0] mcand_out, mplier_out;
   logic [((`PIPELINE_DEPTH -1)*32)-1:0] internal_products, internal_mcands, internal_mpliers;
   logic [(`PIPELINE_DEPTH -2):0] internal_dones;
+  logic done_last;
   logic [((`PIPELINE_DEPTH -1)*`CDB_BITS)-1:0] internal_dest_tag;
+  logic [`CDB_BITS-1:0] dest_tag_out_last;
   
 	mult_stage mstage [(`PIPELINE_DEPTH -1):0]  (
 		.clock(clock),
@@ -105,10 +107,12 @@ module mult(
 		.product_out({product,internal_products}),
 		.mplier_out({mplier_out,internal_mpliers}),
 		.mcand_out({mcand_out,internal_mcands}),
-		.dest_tag_out({dest_tag_out, internal_dest_tag}),
-		.done({done,internal_dones})
+		.dest_tag_out({dest_tag_out_last, internal_dest_tag}),
+		.done({done_last,internal_dones})
 	);
 
+	assign done = internal_dones[`PIPELINE_DEPTH-2];
+	assign dest_tag_out = internal_dest_tag[((`PIPELINE_DEPTH -1)*`CDB_BITS)-1 : ((`PIPELINE_DEPTH -2)*`CDB_BITS)];
 endmodule
 
 module mult_stage(
@@ -230,7 +234,7 @@ module ex_stage(
 		count_alu_a = 0; 
 		for(int i=0; i<`N_WAY; i=i+1) begin
 			tmp2=0;
-			if(issue_ex_packet_in[i].execution_unit == ALU && !tmp2) begin
+			if(issue_ex_packet_in[i].execution_unit == ALU && !tmp2 && issue_ex_packet_in[i].valid) begin
 				opa_mux_out[count_alu_a] = `XLEN'hdeadfbac;
 				case (issue_ex_packet_in[count_alu_a].opa_select)
 					OPA_IS_RS1:  opa_mux_out[count_alu_a] = issue_ex_packet_in[i].rs1_value;
@@ -302,6 +306,8 @@ module ex_stage(
 	generate
 		for(j=0; j<`EX_ALU_UNITS; j=j+1) begin
 			alu alu_0 (// Inputs
+				.clock(clock),
+				.reset(reset),
 				.opa(opa_mux_out[j]),
 				.opb(opb_mux_out[j]),
 				.func(issue_ex_packet_in[j].alu_func),
@@ -362,6 +368,7 @@ module ex_stage(
 	logic [2*`N_WAY-1 : 0] [`CDB_BITS-1:0] complete_dest_tag_wire,complete_dest_tag_next,complete_dest_tag_fifo;
 	logic [2*`N_WAY-1 : 0] head,head_next,tail,tail_next;
 	logic [2*`N_WAY-1 : 0] [`XLEN-1:0] result_out_wire,result_out_next,result_out_fifo;
+	logic tmp3;
 	always_comb begin
 		count_comp = 0;
 		completed_mult = 0;
@@ -378,8 +385,10 @@ module ex_stage(
 				end	
 			end
 			for(int j=0; j<`EX_ALU_UNITS; j=j+1) begin
-				if(done_alu[j] && !completed_alu[j]) begin
-					complete_dest_tag_wire[count_comp] = dest_tag_out_alu[j];
+				//if(done_alu[j] && !completed_alu[j]) begin
+				if(start_alu[j] && !completed_alu[j]) begin
+					//complete_dest_tag_wire[count_comp] = dest_tag_out_alu[j];
+					complete_dest_tag_wire[count_comp] = dest_tag_in_alu[j];
 					result_out_wire[count_comp] = alu_result[j];
 					completed_alu[j] = 1;
 					count_comp =  count_comp + 1;
@@ -405,12 +414,16 @@ module ex_stage(
 					else
 						head_next[i+1] = 1; 	
 				end
+				complete_dest_tag_next[i] = 0;
+				result_out_next[i] = 0;
 				count_out = count_out + 1;	
 			end
 		end
 		for(int i=0; i<2*`N_WAY; i=i+1) begin
+			tmp3 = 0;
 			for(int j=0; j<2*`N_WAY; j=j+1) begin
-				if(tail_next[j] && (complete_dest_tag_wire[i]!=0)) begin
+				if(tail_next[j] && (complete_dest_tag_wire[i]!=0) && !tmp3) begin
+					tmp3 = 1;
 					tail_next[j] = 0; 	
 					if(j == 2*`N_WAY-1) begin
 						complete_dest_tag_next[0] = complete_dest_tag_wire[i];
@@ -439,8 +452,10 @@ module ex_stage(
 			for(int m = 0; m<2*`N_WAY; m = m+1) begin
 				if(m == 0) begin
 					head[m] <= `SD 1;
+					tail[m] <= `SD 0;
 				end else if(m == 2*`N_WAY-1) begin
 					tail[m] <= `SD 1;
+					head[m] <= `SD 0;
 				end else begin
 					head[m] <= `SD 0;	
 					tail[m] <= `SD 0;	

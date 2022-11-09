@@ -11,7 +11,7 @@ module test_top_r10k;
  // Outputs
  //
  	RS_PACKET_ISSUE [`N_WAY-1:0] rs_packet_issue;
-	ISSUE_EX_PACKET issue_packet;
+	ISSUE_EX_PACKET [`N_WAY-1:0] issue_packet;
 	RS_PACKET   [`N_RS-1:0] rs_data;
 	ROB_PACKET [`N_ROB-1:0] rob_packet;//debug
 	logic [`N_WAY-1:0]dispatched;   //to dispatch stage
@@ -36,6 +36,13 @@ module test_top_r10k;
 		.ex_packet_out(ex_packet_out)	
                   );
 
+  program_dispatch pd0 (
+		.clock(clock),
+		.reset(reset),
+		.dispatched(dispatched),
+		.dispatch_out(dispatch_packet)
+		);
+
  initial begin
 
   // Initialize Inputs
@@ -44,23 +51,23 @@ module test_top_r10k;
   reset  = 1'b1;
 	
 			
-	dispatch_packet[0].src1 = 0;
-	dispatch_packet[0].src2 = 0;
-	dispatch_packet[0].dest = 0;
-	dispatch_packet[0].inst = `RV32_ADD;
-	dispatch_packet[0].valid= 0;
-       
-	dispatch_packet[1].src1 = 0;
-	dispatch_packet[1].src2 = 0;
-	dispatch_packet[1].dest = 0;
-	dispatch_packet[1].inst = `RV32_ADD;
-	dispatch_packet[1].valid= 0;
-
-	dispatch_packet[2].src1 = 0;
-	dispatch_packet[2].src2 = 0;
-	dispatch_packet[2].dest = 0;
-	dispatch_packet[2].inst = `RV32_ADD;
-	dispatch_packet[2].valid= 0;
+//	dispatch_packet[0].src1 = 0;
+//	dispatch_packet[0].src2 = 0;
+//	dispatch_packet[0].dest = 0;
+//	dispatch_packet[0].inst = `RV32_ADD;
+//	dispatch_packet[0].valid= 0;
+//       
+//	dispatch_packet[1].src1 = 0;
+//	dispatch_packet[1].src2 = 0;
+//	dispatch_packet[1].dest = 0;
+//	dispatch_packet[1].inst = `RV32_ADD;
+//	dispatch_packet[1].valid= 0;
+//
+//	dispatch_packet[2].src1 = 0;
+//	dispatch_packet[2].src2 = 0;
+//	dispatch_packet[2].dest = 0;
+//	dispatch_packet[2].inst = `RV32_ADD;
+//	dispatch_packet[2].valid= 0;
   // Wait 100 ns for global reset to finish
 
 	@(posedge clock);
@@ -71,147 +78,148 @@ module test_top_r10k;
 	reset  = 1'b0;
 
 
-	dispatch_packet[0].src1 = 1;
-	dispatch_packet[0].src2 = 2;
-	dispatch_packet[0].dest = 3;
-	dispatch_packet[0].valid= 1;
+//	dispatch_packet[0].src1 = 1;
+//	dispatch_packet[0].src2 = 2;
+//	dispatch_packet[0].dest = 3;
+//	dispatch_packet[0].valid= 1;
+//
+//	dispatch_packet[1].src1 = 1;
+//	dispatch_packet[1].src2 = 2;
+//	dispatch_packet[1].dest = 4;
+//	dispatch_packet[1].valid= 1;
+//
+//	dispatch_packet[2].src1 = 1;
+//	dispatch_packet[2].src2 = 2;
+//	dispatch_packet[2].dest = 5;
+//	dispatch_packet[2].valid= 1;
+//
+//	@(posedge clock);
+//	#1;        
+//
+//	//RAW
+//	dispatch_packet[0].src1 = 1;
+//	dispatch_packet[0].src2 = 2;
+//	dispatch_packet[0].dest = 6;
+//	dispatch_packet[0].valid= 1;
+//
+//	dispatch_packet[1].src1 = 1;
+//	dispatch_packet[1].src2 = 6;
+//	dispatch_packet[1].dest = 7;
+//	dispatch_packet[1].valid= 1;
+//
+//	dispatch_packet[2].src1 = 1;
+//	dispatch_packet[2].src2 = 7;
+//	dispatch_packet[2].dest = 8;
+//	dispatch_packet[2].valid= 1;
+//
+//	@(posedge clock);
+//	#1;        
+//	//WAW
+//	dispatch_packet[0].src1 = 1;
+//	dispatch_packet[0].src2 = 2;
+//	dispatch_packet[0].dest = 9;
+//	dispatch_packet[0].valid= 1;
+//
+//	dispatch_packet[1].src1 = 1;
+//	dispatch_packet[1].src2 = 6;
+//	dispatch_packet[1].dest = 10;
+//	dispatch_packet[1].valid= 1;
+//
+//	dispatch_packet[2].src1 = 1;
+//	dispatch_packet[2].src2 = 7;
+//	dispatch_packet[2].dest = 10;
+//	dispatch_packet[2].valid= 1;
+//
+//	@(posedge clock);
+//	#1;        
+//	//WAR
+//	dispatch_packet[0].src1 = 1;
+//	dispatch_packet[0].src2 = 10;
+//	dispatch_packet[0].dest = 11;
+//	dispatch_packet[0].valid= 1;
+//
+//	dispatch_packet[1].src1 = 1;
+//	dispatch_packet[1].src2 = 16;
+//	dispatch_packet[1].dest = 10;
+//	dispatch_packet[1].valid= 1;
+//
+//	dispatch_packet[2].src1 = 1;
+//	dispatch_packet[2].src2 = 7;
+//	dispatch_packet[2].dest = 10;
+//	dispatch_packet[2].valid= 0;
+//
+//
+//	@(posedge clock);
+//	#1;        
+//
+//	dispatch_packet[0].src1 = 2;
+//	dispatch_packet[0].src2 = 10;
+//	dispatch_packet[0].dest = 11;
+//	dispatch_packet[0].valid= 1;
+//
+//	dispatch_packet[1].src1 = 2;
+//	dispatch_packet[1].src2 = 16;
+//	dispatch_packet[1].dest = 10;
+//	dispatch_packet[1].valid= 1;
+//
+//	dispatch_packet[2].src1 = 2;
+//	dispatch_packet[2].src2 = 7;
+//	dispatch_packet[2].dest = 17;
+//	dispatch_packet[2].valid= 1;
+//	@(posedge clock);
+//	#1;      
+//		
+//	dispatch_packet[0].src1 = 1;
+//	dispatch_packet[0].src2 = 2;
+//	dispatch_packet[0].dest = 3;
+//	dispatch_packet[0].inst = `RV32_MUL;
+//	dispatch_packet[0].valid= 1;
+//
+//	dispatch_packet[1].src1 = 4;
+//	dispatch_packet[1].src2 = 5;
+//	dispatch_packet[1].dest = 6;
+//	dispatch_packet[1].inst = `RV32_MUL;
+//	dispatch_packet[1].valid= 1;
+//
+//	dispatch_packet[2].src1 = 7;
+//	dispatch_packet[2].src2 = 8;
+//	dispatch_packet[2].dest = 9;
+//	dispatch_packet[2].inst = `RV32_ADD;
+//	dispatch_packet[2].valid= 1;
+//	@(posedge clock);
+//	#1;  
+//    
+//  	dispatch_packet[0].src1 = 1;
+//	dispatch_packet[0].src2 = 2;
+//	dispatch_packet[0].dest = 10;
+//	dispatch_packet[0].inst =`RV32_ADD ;
+//	dispatch_packet[0].valid= 1;
+//
+//	dispatch_packet[1].src1 = 4;
+//	dispatch_packet[1].src2 = 5;
+//	dispatch_packet[1].dest = 11;
+//	dispatch_packet[1].inst = `RV32_ADD;
+//	dispatch_packet[1].valid= 1;
+//
+//	dispatch_packet[2].src1 = 7;
+//	dispatch_packet[2].src2 = 8;
+//	dispatch_packet[2].dest = 12;
+//	dispatch_packet[2].inst = `RV32_ADD;
+//	dispatch_packet[2].valid= 1;
+//
+//
+//
+//	@(posedge clock);
+//	#1;        
+//	dispatch_packet[0].valid= 0;
+//	dispatch_packet[1].valid= 0;
+//	dispatch_packet[2].valid= 0;
+//		@(posedge clock);
+//	@(posedge clock);
+//	@(posedge clock);
+//	@(posedge clock);
 
-	dispatch_packet[1].src1 = 1;
-	dispatch_packet[1].src2 = 2;
-	dispatch_packet[1].dest = 4;
-	dispatch_packet[1].valid= 1;
-
-	dispatch_packet[2].src1 = 1;
-	dispatch_packet[2].src2 = 2;
-	dispatch_packet[2].dest = 5;
-	dispatch_packet[2].valid= 1;
-
-	@(posedge clock);
-	#1;        
-
-	//RAW
-	dispatch_packet[0].src1 = 1;
-	dispatch_packet[0].src2 = 2;
-	dispatch_packet[0].dest = 6;
-	dispatch_packet[0].valid= 1;
-
-	dispatch_packet[1].src1 = 1;
-	dispatch_packet[1].src2 = 6;
-	dispatch_packet[1].dest = 7;
-	dispatch_packet[1].valid= 1;
-
-	dispatch_packet[2].src1 = 1;
-	dispatch_packet[2].src2 = 7;
-	dispatch_packet[2].dest = 8;
-	dispatch_packet[2].valid= 1;
-
-	@(posedge clock);
-	#1;        
-	//WAW
-	dispatch_packet[0].src1 = 1;
-	dispatch_packet[0].src2 = 2;
-	dispatch_packet[0].dest = 9;
-	dispatch_packet[0].valid= 1;
-
-	dispatch_packet[1].src1 = 1;
-	dispatch_packet[1].src2 = 6;
-	dispatch_packet[1].dest = 10;
-	dispatch_packet[1].valid= 1;
-
-	dispatch_packet[2].src1 = 1;
-	dispatch_packet[2].src2 = 7;
-	dispatch_packet[2].dest = 10;
-	dispatch_packet[2].valid= 1;
-
-	@(posedge clock);
-	#1;        
-	//WAR
-	dispatch_packet[0].src1 = 1;
-	dispatch_packet[0].src2 = 10;
-	dispatch_packet[0].dest = 11;
-	dispatch_packet[0].valid= 1;
-
-	dispatch_packet[1].src1 = 1;
-	dispatch_packet[1].src2 = 16;
-	dispatch_packet[1].dest = 10;
-	dispatch_packet[1].valid= 1;
-
-	dispatch_packet[2].src1 = 1;
-	dispatch_packet[2].src2 = 7;
-	dispatch_packet[2].dest = 10;
-	dispatch_packet[2].valid= 0;
-
-
-	@(posedge clock);
-	#1;        
-
-	dispatch_packet[0].src1 = 2;
-	dispatch_packet[0].src2 = 10;
-	dispatch_packet[0].dest = 11;
-	dispatch_packet[0].valid= 1;
-
-	dispatch_packet[1].src1 = 2;
-	dispatch_packet[1].src2 = 16;
-	dispatch_packet[1].dest = 10;
-	dispatch_packet[1].valid= 1;
-
-	dispatch_packet[2].src1 = 2;
-	dispatch_packet[2].src2 = 7;
-	dispatch_packet[2].dest = 17;
-	dispatch_packet[2].valid= 1;
-	@(posedge clock);
-	#1;      
-		
-	dispatch_packet[0].src1 = 1;
-	dispatch_packet[0].src2 = 2;
-	dispatch_packet[0].dest = 3;
-	dispatch_packet[0].inst = `RV32_MUL;
-	dispatch_packet[0].valid= 1;
-
-	dispatch_packet[1].src1 = 4;
-	dispatch_packet[1].src2 = 5;
-	dispatch_packet[1].dest = 6;
-	dispatch_packet[1].inst = `RV32_MUL;
-	dispatch_packet[1].valid= 1;
-
-	dispatch_packet[2].src1 = 7;
-	dispatch_packet[2].src2 = 8;
-	dispatch_packet[2].dest = 9;
-	dispatch_packet[2].inst = `RV32_ADD;
-	dispatch_packet[2].valid= 1;
-	@(posedge clock);
-	#1;  
-    
-  	dispatch_packet[0].src1 = 1;
-	dispatch_packet[0].src2 = 2;
-	dispatch_packet[0].dest = 10;
-	dispatch_packet[0].inst =`RV32_ADD ;
-	dispatch_packet[0].valid= 1;
-
-	dispatch_packet[1].src1 = 4;
-	dispatch_packet[1].src2 = 5;
-	dispatch_packet[1].dest = 11;
-	dispatch_packet[1].inst = `RV32_ADD;
-	dispatch_packet[1].valid= 1;
-
-	dispatch_packet[2].src1 = 7;
-	dispatch_packet[2].src2 = 8;
-	dispatch_packet[2].dest = 12;
-	dispatch_packet[2].inst = `RV32_ADD;
-	dispatch_packet[2].valid= 1;
-
-
-
-	@(posedge clock);
-	#1;        
-	dispatch_packet[0].valid= 0;
-	dispatch_packet[1].valid= 0;
-	dispatch_packet[2].valid= 0;
-		@(posedge clock);
-	@(posedge clock);
-	@(posedge clock);
-	@(posedge clock);
-
+	#1000;
 	$finish;
 
  end 

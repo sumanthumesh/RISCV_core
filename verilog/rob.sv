@@ -36,7 +36,10 @@ module rob (
 							retire_valid[i] = 1 ;		
 							retire_tag[i] = rob_packet[j].tag ;		
 							retire_told[i] = rob_packet[j].tag_old ;		
-							rob_packet_wire[j+1].head = 1;
+							if(j == `N_ROB-1)
+								rob_packet_wire[0].head = 1;
+							else
+								rob_packet_wire[j+1].head = 1;
 							rob_packet_wire[j] = 0;
 							tmp = 1;
 							empty_rob_wire = empty_rob_wire + 1;	

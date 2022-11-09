@@ -454,7 +454,7 @@ typedef struct packed {
 	logic [`CDB_BITS-1:0] source_tag_2; // is this a taken branch?
 	logic source_tag_2_plus;
 	logic issued;
-	logic [$clog2(`N_RS)-1:0] order_idx; //to track the oldest instruction 
+	logic [$clog2(`N_RS):0] order_idx; //to track the oldest instruction 
 	logic [`XLEN-1:0] NPC; // PC + 4
 	logic [`XLEN-1:0] PC;  // PC
 } RS_PACKET;  

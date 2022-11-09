@@ -97,6 +97,7 @@ VISFLAGS = -lncurses
 ##		testbench/test_top_r10k.sv
 TESTBENCH =     sys_defs.svh	\
 				ISA.svh \
+		testbench/program_dispatch.sv \
 		testbench/test_top_r10k.sv
 ##SIMFILES =	verilog/top_rob.sv	\
 ##		verilog/map_table.sv	\

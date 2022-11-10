@@ -24,7 +24,7 @@ module reservation_station(
 	input   [`N_WAY-1:0][`CDB_BITS-1:0] cdb_rs_reg_idx,    
 	input   [`N_WAY-1:0] dispatched_rob,    
 	input branch_haz,    
-	input [$clog2(`N_WAY)-1:0] issue_num,
+	input [$clog2(`N_WAY):0] issue_num,
 	output  RS_PACKET_ISSUE [`N_WAY-1:0]    rs_packet_issue,
 	//output  PR_PACKET       [`N_WAY-1:0]    pr_packet_out1,
 	//output  PR_PACKET       [`N_WAY-1:0]    pr_packet_out2,
@@ -57,7 +57,7 @@ module reservation_station(
 		end
 		for (i_c1=0; i_c1 < `N_RS; i_c1=i_c1+1) begin
 			for (i_c2=0; i_c2 < `N_WAY; i_c2=i_c2+1) begin
-				if(rs_data[i_c1].busy) begin
+				if(rs_data[i_c1].busy && !branch_haz) begin
 					if(cdb_rs_reg_idx[i_c2] == rs_data[i_c1].source_tag_1) begin
 						rs_data_wire[i_c1].source_tag_1_plus = 1;
 					end
@@ -83,7 +83,7 @@ module reservation_station(
 		end
 		for (i_x1=0; i_x1 < `N_RS; i_x1=i_x1+1) begin
 			for (i_x2=0; i_x2 < `N_WAY; i_x2=i_x2+1) begin
-				if(rs_data[i_x1].busy) begin
+				if(rs_data[i_x1].busy && !branch_haz) begin
 					if(ex_rs_dest_idx[i_x2] == rs_data[i_x1].dest_tag) begin
 						rs_data_wire[i_x1].busy=0;
 						order_idx_ex[i_x1] = 0;
@@ -104,7 +104,7 @@ module reservation_station(
 			end
 		end
 		for(i_ix=0; i_ix<`N_RS; i_ix=i_ix+1) begin
-			if(rs_data[i_ix].busy) begin
+			if(rs_data[i_ix].busy && !branch_haz) begin
 				rs_empty = rs_empty - 1;
 				if(rs_data[i_ix].order_idx != order_idx_ex[i_ix]) begin
 					rs_data_wire[i_ix].order_idx = order_idx_ex[i_ix];
@@ -137,7 +137,7 @@ module reservation_station(
 		for (i_o=1; i_o<=`N_RS; i_o=i_o+1) begin
 			//tmp1 = 0;
 			for(i_is=0; i_is<`N_RS; i_is=i_is+1) begin
-				if(rs_data[i_is].busy) begin
+				if(rs_data[i_is].busy && !branch_haz) begin
 					if((rs_data_wire[i_is].source_tag_1_plus && rs_data_wire[i_is].source_tag_2_plus) && (!rs_data[i_is].issued) && (rs_data_wire[i_is].order_idx == i_o) && (count < issue_num)) begin
 					//if((rs_data_wire[i_is].source_tag_1_plus && rs_data_wire[i_is].source_tag_2_plus) && (rs_data_wire[i_is].order_idx == i_o) && (count <issue_num)) begin
 						rs_packet_issue[count].source_tag_1 = rs_data[i_is].source_tag_1;

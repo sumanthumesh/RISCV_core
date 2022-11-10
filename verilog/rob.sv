@@ -39,6 +39,7 @@ module rob (
 						if((rob_packet_wire[j].head) && rob_packet[j].completed ) begin
 							if (rob_packet[j].branch_inst) begin
 								branch_haz = rob_packet[j].take_branch;
+								empty_rob_wire = `N_ROB; 
 								for(int k=0; k<`N_ROB; k=k+1) begin
 									if(k == j)
 									rob_packet_wire[k].tail = 1;

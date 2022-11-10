@@ -18,8 +18,8 @@ module test_top_r10k;
 	logic [`N_WAY-1:0]dispatched;   //to dispatch stage
 	logic [`N_ROB+32-1 : 0] free; //debug
 	EX_MEM_PACKET [`N_WAY-1 : 0] ex_packet_out;
-
-
+	logic branch_haz;
+	logic [`EX_BRANCH_UNITS-1 : 0] [`XLEN-1:0] br_result;
 
 
  // Instantiate the Unit Under Test (UUT)
@@ -34,7 +34,9 @@ module test_top_r10k;
 		.issue_packet(issue_packet),
 		.rob_packet(rob_packet),
 		.dispatched(dispatched),
-		.free(free),	
+		.free(free),
+		.branch_haz(branch_haz),
+		.br_result(br_result),
 		.ex_packet_out(ex_packet_out)	
                   );
 
@@ -42,6 +44,8 @@ module test_top_r10k;
 		.clock(clock),
 		.reset(reset),
 		.dispatched(dispatched),
+		.branch_haz(branch_haz),
+		.br_result(br_result),
 		.branch_inst(branch_inst),
 		.dispatch_out(dispatch_packet)
 		);
@@ -222,7 +226,7 @@ module test_top_r10k;
 //	@(posedge clock);
 //	@(posedge clock);
 
-	#1000;
+	#10000;
 	$finish;
 
  end 

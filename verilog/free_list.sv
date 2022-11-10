@@ -36,6 +36,7 @@ module free_list(
 				free_next[free_list_haz[i] - 1] = 1;
 			end
 		end	
+		if(branch_haz) free_num_int = `N_ROB;
 		for (int i=0; i<`N_WAY; i=i+1) begin
 			tmp = 0;
 			if(i < dispatch_num && free_num_int > 0) begin

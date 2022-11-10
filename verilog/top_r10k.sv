@@ -13,6 +13,8 @@ module top_r10k (
 	output ROB_PACKET [`N_ROB-1:0] rob_packet,//debug
 	//output logic [$clog2(`N_WAY):0] empty_rob, //to dispatch stage
 	output logic [`N_WAY-1:0]dispatched,   //to dispatch stage
+	output logic branch_haz,
+	output logic [`EX_BRANCH_UNITS-1 : 0] [`XLEN-1:0] br_result,
 	output EX_MEM_PACKET [`N_WAY-1 : 0] ex_packet_out,
 	//output logic [$clog2(`N_WAY) : 0] free_num, //to dispatch stage
 	//debug signals
@@ -24,7 +26,6 @@ module top_r10k (
 	PR_PACKET [`N_WAY-1 : 0] pr_packet_out1; //to reservation station
 	PR_PACKET [`N_WAY-1 : 0] pr_packet_out2; //to reservation station
 	//logic [`N_WAY-1 : 0] [`CDB_BITS-1 : 0] cdb_tag; // to reservation station
-	logic branch_haz;
 	logic [`N_WAY-1:0][`CDB_BITS-1 : 0] free_list_out;
 	logic [$clog2(`N_WAY):0] ex_count;
 	logic [$clog2(`N_WAY):0] dispatch_num; //generated internally to rob and rs
@@ -32,7 +33,7 @@ module top_r10k (
 	ISSUE_EX_PACKET   [`N_WAY-1 : 0] issue_ex_packet_in;
 	logic [`N_WAY-1 : 0] [`CDB_BITS-1:0] complete_dest_tag; //i/p from  execute stage to rob, not latched from the execute stage
 	logic   [`N_WAY-1:0] [`CDB_BITS-1:0]  ex_rs_dest_idx,ex_rs_dest_idx_reg; //from issue stage latched 
-	logic [$clog2(`N_WAY)-1:0] issue_num,issue_num_reg;
+	logic [$clog2(`N_WAY):0] issue_num,issue_num_reg;
 	logic [`N_WAY-1:0] wr_en;
 	logic [`N_WAY-1:0][`XLEN-1:0] wr_data;
 	logic take_branch_ex;
@@ -137,8 +138,13 @@ issue_stage		is0 (
 		end else begin
 			issue_num_reg <= `SD issue_num;
 			for(int i=0; i<`N_WAY; i=i+1)begin
-				issue_ex_packet_in[i] <= `SD issue_packet[i];
-				ex_rs_dest_idx_reg[i] <= `SD ex_rs_dest_idx[i];
+				if(!branch_haz) begin
+					issue_ex_packet_in[i] <= `SD issue_packet[i];
+					ex_rs_dest_idx_reg[i] <= `SD ex_rs_dest_idx[i];
+				end else begin
+					issue_ex_packet_in[i] <= `SD 0;
+					ex_rs_dest_idx_reg[i] <= `SD 0;
+				end
 			end
 		end
 	end
@@ -151,6 +157,7 @@ ex_stage ex0 (
 		.reg_wr_en_out(wr_en),
 		.ex_result_out(wr_data),
 		.take_branch_out(take_branch_ex),
+		.br_result(br_result),
 		.ex_packet_out(ex_packet_out)
 );
 endmodule

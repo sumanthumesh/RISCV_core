@@ -24,15 +24,11 @@
 // This module is purely combinational
 //
 module alu(
-	input clock,
-	input reset,
 	input [`XLEN-1:0] opa,
 	input [`XLEN-1:0] opb,
 	ALU_FUNC     func,
 	input start,
 	input [`CDB_BITS-1:0] dest_tag_in,
-	output logic done,
-	output logic [`CDB_BITS-1:0] dest_tag_out,
 
 	output logic [`XLEN-1:0] result
 );
@@ -66,18 +62,44 @@ module alu(
 		endcase
 	end
 
-	always_ff @(posedge clock) begin
-		if(reset) begin
-			done <= #1 1'b0;
-			dest_tag_out <= `SD 0;
-		end else begin
-			done <= #1 start;
-			dest_tag_out <= `SD dest_tag_in;
-		end
-	end
-
 endmodule // alu
+//
+// BrCond module
+//
+// Given the instruction code, compute the proper condition for the
+// instruction; for branches this condition will indicate whether the
+// target is taken.
+//
+// This module is purely combinational
+//
+module brcond(// Inputs
+	input [`XLEN-1:0] rs1,    // Value to check against condition
+	input [`XLEN-1:0] rs2,
+	input  [2:0] func,  // Specifies which condition to check
+	input [`XLEN-1:0] opa,
+	input [`XLEN-1:0] opb,
 
+	output logic cond,    // 0/1 condition result (False/True)
+	output logic [`XLEN-1:0] result
+);
+
+	logic signed [`XLEN-1:0] signed_rs1, signed_rs2;
+	assign signed_rs1 = rs1;
+	assign signed_rs2 = rs2;
+	always_comb begin
+		cond = 0;
+		case (func)
+			3'b000: cond = signed_rs1 == signed_rs2;  // BEQ
+			3'b001: cond = signed_rs1 != signed_rs2;  // BNE
+			3'b100: cond = signed_rs1 < signed_rs2;   // BLT
+			3'b101: cond = signed_rs1 >= signed_rs2;  // BGE
+			3'b110: cond = rs1 < rs2;                 // BLTU
+			3'b111: cond = rs1 >= rs2;                // BGEU
+		endcase
+		result = opa + opb;
+	end
+	
+endmodule // brcond
 module mult(
 	input clock, reset,
 	input [`XLEN-1:0] mcand, mplier,
@@ -159,39 +181,7 @@ module mult_stage(
 
 endmodule //mult stage
 
-//
-// BrCond module
-//
-// Given the instruction code, compute the proper condition for the
-// instruction; for branches this condition will indicate whether the
-// target is taken.
-//
-// This module is purely combinational
-//
-module brcond(// Inputs
-	input [`XLEN-1:0] rs1,    // Value to check against condition
-	input [`XLEN-1:0] rs2,
-	input  [2:0] func,  // Specifies which condition to check
 
-	output logic cond    // 0/1 condition result (False/True)
-);
-
-	logic signed [`XLEN-1:0] signed_rs1, signed_rs2;
-	assign signed_rs1 = rs1;
-	assign signed_rs2 = rs2;
-	always_comb begin
-		cond = 0;
-		case (func)
-			3'b000: cond = signed_rs1 == signed_rs2;  // BEQ
-			3'b001: cond = signed_rs1 != signed_rs2;  // BNE
-			3'b100: cond = signed_rs1 < signed_rs2;   // BLT
-			3'b101: cond = signed_rs1 >= signed_rs2;  // BGE
-			3'b110: cond = rs1 < rs2;                 // BLTU
-			3'b111: cond = rs1 >= rs2;                // BGEU
-		endcase
-	end
-	
-endmodule // brcond
 
 
 module ex_stage(
@@ -202,6 +192,7 @@ module ex_stage(
 	output logic [`N_WAY-1 : 0]  reg_wr_en_out,//to r10k
 	output logic [`N_WAY-1 : 0] [`XLEN-1:0] ex_result_out,
 	output logic take_branch_out,
+	output logic [`EX_BRANCH_UNITS-1 : 0] [`XLEN-1:0] br_result,
 	output EX_MEM_PACKET [`N_WAY-1 : 0] ex_packet_out
 );
 	// Pass-throughs
@@ -221,6 +212,7 @@ module ex_stage(
 	end
 
 	logic [`EX_ALU_UNITS-1 : 0] [`XLEN-1:0] opa_mux_out, opb_mux_out;
+	logic [`EX_BRANCH_UNITS-1 : 0] [`XLEN-1:0] opa_mux_out_br, opb_mux_out_br;
 	//
 	// ALU opA mux
 	//
@@ -260,7 +252,7 @@ module ex_stage(
 		count_alu_b = 0;
 		for(int i=0; i<`N_WAY; i=i+1) begin
 			tmp=0;
-			if(issue_ex_packet_in[i].execution_unit == ALU && !tmp ) begin
+			if(issue_ex_packet_in[i].execution_unit == ALU && !tmp && issue_ex_packet_in[i].valid ) begin
 				opb_mux_out[count_alu_b] = `XLEN'hfacefeed;
 				case (issue_ex_packet_in[count_alu_b].opb_select)
 					OPB_IS_RS2:   opb_mux_out[count_alu_b] = issue_ex_packet_in[i].rs2_value;
@@ -288,7 +280,7 @@ module ex_stage(
 		start_mult = 0;
 		for(int i=0; i<`N_WAY; i=i+1) begin
 			tmp1=0;
-			if(issue_ex_packet_in[i].execution_unit == MULT && !tmp1 ) begin
+			if(issue_ex_packet_in[i].execution_unit == MULT && !tmp1 && issue_ex_packet_in[i].valid) begin
 				mcand[count_mult] = issue_ex_packet_in[i].rs1_value;
 				mplier[count_mult] = issue_ex_packet_in[i].rs2_value;
 				start_mult[count_mult] = 1;
@@ -307,18 +299,36 @@ module ex_stage(
 	logic [`EX_BRANCH_UNITS-1 : 0][2:0] func_branch;
 	logic [`EX_BRANCH_UNITS-1 : 0][`CDB_BITS-1:0] dest_tag_in_branch;
 	logic [`EX_BRANCH_UNITS-1 : 0] brcond_result;
+	logic [`EX_BRANCH_UNITS-1 : 0] [`XLEN-1:0] br_result_next;
 	always_comb begin
 		count_branch = 0;
 		start_branch = 0;
 		for(int i=0; i<`N_WAY; i=i+1) begin
 			tmp_br=0;
-			if(issue_ex_packet_in[i].execution_unit == BRANCH && !tmp_br ) begin
+			if(issue_ex_packet_in[i].execution_unit == BRANCH && !tmp_br && issue_ex_packet_in[i].valid ) begin
 				rs1_branch[count_branch] = issue_ex_packet_in[i].rs1_value;
 				rs2_branch[count_branch] = issue_ex_packet_in[i].rs2_value;
 				func_branch[count_branch]= issue_ex_packet_in[i].inst.b.funct3; 
 				start_branch[count_branch] = 1;
 				dest_tag_in_branch[count_branch] = issue_ex_packet_in[i].dest_reg_idx; 
 				tmp_br = 1;
+				opa_mux_out_br[count_branch] = `XLEN'hdeadfbac;
+				case (issue_ex_packet_in[count_branch].opa_select)
+					OPA_IS_RS1:  opa_mux_out_br[count_branch] = issue_ex_packet_in[i].rs1_value;
+					OPA_IS_NPC:  opa_mux_out_br[count_branch] = issue_ex_packet_in[i].NPC;
+					OPA_IS_PC:   opa_mux_out_br[count_branch] = issue_ex_packet_in[i].PC;
+					OPA_IS_ZERO: opa_mux_out_br[count_branch] = 0;
+				endcase
+				opb_mux_out_br[count_branch] = `XLEN'hfacefeed;
+				case (issue_ex_packet_in[count_branch].opb_select)
+					OPB_IS_RS2:   opb_mux_out_br[count_branch] = issue_ex_packet_in[i].rs2_value;
+					OPB_IS_I_IMM: opb_mux_out_br[count_branch] = `RV32_signext_Iimm(issue_ex_packet_in[i].inst);
+					OPB_IS_S_IMM: opb_mux_out_br[count_branch] = `RV32_signext_Simm(issue_ex_packet_in[i].inst);
+					OPB_IS_B_IMM: opb_mux_out_br[count_branch] = `RV32_signext_Bimm(issue_ex_packet_in[i].inst);
+					OPB_IS_U_IMM: opb_mux_out_br[count_branch] = `RV32_signext_Uimm(issue_ex_packet_in[i].inst);
+					OPB_IS_J_IMM: opb_mux_out_br[count_branch] = `RV32_signext_Jimm(issue_ex_packet_in[i].inst);
+				endcase 
+
 				count_branch = count_branch + 1;
 			end
 		end
@@ -332,16 +342,12 @@ module ex_stage(
 	generate
 		for(j=0; j<`EX_ALU_UNITS; j=j+1) begin
 			alu alu_0 (// Inputsissue_ex_packet_in[i].
-				.clock(clock),
-				.reset(reset),
 				.opa(opa_mux_out[j]),
 				.opb(opb_mux_out[j]),
 				.func(issue_ex_packet_in[j].alu_func),
 				.start(start_alu[j]),
 				.dest_tag_in(dest_tag_in_alu[j]),
 				// Output
-				.done(done_alu[j]),
-				.dest_tag_out(dest_tag_out_alu[j]),
 				.result(alu_result[j])
 			);
 		end
@@ -377,9 +383,12 @@ module ex_stage(
 			brcond brcond (// Inputs
 				.rs1(rs1_branch[l]), 
 				.rs2(rs2_branch[l]),
+				.opa(opa_mux_out_br[l]),
+				.opb(opb_mux_out_br[l]),
 				.func(func_branch[l]), // inst bits to determine check
 				// Output
-				.cond(brcond_result[l])
+				.cond(brcond_result[l]),
+				.result(br_result_next[l])
 			);
 		end
 	endgenerate
@@ -429,7 +438,7 @@ module ex_stage(
 					complete_dest_tag_wire[count_comp] = dest_tag_in_branch[j];
 					take_branch_out_wire = take_branch;  
 					result_out_wire[count_comp] = 0; 
-					completed_mult[j] = 1;
+					completed_branch[j] = 1;
 					count_comp =  count_comp + 1;
 				end	
 			end
@@ -498,6 +507,7 @@ module ex_stage(
 		if(reset) begin
 			complete_dest_tag_fifo <=`SD 0;
 			result_out_fifo <=`SD 0;
+			br_result <=`SD 0;
 			take_branch_out <= `SD 0;
 			for(int m = 0; m<2*`N_WAY; m = m+1) begin
 				if(m == 0) begin
@@ -514,6 +524,7 @@ module ex_stage(
 		end else begin
 			complete_dest_tag_fifo <=`SD complete_dest_tag_next;
 			result_out_fifo <=`SD result_out_next;
+			br_result <=`SD br_result_next;
 			head <= `SD head_next;
 			tail <= `SD tail_next;
 			take_branch_out <= `SD take_branch_out_wire;

@@ -201,6 +201,7 @@ module ex_stage(
 	output logic [`N_WAY-1 : 0] [`CDB_BITS-1:0] complete_dest_tag,//to r10k
 	output logic [`N_WAY-1 : 0]  reg_wr_en_out,//to r10k
 	output logic [`N_WAY-1 : 0] [`XLEN-1:0] ex_result_out,
+	output logic take_branch_out,
 	output EX_MEM_PACKET [`N_WAY-1 : 0] ex_packet_out
 );
 	// Pass-throughs
@@ -220,7 +221,6 @@ module ex_stage(
 	end
 
 	logic [`EX_ALU_UNITS-1 : 0] [`XLEN-1:0] opa_mux_out, opb_mux_out;
-	logic [`N_WAY-1 : 0] brcond_result;
 	//
 	// ALU opA mux
 	//
@@ -276,6 +276,7 @@ module ex_stage(
 		end
 	end
 
+// MULT inputs
 	logic [$clog2(`EX_MULT_UNITS) : 0] count_mult;
 	logic tmp1;
   	logic [`EX_MULT_UNITS-1 : 0] [`XLEN-1:0] mcand, mplier;
@@ -298,6 +299,31 @@ module ex_stage(
 		end
 	end
 
+// Branch inputs
+	logic [$clog2(`EX_BRANCH_UNITS) : 0] count_branch;
+	logic tmp_br;
+  	logic [`EX_BRANCH_UNITS-1 : 0] [`XLEN-1:0] rs1_branch,rs2_branch;
+	logic [`EX_BRANCH_UNITS-1 : 0] start_branch;
+	logic [`EX_BRANCH_UNITS-1 : 0][2:0] func_branch;
+	logic [`EX_BRANCH_UNITS-1 : 0][`CDB_BITS-1:0] dest_tag_in_branch;
+	logic [`EX_BRANCH_UNITS-1 : 0] brcond_result;
+	always_comb begin
+		count_branch = 0;
+		start_branch = 0;
+		for(int i=0; i<`N_WAY; i=i+1) begin
+			tmp_br=0;
+			if(issue_ex_packet_in[i].execution_unit == BRANCH && !tmp_br ) begin
+				rs1_branch[count_branch] = issue_ex_packet_in[i].rs1_value;
+				rs2_branch[count_branch] = issue_ex_packet_in[i].rs2_value;
+				func_branch[count_branch]= issue_ex_packet_in[i].inst.b.funct3; 
+				start_branch[count_branch] = 1;
+				dest_tag_in_branch[count_branch] = issue_ex_packet_in[i].dest_reg_idx; 
+				tmp_br = 1;
+				count_branch = count_branch + 1;
+			end
+		end
+	end
+
 	//
 	// instantiate the ALU
 	//
@@ -305,7 +331,7 @@ module ex_stage(
 	genvar j;
 	generate
 		for(j=0; j<`EX_ALU_UNITS; j=j+1) begin
-			alu alu_0 (// Inputs
+			alu alu_0 (// Inputsissue_ex_packet_in[i].
 				.clock(clock),
 				.reset(reset),
 				.opa(opa_mux_out[j]),
@@ -345,19 +371,30 @@ module ex_stage(
 	 //
 	 // instantiate the branch condition tester
 	 //
-//	brcond brcond (// Inputs
-//		.rs1(issue_ex_packet_in.rs1_value), 
-//		.rs2(issue_ex_packet_in.rs2_value),
-//		.func(issue_ex_packet_in.inst.b.funct3), // inst bits to determine check
-//		// Output
-//		.cond(brcond_result)
-//	);count_alu_a
-//
-//	 // ultimate "take branch" signal:
-//	 //	unconditional, or conditional and the condition is true
-//	assign ex_packet_out.take_branch = issue_ex_packet_in.uncond_branch
-//		                          | (issue_ex_packet_in.cond_branch & brcond_result);
+	genvar l;
+	generate
+		for(l=0; l<`EX_BRANCH_UNITS; l=l+1) begin
+			brcond brcond (// Inputs
+				.rs1(rs1_branch[l]), 
+				.rs2(rs2_branch[l]),
+				.func(func_branch[l]), // inst bits to determine check
+				// Output
+				.cond(brcond_result[l])
+			);
+		end
+	endgenerate
 
+	logic take_branch,take_branch_out_wire;
+	always_comb begin
+		 // ultimate "take branch" signal:
+		 //	unconditional, or conditional and the condition is true
+		for(int i=0; i<`N_WAY; i=i+1) begin
+			if(issue_ex_packet_in[i].execution_unit == BRANCH) begin
+				take_branch = issue_ex_packet_in[i].uncond_branch
+			        		                  | (issue_ex_packet_in[i].cond_branch & brcond_result);
+			end
+		end
+	 end
 
 
 //complete stage
@@ -365,6 +402,7 @@ module ex_stage(
 	logic [$clog2(2*`N_WAY) : 0] count_comp;
 	logic [`EX_MULT_UNITS-1 : 0] completed_mult;
 	logic [`EX_ALU_UNITS-1 : 0]  completed_alu;
+	logic [`EX_BRANCH_UNITS-1 : 0]  completed_branch;
 	logic [2*`N_WAY-1 : 0] [`CDB_BITS-1:0] complete_dest_tag_wire,complete_dest_tag_next,complete_dest_tag_fifo;
 	logic [2*`N_WAY-1 : 0] head,head_next,tail,tail_next;
 	logic [2*`N_WAY-1 : 0] [`XLEN-1:0] result_out_wire,result_out_next,result_out_fifo;
@@ -373,13 +411,24 @@ module ex_stage(
 		count_comp = 0;
 		completed_mult = 0;
 		completed_alu = 0;
+		completed_branch = 0;
 		complete_dest_tag_wire = 0;
 		result_out_wire = 0;
+		take_branch_out_wire = 0;  
 		for(int i=0; i<`N_WAY; i=i+1) begin
 			for(int j=0; j<`EX_MULT_UNITS; j=j+1) begin
 				if(done_mult[j] && !completed_mult[j]) begin
 					complete_dest_tag_wire[count_comp] = dest_tag_out_mult[j];
 					result_out_wire[count_comp] = mult_result[j];
+					completed_mult[j] = 1;
+					count_comp =  count_comp + 1;
+				end	
+			end
+			for(int j=0; j<`EX_BRANCH_UNITS; j=j+1) begin
+				if(start_branch[j] && !completed_branch[j]) begin
+					complete_dest_tag_wire[count_comp] = dest_tag_in_branch[j];
+					take_branch_out_wire = take_branch;  
+					result_out_wire[count_comp] = 0; 
 					completed_mult[j] = 1;
 					count_comp =  count_comp + 1;
 				end	
@@ -449,6 +498,7 @@ module ex_stage(
 		if(reset) begin
 			complete_dest_tag_fifo <=`SD 0;
 			result_out_fifo <=`SD 0;
+			take_branch_out <= `SD 0;
 			for(int m = 0; m<2*`N_WAY; m = m+1) begin
 				if(m == 0) begin
 					head[m] <= `SD 1;
@@ -466,6 +516,7 @@ module ex_stage(
 			result_out_fifo <=`SD result_out_next;
 			head <= `SD head_next;
 			tail <= `SD tail_next;
+			take_branch_out <= `SD take_branch_out_wire;
 		end
 	end
 

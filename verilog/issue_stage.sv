@@ -90,6 +90,7 @@ module decoder(
 					end
 					`RV32_BEQ, `RV32_BNE, `RV32_BLT, `RV32_BGE,
 					`RV32_BLTU, `RV32_BGEU: begin
+						dest_reg_select[i]      = DEST_RD;
 						opa_select[i]  = OPA_IS_PC;
 						opb_select[i]  = OPB_IS_B_IMM;
 						cond_branch[i] = `TRUE;

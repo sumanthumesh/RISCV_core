@@ -4,6 +4,7 @@ module top_r10k (
 	input clock,
 	input reset,
 	input  DISPATCH_PACKET_R10K [`N_WAY-1:0] dispatch_packet, //from dispatch stage to rob and rs
+	input [`N_WAY-1:0] branch_inst, // BRANCH instruction identification
 	//input [$clog2(`N_WAY):0] dispatch_num, //from dispatch stage to rob and rs
 	output  RS_PACKET_ISSUE [`N_WAY-1:0]    rs_packet_issue,
 	output  ISSUE_EX_PACKET [`N_WAY-1:0]  issue_packet,
@@ -23,6 +24,7 @@ module top_r10k (
 	PR_PACKET [`N_WAY-1 : 0] pr_packet_out1; //to reservation station
 	PR_PACKET [`N_WAY-1 : 0] pr_packet_out2; //to reservation station
 	//logic [`N_WAY-1 : 0] [`CDB_BITS-1 : 0] cdb_tag; // to reservation station
+	logic branch_haz;
 	logic [`N_WAY-1:0][`CDB_BITS-1 : 0] free_list_out;
 	logic [$clog2(`N_WAY):0] ex_count;
 	logic [$clog2(`N_WAY):0] dispatch_num; //generated internally to rob and rs
@@ -33,6 +35,7 @@ module top_r10k (
 	logic [$clog2(`N_WAY)-1:0] issue_num,issue_num_reg;
 	logic [`N_WAY-1:0] wr_en;
 	logic [`N_WAY-1:0][`XLEN-1:0] wr_data;
+	logic take_branch_ex;
 
 	always_comb begin
 		ex_count = 0 ;
@@ -83,11 +86,14 @@ module top_r10k (
                 .reset(reset), 
 		.complete_dest_tag(complete_dest_tag),
 		.dispatch_packet(dispatch_packet_rob), 
+		.branch_inst(branch_inst),
+		.take_branch(take_branch_ex),
 		.dispatch_num(dispatch_num), 
 		.rob_packet(rob_packet),
 		.pr_packet_out1(pr_packet_out1), 
 		.pr_packet_out2(pr_packet_out2),
 		.dispatched(dispatched),
+		.branch_haz(branch_haz),
 		.free_list_out(free_list_out),
 		//.cdb_tag(cdb_tag),
 		.free(free)
@@ -98,6 +104,7 @@ reservation_station rs0 (
                   .clock(clock), 
                   .reset(reset),
 		  .rs_packet_dispatch(rs_packet_dispatch), //generated internally
+		  .branch_haz(branch_haz),
 		  .ex_rs_dest_idx(ex_rs_dest_idx_reg), //from ex stage
 		  .cdb_rs_reg_idx(complete_dest_tag),
 		  .issue_num(issue_num_reg), //from issue stage
@@ -143,6 +150,7 @@ ex_stage ex0 (
 		.complete_dest_tag(complete_dest_tag),
 		.reg_wr_en_out(wr_en),
 		.ex_result_out(wr_data),
+		.take_branch_out(take_branch_ex),
 		.ex_packet_out(ex_packet_out)
 );
 endmodule

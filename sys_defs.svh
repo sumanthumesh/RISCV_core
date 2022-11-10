@@ -525,9 +525,11 @@ typedef struct packed {
 typedef struct packed {
 	logic [`CDB_BITS-1 : 0] tag;
 	logic [`CDB_BITS-1 : 0] tag_old;
+	logic branch_inst;
 	logic head;
 	logic tail;
 	logic completed;
+	logic take_branch;
 
 } ROB_PACKET; //Rob packet
 
@@ -535,6 +537,7 @@ typedef struct packed {
 	logic [`CDB_BITS-1:0] tag; 
 	logic [`CDB_BITS-1:0] tag_old; 
 	logic valid;
+	logic branch_inst;
 } ROB_PACKET_DISPATCH;
 
 

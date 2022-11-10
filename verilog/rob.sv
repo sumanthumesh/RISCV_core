@@ -4,11 +4,14 @@ module rob (
 	input clock,
 	input reset,
 	input [`N_WAY-1 : 0] [`CDB_BITS-1:0] complete_dest_tag,
+	input take_branch, //from ex stage
 	input  ROB_PACKET_DISPATCH [`N_WAY-1:0] rob_packet_dis,
 	output logic [`N_WAY-1:0][`CDB_BITS-1:0] retire_tag, 
 	output logic [`N_WAY-1:0][`CDB_BITS-1:0] retire_told,
 	output logic [`N_WAY-1:0]retire_valid,
 	output logic [`N_WAY-1:0]dispatched,
+	output logic branch_haz,
+	output logic [`N_ROB-1:0][`CDB_BITS-1:0] free_list_haz, //input to freelist
 	output ROB_PACKET [`N_ROB-1:0] rob_packet,
 	output logic [$clog2(`N_WAY):0] empty_rob
 );
@@ -26,21 +29,36 @@ module rob (
 		retire_valid = 0 ;		
 		retire_tag =  0;		
 		retire_told = 0;
+		branch_haz = 0;
 		empty_rob_wire = empty_rob_reg;		
 		//retire_stage
 		for(int i=0; i<`N_WAY; i=i+1) begin	
 			tmp = 0;
 				for(int j=0; j<`N_ROB; j=j+1) begin
-					if(!tmp) begin
+					if(!tmp && !branch_haz) begin
 						if((rob_packet_wire[j].head) && rob_packet[j].completed ) begin
+							if (rob_packet[j].branch_inst) begin
+								branch_haz = rob_packet[j].take_branch;
+								for(int k=0; k<`N_ROB; k=k+1) begin
+									if(k == j)
+									rob_packet_wire[k].tail = 1;
+									else
+									rob_packet_wire[k].tail = 0;
+								end
+							end
 							retire_valid[i] = 1 ;		
 							retire_tag[i] = rob_packet[j].tag ;		
-							retire_told[i] = rob_packet[j].tag_old ;		
+							retire_told[i] = rob_packet[j].tag_old ;
 							if(j == `N_ROB-1)
 								rob_packet_wire[0].head = 1;
 							else
 								rob_packet_wire[j+1].head = 1;
-							rob_packet_wire[j] = 0;
+							rob_packet_wire[j].tag = 0;
+							rob_packet_wire[j].tag_old = 0;
+							rob_packet_wire[j].branch_inst = 0;
+							rob_packet_wire[j].head = 0;
+							rob_packet_wire[j].completed = 0;
+							rob_packet_wire[j].take_branch = 0;
 							tmp = 1;
 							empty_rob_wire = empty_rob_wire + 1;	
 						end
@@ -52,9 +70,19 @@ module rob (
 			for(int j=0; j<`N_ROB; j=j+1) begin
 				if ((rob_packet_wire[j].tag == complete_dest_tag[i]) && (complete_dest_tag[i]!=0)) begin
 					rob_packet_wire[j].completed = 1;
+					rob_packet_wire[j].take_branch = take_branch;
 				end
 			end
 		end	
+	end
+
+	always_comb begin //branch resolution ,freeing the reg to freelist
+		free_list_haz = 0;
+		if (branch_haz) begin
+			for(int i=0; i<`N_ROB; i=i+1) begin
+				free_list_haz[i] = rob_packet[i].tag;		
+			end	
+		end
 	end
 
 	always_comb begin //dispatch stage logic
@@ -63,7 +91,7 @@ module rob (
 		dispatched = 0 ;	//check zero if no packet is dispatched
 		for(int k=0 ; k<`N_WAY; k=k+1) begin
 			if(rob_packet_dis[k].valid) begin
-				tmp1 = 0;	
+				tmp1 = 0;
 				for(int y=0; y<`N_ROB; y=y+1) begin
 					if(rob_packet_next[y].tail && !tmp1) begin
 						rob_packet_next[y].tail = 0;
@@ -73,10 +101,12 @@ module rob (
 						if(y == `N_ROB-1) begin
 							rob_packet_next[0].tag = rob_packet_dis[k].tag; //compare unique tag in instruction buffer to get the number of inst dispatched each cycle
 							rob_packet_next[0].tag_old = rob_packet_dis[k].tag_old; 
+							rob_packet_next[0].branch_inst = rob_packet_dis[k].branch_inst; 
 							rob_packet_next[0].tail = 1;
 						end else begin
 							rob_packet_next[y+1].tag = rob_packet_dis[k].tag; 
 							rob_packet_next[y+1].tag_old = rob_packet_dis[k].tag_old; 
+							rob_packet_next[y+1].branch_inst = rob_packet_dis[k].branch_inst; 
 							rob_packet_next[y+1].tail = 1; 
 						end
 					end

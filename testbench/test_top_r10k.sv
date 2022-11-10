@@ -7,6 +7,7 @@ module test_top_r10k;
 	logic clock;
 	logic reset;
 	DISPATCH_PACKET_R10K [`N_WAY-1:0] dispatch_packet; //from dispatch stage
+	logic [`N_WAY-1:0] branch_inst; // BRANCH instruction identification
 
  // Outputs
  //
@@ -27,6 +28,7 @@ module test_top_r10k;
 		.clock(clock), 
                 .reset(reset), 
 		.dispatch_packet(dispatch_packet),
+		.branch_inst(branch_inst),
 		.rs_packet_issue(rs_packet_issue),
 		.rs_data(rs_data),
 		.issue_packet(issue_packet),
@@ -40,6 +42,7 @@ module test_top_r10k;
 		.clock(clock),
 		.reset(reset),
 		.dispatched(dispatched),
+		.branch_inst(branch_inst),
 		.dispatch_out(dispatch_packet)
 		);
 

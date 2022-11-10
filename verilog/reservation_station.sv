@@ -23,6 +23,7 @@ module reservation_station(
 	input   [`N_WAY-1:0] [`CDB_BITS-1:0]  ex_rs_dest_idx,      
 	input   [`N_WAY-1:0][`CDB_BITS-1:0] cdb_rs_reg_idx,    
 	input   [`N_WAY-1:0] dispatched_rob,    
+	input branch_haz,    
 	input [$clog2(`N_WAY)-1:0] issue_num,
 	output  RS_PACKET_ISSUE [`N_WAY-1:0]    rs_packet_issue,
 	//output  PR_PACKET       [`N_WAY-1:0]    pr_packet_out1,
@@ -72,8 +73,13 @@ module reservation_station(
 	logic [$clog2(`N_WAY):0] i_x2;
 	always_comb begin
 		for(i2=0; i2<`N_RS; i2=i2+1) begin
-			rs_data_wire[i2].busy = rs_data[i2].busy;
-			order_idx_ex[i2]=rs_data[i2].order_idx;
+			if(!branch_haz) begin
+				rs_data_wire[i2].busy = rs_data[i2].busy;
+				order_idx_ex[i2]=rs_data[i2].order_idx;
+			end else begin
+				rs_data_wire[i2].busy =0 ;
+				order_idx_ex[i2]= 0 ;
+			end
 		end
 		for (i_x1=0; i_x1 < `N_RS; i_x1=i_x1+1) begin
 			for (i_x2=0; i_x2 < `N_WAY; i_x2=i_x2+1) begin
@@ -91,7 +97,11 @@ module reservation_station(
 	always_comb begin
 		rs_empty = `N_RS;
 		for(i3=0; i3<`N_RS; i3=i3+1) begin
-			rs_data_wire[i3].order_idx= rs_data[i3].order_idx;
+			if(!branch_haz) begin
+				rs_data_wire[i3].order_idx= rs_data[i3].order_idx;
+			end else begin
+				rs_data_wire[i3].order_idx= 0;
+			end
 		end
 		for(i_ix=0; i_ix<`N_RS; i_ix=i_ix+1) begin
 			if(rs_data[i_ix].busy) begin
@@ -168,7 +178,7 @@ module reservation_station(
 		end
 		for(integer i6=0;i6<`N_WAY;i6=i6+1) begin
 			for(integer i7=0; i7<`N_RS;i7=i7+1) begin
-				if((rs_data[i7].dest_tag == issued_dest_tag[i6])) begin
+				if((rs_data[i7].dest_tag == issued_dest_tag[i6]) && rs_packet_issue[i6].valid) begin
 					rs_data_next[i7].issued = 1;
 				end
 			end

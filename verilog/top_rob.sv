@@ -5,6 +5,8 @@ module top_rob (
 	input reset,
 	input [`N_WAY-1 : 0] [`CDB_BITS-1:0] complete_dest_tag, //i/p from complete stage, not latched from the complete stage
 	input  DISPATCH_PACKET [`N_WAY-1:0] dispatch_packet, //from dispatch stage
+	input [`N_WAY-1:0] branch_inst, // BRANCH instruction identification
+	input take_branch, //from ex stage
 	input [$clog2(`N_WAY):0] dispatch_num, //from dispatch stage
 	output ROB_PACKET [`N_ROB-1:0] rob_packet,//debug
 	output PR_PACKET [`N_WAY-1 : 0] pr_packet_out1, //to reservation station
@@ -19,6 +21,7 @@ module top_rob (
 	//output logic [`N_WAY-1:0][`CDB_BITS-1:0] retire_told,
 	//output logic [`N_WAY-1:0]retire_valid,
 	output logic [`N_WAY-1:0][`CDB_BITS-1 : 0] free_list_out,
+	output logic branch_haz,
 	//output logic [$clog2(`N_WAY) : 0] free_num, //to dispatch stage
 	//output logic [$clog2(`N_WAY):0] empty_rob, //to dispatch stage
 	//output RETIRE_ROB_PACKET [`N_WAY-1:0] retire_packet,
@@ -38,12 +41,15 @@ module top_rob (
 	//logic [`N_ROB+32-1 : 0] free; //debug
 	DISPATCH_PACKET [`N_WAY-1:0] dis_packet; // to map table
 	logic [`N_WAY-1:0][`CDB_BITS-1:0] pr_old;
+	logic [`N_ROB-1:0][`CDB_BITS-1:0] free_list_haz; //input to freelist
+	logic [`XLEN-1:0][`CDB_BITS-1:0] arch_reg_next;
 
 	
 	always_comb begin // to rob 
 		for (int i=0; i<`N_WAY ; i=i+1) begin
 			rob_packet_dis[i].tag = free_list_out[i];
 			rob_packet_dis[i].tag_old = pr_old[i];
+			rob_packet_dis[i].branch_inst = branch_inst[i];
 			if(free_list_out[i] == 0)
 				rob_packet_dis[i].valid = 0;
 			else
@@ -74,12 +80,15 @@ module top_rob (
 		.clock(clock), 
                 .reset(reset), 
 		.complete_dest_tag(complete_dest_tag),
+		.take_branch(take_branch),
 		.rob_packet_dis(rob_packet_dis), //generated internally
 		.retire_tag(retire_tag),
 		.retire_told(retire_told),
 		.retire_valid(retire_valid),
 		.empty_rob(empty_rob),
+		.free_list_haz(free_list_haz),
 		.rob_packet(rob_packet),
+		.branch_haz(branch_haz),
 		.dispatched(dispatched)	
                   );
 
@@ -88,6 +97,8 @@ map_table map_table0 (
                   .clock(clock), 
                   .reset(reset),
 		  .dis_packet(dispatch_packet),
+		  .branch_haz(branch_haz),
+		  .arch_reg(arch_reg_next),
 		  .pr_freelist(free_list_out),
 		  .pr_reg_complete(complete_dest_tag),
 		  .pr_packet_out1(pr_packet_out1), 
@@ -99,7 +110,8 @@ map_table map_table0 (
 
                   .clock(clock), 
                   .reset(reset),
-		  .ret_packet(retire_packet)
+		  .ret_packet(retire_packet),
+		  .arch_reg_next(arch_reg_next)
                   );
 
  free_list free_list0 (
@@ -107,6 +119,8 @@ map_table map_table0 (
                   .clock(clock), 
                   .reset(reset), 
 		  .rob_told(retire_told),
+		  .free_list_haz(free_list_haz),
+		  .branch_haz(branch_haz),
 		  .dispatch_num(dispatch_num),
 		  .free_list_out(free_list_out),
 		  .free_num(free_num),

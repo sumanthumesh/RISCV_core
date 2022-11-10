@@ -6,6 +6,8 @@ module free_list(
 	input [`N_WAY-1:0][`CDB_BITS-1 : 0] rob_told,
 	input [$clog2(`N_WAY):0] dispatch_num,
 	input [`N_WAY-1:0]dispatched,
+	input [`N_ROB-1:0][`CDB_BITS-1:0] free_list_haz, //input to freelist
+	input branch_haz,
 	output logic [`N_WAY-1:0][`CDB_BITS-1 : 0] free_list_out,
 	output logic [$clog2(`N_WAY) : 0] free_num,
 	output logic [`N_ROB+32-1 : 0] free //debug
@@ -28,7 +30,12 @@ module free_list(
 		free_num_int = free_num_int_reg;
 		count = 0;
 	 	rob_told_used = 0;
-		free_list_out = 0;	
+		free_list_out = 0;
+		for (int i=0; i<`N_ROB; i=i+1) begin //branch freeing
+			if(free_list_haz[i] != 0) begin
+				free_next[free_list_haz[i] - 1] = 1;
+			end
+		end	
 		for (int i=0; i<`N_WAY; i=i+1) begin
 			tmp = 0;
 			if(i < dispatch_num && free_num_int > 0) begin

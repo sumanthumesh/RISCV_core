@@ -20,7 +20,7 @@ module regfile(
         input   [`N_WAY-1:0] wr_en,
         input   wr_clk,
         //`ifdef TESTBENCH
-        output logic [`N_PHY_REG-1:0] [`XLEN-1:0] registers,
+        output logic [`N_PHY_REG:0] [`XLEN-1:0] registers,
         //`endif
         output logic [`N_WAY-1:0][`XLEN-1:0]  rda_out,  // data read from register A
         output logic [`N_WAY-1:0][`XLEN-1:0]  rdb_out    // data read from register B

@@ -243,7 +243,7 @@ module issue_stage(
 	logic	[$clog2(`EX_MULT_UNITS):0]	branch_inst_counter;
 	logic	[$clog2(`N_WAY):0] count;
 
-	logic [`N_PHY_REG-1:0] [`XLEN-1:0] registers;
+	logic [`N_PHY_REG:0] [`XLEN-1:0] registers;
 
 
 	logic	[`N_WAY-1:0] rs_packet_inst_is_mult;

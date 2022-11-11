@@ -114,9 +114,9 @@ module mult(
   logic [`XLEN-1:0] mcand_out, mplier_out;
   logic [((`PIPELINE_DEPTH -1)*32)-1:0] internal_products, internal_mcands, internal_mpliers;
   logic [(`PIPELINE_DEPTH -2):0] internal_dones;
-  logic done_last;
+  //logic done_last;
   logic [((`PIPELINE_DEPTH -1)*`CDB_BITS)-1:0] internal_dest_tag;
-  logic [`CDB_BITS-1:0] dest_tag_out_last;
+  //logic [`CDB_BITS-1:0] dest_tag_out_last;
   
 	mult_stage mstage [(`PIPELINE_DEPTH -1):0]  (
 		.clock(clock),
@@ -129,12 +129,12 @@ module mult(
 		.product_out({product,internal_products}),
 		.mplier_out({mplier_out,internal_mpliers}),
 		.mcand_out({mcand_out,internal_mcands}),
-		.dest_tag_out({dest_tag_out_last, internal_dest_tag}),
-		.done({done_last,internal_dones})
+		.dest_tag_out({dest_tag_out, internal_dest_tag}),
+		.done({done,internal_dones})
 	);
 
-	assign done = internal_dones[`PIPELINE_DEPTH-2];
-	assign dest_tag_out = internal_dest_tag[((`PIPELINE_DEPTH -1)*`CDB_BITS)-1 : ((`PIPELINE_DEPTH -2)*`CDB_BITS)];
+	//assign done = internal_dones[`PIPELINE_DEPTH-2];
+	//assign dest_tag_out = internal_dest_tag[((`PIPELINE_DEPTH -1)*`CDB_BITS)-1 : ((`PIPELINE_DEPTH -2)*`CDB_BITS)];
 endmodule
 
 module mult_stage(
@@ -228,7 +228,7 @@ module ex_stage(
 			tmp2=0;
 			if(issue_ex_packet_in[i].execution_unit == ALU && !tmp2 && issue_ex_packet_in[i].valid) begin
 				opa_mux_out[count_alu_a] = `XLEN'hdeadfbac;
-				case (issue_ex_packet_in[count_alu_a].opa_select)
+				case (issue_ex_packet_in[i].opa_select)
 					OPA_IS_RS1:  opa_mux_out[count_alu_a] = issue_ex_packet_in[i].rs1_value;
 					OPA_IS_NPC:  opa_mux_out[count_alu_a] = issue_ex_packet_in[i].NPC;
 					OPA_IS_PC:   opa_mux_out[count_alu_a] = issue_ex_packet_in[i].PC;
@@ -254,7 +254,7 @@ module ex_stage(
 			tmp=0;
 			if(issue_ex_packet_in[i].execution_unit == ALU && !tmp && issue_ex_packet_in[i].valid ) begin
 				opb_mux_out[count_alu_b] = `XLEN'hfacefeed;
-				case (issue_ex_packet_in[count_alu_b].opb_select)
+				case (issue_ex_packet_in[i].opb_select)
 					OPB_IS_RS2:   opb_mux_out[count_alu_b] = issue_ex_packet_in[i].rs2_value;
 					OPB_IS_I_IMM: opb_mux_out[count_alu_b] = `RV32_signext_Iimm(issue_ex_packet_in[i].inst);
 					OPB_IS_S_IMM: opb_mux_out[count_alu_b] = `RV32_signext_Simm(issue_ex_packet_in[i].inst);
@@ -312,22 +312,24 @@ module ex_stage(
 				start_branch[count_branch] = 1;
 				dest_tag_in_branch[count_branch] = issue_ex_packet_in[i].dest_reg_idx; 
 				tmp_br = 1;
-				opa_mux_out_br[count_branch] = `XLEN'hdeadfbac;
-				case (issue_ex_packet_in[count_branch].opa_select)
-					OPA_IS_RS1:  opa_mux_out_br[count_branch] = issue_ex_packet_in[i].rs1_value;
-					OPA_IS_NPC:  opa_mux_out_br[count_branch] = issue_ex_packet_in[i].NPC;
-					OPA_IS_PC:   opa_mux_out_br[count_branch] = issue_ex_packet_in[i].PC;
-					OPA_IS_ZERO: opa_mux_out_br[count_branch] = 0;
-				endcase
-				opb_mux_out_br[count_branch] = `XLEN'hfacefeed;
-				case (issue_ex_packet_in[count_branch].opb_select)
-					OPB_IS_RS2:   opb_mux_out_br[count_branch] = issue_ex_packet_in[i].rs2_value;
-					OPB_IS_I_IMM: opb_mux_out_br[count_branch] = `RV32_signext_Iimm(issue_ex_packet_in[i].inst);
-					OPB_IS_S_IMM: opb_mux_out_br[count_branch] = `RV32_signext_Simm(issue_ex_packet_in[i].inst);
-					OPB_IS_B_IMM: opb_mux_out_br[count_branch] = `RV32_signext_Bimm(issue_ex_packet_in[i].inst);
-					OPB_IS_U_IMM: opb_mux_out_br[count_branch] = `RV32_signext_Uimm(issue_ex_packet_in[i].inst);
-					OPB_IS_J_IMM: opb_mux_out_br[count_branch] = `RV32_signext_Jimm(issue_ex_packet_in[i].inst);
-				endcase 
+				opa_mux_out_br[count_branch] = issue_ex_packet_in[i].PC;
+				opb_mux_out_br[count_branch] = `RV32_signext_Bimm(issue_ex_packet_in[i].inst);
+				//opa_mux_out_br[count_branch] = `XLEN'hdeadfbac;
+				//case (issue_ex_packet_in[i].opa_select)
+					//OPA_IS_RS1:  opa_mux_out_br[count_branch] = issue_ex_packet_in[i].rs1_value;
+					//OPA_IS_NPC:  opa_mux_out_br[count_branch] = issue_ex_packet_in[i].NPC;
+					//OPA_IS_PC:   opa_mux_out_br[count_branch] = issue_ex_packet_in[i].PC;
+					//OPA_IS_ZERO: opa_mux_out_br[count_branch] = 0;
+				//endcase
+				//opb_mux_out_br[count_branch] = `XLEN'hfacefeed;
+				//case (issue_ex_packet_in[i].opb_select)
+				//	OPB_IS_RS2:   opb_mux_out_br[count_branch] = issue_ex_packet_in[i].rs2_value;
+				//	OPB_IS_I_IMM: opb_mux_out_br[count_branch] = `RV32_signext_Iimm(issue_ex_packet_in[i].inst);
+				//	OPB_IS_S_IMM: opb_mux_out_br[count_branch] = `RV32_signext_Simm(issue_ex_packet_in[i].inst);
+				//	OPB_IS_B_IMM: opb_mux_out_br[count_branch] = `RV32_signext_Bimm(issue_ex_packet_in[i].inst);
+				//	OPB_IS_U_IMM: opb_mux_out_br[count_branch] = `RV32_signext_Uimm(issue_ex_packet_in[i].inst);
+				//	OPB_IS_J_IMM: opb_mux_out_br[count_branch] = `RV32_signext_Jimm(issue_ex_packet_in[i].inst);
+				//endcase 
 
 				count_branch = count_branch + 1;
 			end

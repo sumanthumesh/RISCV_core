@@ -5,12 +5,14 @@ module rob (
 	input reset,
 	input [`N_WAY-1 : 0] [`CDB_BITS-1:0] complete_dest_tag,
 	input take_branch, //from ex stage
+	input [`EX_BRANCH_UNITS-1 : 0] [`XLEN-1:0] br_result,
 	input  ROB_PACKET_DISPATCH [`N_WAY-1:0] rob_packet_dis,
 	output logic [`N_WAY-1:0][`CDB_BITS-1:0] retire_tag, 
 	output logic [`N_WAY-1:0][`CDB_BITS-1:0] retire_told,
 	output logic [`N_WAY-1:0]retire_valid,
 	output logic [`N_WAY-1:0]dispatched,
 	output logic branch_haz,
+	output logic [`EX_BRANCH_UNITS-1 : 0] [`XLEN-1:0] br_target_pc,
 	output logic [`N_ROB-1:0][`CDB_BITS-1:0] free_list_haz, //input to freelist
 	output ROB_PACKET [`N_ROB-1:0] rob_packet,
 	output logic [$clog2(`N_WAY):0] empty_rob
@@ -39,13 +41,18 @@ module rob (
 						if((rob_packet_wire[j].head) && rob_packet[j].completed ) begin
 							if (rob_packet[j].branch_inst) begin
 								branch_haz = rob_packet[j].take_branch;
+								br_target_pc = rob_packet[j].br_result;
 								empty_rob_wire = `N_ROB; 
 								for(int k=0; k<`N_ROB; k=k+1) begin
 									if(branch_haz) begin
-										if (k==0)        rob_packet_wire[k].head <= `SD 1;
-										else             rob_packet_wire[k].head <= `SD 0;
-										if (k==`N_ROB-1) rob_packet_wire[k].tail <= `SD 1;
-										else             rob_packet_wire[k].tail <= `SD 0;
+										rob_packet_wire[k].completed = 0;
+										rob_packet_wire[k].branch_inst = 0;
+										rob_packet_wire[k].take_branch = 0;
+										rob_packet_wire[k].br_result = 0;
+										if (k==0)        rob_packet_wire[k].head =  1;
+										else             rob_packet_wire[k].head =  0;
+										if (k==`N_ROB-1) rob_packet_wire[k].tail =  1;
+										else             rob_packet_wire[k].tail =  0;
 									end
 									//if(k == j)
 									//rob_packet_wire[k].tail = 1;
@@ -67,6 +74,7 @@ module rob (
 								rob_packet_wire[j].head = 0;
 								rob_packet_wire[j].completed = 0;
 								rob_packet_wire[j].take_branch = 0;
+								rob_packet_wire[j].br_result = 0;
 								empty_rob_wire = empty_rob_wire + 1;	
 							end
 							tmp = 1;
@@ -80,6 +88,7 @@ module rob (
 				if ((rob_packet_wire[j].tag == complete_dest_tag[i]) && (complete_dest_tag[i]!=0) && (!branch_haz)) begin
 					rob_packet_wire[j].completed = 1;
 					rob_packet_wire[j].take_branch = take_branch;
+					rob_packet_wire[j].br_result = br_result;
 				end
 			end
 		end	
@@ -130,6 +139,9 @@ module rob (
 				rob_packet[m].tag <= `SD 0;
 				rob_packet[m].tag_old <= `SD 0;
 				rob_packet[m].completed <= `SD 0;
+				rob_packet[m].branch_inst <= `SD 0;
+				rob_packet[m].take_branch <= `SD 0;
+				rob_packet[m].br_result <= `SD 0;
 				if (m==0) 
 				rob_packet[m].head <= `SD 1;
 				else 

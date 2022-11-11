@@ -530,6 +530,7 @@ typedef struct packed {
 	logic tail;
 	logic completed;
 	logic take_branch;
+	logic [`XLEN-1:0] br_result;
 
 } ROB_PACKET; //Rob packet
 

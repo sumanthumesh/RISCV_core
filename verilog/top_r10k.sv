@@ -14,7 +14,7 @@ module top_r10k (
 	//output logic [$clog2(`N_WAY):0] empty_rob, //to dispatch stage
 	output logic [`N_WAY-1:0]dispatched,   //to dispatch stage
 	output logic branch_haz,
-	output logic [`EX_BRANCH_UNITS-1 : 0] [`XLEN-1:0] br_result,
+	output logic [`EX_BRANCH_UNITS-1 : 0] [`XLEN-1:0] br_target_pc,
 	output EX_MEM_PACKET [`N_WAY-1 : 0] ex_packet_out,
 	//output logic [$clog2(`N_WAY) : 0] free_num, //to dispatch stage
 	//debug signals
@@ -37,6 +37,7 @@ module top_r10k (
 	logic [`N_WAY-1:0] wr_en;
 	logic [`N_WAY-1:0][`XLEN-1:0] wr_data;
 	logic take_branch_ex;
+	logic [`EX_BRANCH_UNITS-1 : 0] [`XLEN-1:0] br_result;
 
 	always_comb begin
 		ex_count = 0 ;
@@ -89,12 +90,14 @@ module top_r10k (
 		.dispatch_packet(dispatch_packet_rob), 
 		.branch_inst(branch_inst),
 		.take_branch(take_branch_ex),
+		.br_result(br_result),
 		.dispatch_num(dispatch_num), 
 		.rob_packet(rob_packet),
 		.pr_packet_out1(pr_packet_out1), 
 		.pr_packet_out2(pr_packet_out2),
 		.dispatched(dispatched),
 		.branch_haz(branch_haz),
+		.br_target_pc(br_target_pc),
 		.free_list_out(free_list_out),
 		//.cdb_tag(cdb_tag),
 		.free(free)

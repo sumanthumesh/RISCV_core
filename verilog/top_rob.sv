@@ -7,6 +7,7 @@ module top_rob (
 	input  DISPATCH_PACKET [`N_WAY-1:0] dispatch_packet, //from dispatch stage
 	input [`N_WAY-1:0] branch_inst, // BRANCH instruction identification
 	input take_branch, //from ex stage
+	input [`EX_BRANCH_UNITS-1 : 0] [`XLEN-1:0] br_result,
 	input [$clog2(`N_WAY):0] dispatch_num, //from dispatch stage
 	output ROB_PACKET [`N_ROB-1:0] rob_packet,//debug
 	output PR_PACKET [`N_WAY-1 : 0] pr_packet_out1, //to reservation station
@@ -22,6 +23,7 @@ module top_rob (
 	//output logic [`N_WAY-1:0]retire_valid,
 	output logic [`N_WAY-1:0][`CDB_BITS-1 : 0] free_list_out,
 	output logic branch_haz,
+	output logic [`EX_BRANCH_UNITS-1 : 0] [`XLEN-1:0] br_target_pc,
 	//output logic [$clog2(`N_WAY) : 0] free_num, //to dispatch stage
 	//output logic [$clog2(`N_WAY):0] empty_rob, //to dispatch stage
 	//output RETIRE_ROB_PACKET [`N_WAY-1:0] retire_packet,
@@ -81,6 +83,7 @@ module top_rob (
                 .reset(reset), 
 		.complete_dest_tag(complete_dest_tag),
 		.take_branch(take_branch),
+		.br_result(br_result),
 		.rob_packet_dis(rob_packet_dis), //generated internally
 		.retire_tag(retire_tag),
 		.retire_told(retire_told),
@@ -89,6 +92,7 @@ module top_rob (
 		.free_list_haz(free_list_haz),
 		.rob_packet(rob_packet),
 		.branch_haz(branch_haz),
+		.br_target_pc(br_target_pc),
 		.dispatched(dispatched)	
                   );
 

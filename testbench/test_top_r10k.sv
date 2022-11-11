@@ -36,7 +36,7 @@ module test_top_r10k;
 		.dispatched(dispatched),
 		.free(free),
 		.branch_haz(branch_haz),
-		.br_result(br_result),
+		.br_target_pc(br_result),
 		.ex_packet_out(ex_packet_out)	
                   );
 

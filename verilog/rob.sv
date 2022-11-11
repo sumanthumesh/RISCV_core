@@ -120,11 +120,17 @@ module rob (
 							rob_packet_next[0].tag = rob_packet_dis[k].tag; //compare unique tag in instruction buffer to get the number of inst dispatched each cycle
 							rob_packet_next[0].tag_old = rob_packet_dis[k].tag_old; 
 							rob_packet_next[0].branch_inst = rob_packet_dis[k].branch_inst; 
+							rob_packet_next[0].completed = 0; 
+							rob_packet_next[0].take_branch = 0; 
+							rob_packet_next[0].br_result = 0; 
 							rob_packet_next[0].tail = 1;
 						end else begin
 							rob_packet_next[y+1].tag = rob_packet_dis[k].tag; 
 							rob_packet_next[y+1].tag_old = rob_packet_dis[k].tag_old; 
 							rob_packet_next[y+1].branch_inst = rob_packet_dis[k].branch_inst; 
+							rob_packet_next[y+1].completed = 0; 
+							rob_packet_next[y+1].take_branch = 0; 
+							rob_packet_next[y+1].br_result = 0; 
 							rob_packet_next[y+1].tail = 1; 
 						end
 					end

@@ -42,7 +42,7 @@ module top_r10k (
 	always_comb begin
 		ex_count = 0 ;
 		for (int j=0; j<`N_WAY ; j=j+1) begin
-			if(ex_rs_dest_idx[j] > 0)
+			if(ex_rs_dest_idx_reg[j] > 0)
 				ex_count = ex_count + 1;
 		end
 	end

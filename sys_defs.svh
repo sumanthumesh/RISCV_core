@@ -324,10 +324,10 @@ typedef struct packed {
 //OOO
 `define N_WAY_3
 `define CDB_BITS 7
-`define N_ROB 9
+`define N_ROB 64
 `define FIFO_BITS 6
 `define XLEN_BITS 5
-`define N_RS 8
+`define N_RS 16
 `define N_RS_IDX 4
 `define ARCH_REG 32
 `define N_PHY_REG `ARCH_REG+`N_ROB

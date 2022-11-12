@@ -82,6 +82,14 @@ module rob (
 					end
 				end
 		end 
+		//freeing reg's if branch_haz
+		free_list_haz = 0;
+		if (branch_haz) begin
+			for(int i=0; i<`N_ROB; i=i+1) begin
+				free_list_haz[i] = rob_packet_wire[i].tag;		
+				rob_packet_wire[i].tag = 0;;		
+			end	
+		end
 		//completer_stage
 		for(int i=0; i<`N_WAY; i=i+1) begin
 			for(int j=0; j<`N_ROB; j=j+1) begin
@@ -94,14 +102,14 @@ module rob (
 		end	
 	end
 
-	always_comb begin //branch resolution ,freeing the reg to freelist
-		free_list_haz = 0;
-		if (branch_haz) begin
-			for(int i=0; i<`N_ROB; i=i+1) begin
-				free_list_haz[i] = rob_packet_wire[i].tag;		
-			end	
-		end
-	end
+	//always_comb begin //branch resolution ,freeing the reg to freelist
+	//	free_list_haz = 0;
+	//	if (branch_haz) begin
+	//		for(int i=0; i<`N_ROB; i=i+1) begin
+	//			free_list_haz[i] = rob_packet_wire[i].tag;		
+	//		end	
+	//	end
+	//end
 
 	always_comb begin //dispatch stage logic
 		rob_packet_next = rob_packet_wire;

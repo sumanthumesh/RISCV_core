@@ -40,7 +40,7 @@ module free_list(
 		for (int i=0; i<`N_WAY; i=i+1) begin
 			tmp = 0;
 			if(i < dispatch_num && free_num_int > 0) begin
-				for (int j=0; j<(`N_ROB+32); j=j+1) begin
+				for (int j=1; j<(`N_ROB+32); j=j+1) begin
 					if((free_next[j]==1) && (!tmp)) begin
 						free_list_out[i] = j+1;
 						free_next[j] = 0;
@@ -55,7 +55,7 @@ module free_list(
 			tmp1 = 0;
 			if(i< (dispatch_num-count)) begin
 				for (int j=0; j<`N_WAY; j=j+1) begin
-					if(!tmp1 && !rob_told_used[j]) begin
+					if(!tmp1 && !rob_told_used[j] && (rob_told[j]!=`ZERO_REG_PR)) begin
 						free_list_out[i] = rob_told[j];
 						rob_told_used[j] = 1;
 						tmp1 = 1;
@@ -89,6 +89,7 @@ module free_list(
 				else
 					free[i] <= `SD 0;	
 			end
+			free[0] <= `SD 1;
 		end else begin
 			free_num_int_reg <= `SD free_num_int;
 			free <= `SD free_next_handshake;

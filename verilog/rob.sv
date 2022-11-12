@@ -61,9 +61,14 @@ module rob (
 								end
 							end
 							if(!branch_haz) begin
-								retire_valid[i] = 1 ;		
-								retire_tag[i] = rob_packet[j].tag ;		
-								retire_told[i] = rob_packet[j].tag_old ;
+								if(rob_packet[j].tag_old != `ZERO_REG_PR) begin
+									retire_valid[i] = 1 ;		
+									retire_tag[i] = rob_packet[j].tag ;		
+									retire_told[i] = rob_packet[j].tag_old ;
+								end else begin
+									retire_valid[i] = 0 ;		
+									retire_told[i] = rob_packet[j].tag ;
+								end
 								if(j == `N_ROB-1)
 									rob_packet_wire[0].head = 1;
 								else

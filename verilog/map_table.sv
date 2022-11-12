@@ -35,11 +35,13 @@ module map_table(
 			end
 			for (n1=0; n1<`N_WAY; n1=n1+1) begin
 				if(dis_packet[n1].valid && (pr_freelist[n1] !=0)) begin //updating the map table in dispatch stage based on the inst
-					map_reg[dis_packet[n1].dest].phy_reg <= `SD pr_freelist[n1];
-					if (dis_packet[n1].dest!=0)
+					if (dis_packet[n1].dest!=0) begin
 						map_reg[dis_packet[n1].dest].status <= `SD 0;
-					else 
+						map_reg[dis_packet[n1].dest].phy_reg <= `SD pr_freelist[n1];
+					end else begin 
 						map_reg[dis_packet[n1].dest].status <= `SD 1;
+						map_reg[dis_packet[n1].dest].phy_reg <= `SD 1;
+					end
 				end
 				map_reg[arch_reg_complete[n1]].status <= `SD 1;
 			end	

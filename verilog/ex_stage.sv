@@ -213,6 +213,7 @@ module ex_stage(
 
 	logic [`EX_ALU_UNITS-1 : 0] [`XLEN-1:0] opa_mux_out, opb_mux_out;
 	logic [`EX_BRANCH_UNITS-1 : 0] [`XLEN-1:0] opa_mux_out_br, opb_mux_out_br;
+	ALU_FUNC [`EX_ALU_UNITS-1:0] alu_func;
 	//
 	// ALU opA mux
 	//
@@ -236,6 +237,7 @@ module ex_stage(
 				endcase
 				start_alu[count_alu_a] = 1; 
 				dest_tag_in_alu[count_alu_a] = issue_ex_packet_in[i].dest_reg_idx; 
+				alu_func[count_alu_a] = issue_ex_packet_in[i].alu_func;
 				count_alu_a = count_alu_a+1;
 				tmp2=1;
 			end
@@ -312,24 +314,24 @@ module ex_stage(
 				start_branch[count_branch] = 1;
 				dest_tag_in_branch[count_branch] = issue_ex_packet_in[i].dest_reg_idx; 
 				tmp_br = 1;
-				opa_mux_out_br[count_branch] = issue_ex_packet_in[i].PC;
-				opb_mux_out_br[count_branch] = `RV32_signext_Bimm(issue_ex_packet_in[i].inst);
-				//opa_mux_out_br[count_branch] = `XLEN'hdeadfbac;
-				//case (issue_ex_packet_in[i].opa_select)
-					//OPA_IS_RS1:  opa_mux_out_br[count_branch] = issue_ex_packet_in[i].rs1_value;
-					//OPA_IS_NPC:  opa_mux_out_br[count_branch] = issue_ex_packet_in[i].NPC;
-					//OPA_IS_PC:   opa_mux_out_br[count_branch] = issue_ex_packet_in[i].PC;
-					//OPA_IS_ZERO: opa_mux_out_br[count_branch] = 0;
-				//endcase
-				//opb_mux_out_br[count_branch] = `XLEN'hfacefeed;
-				//case (issue_ex_packet_in[i].opb_select)
-				//	OPB_IS_RS2:   opb_mux_out_br[count_branch] = issue_ex_packet_in[i].rs2_value;
-				//	OPB_IS_I_IMM: opb_mux_out_br[count_branch] = `RV32_signext_Iimm(issue_ex_packet_in[i].inst);
-				//	OPB_IS_S_IMM: opb_mux_out_br[count_branch] = `RV32_signext_Simm(issue_ex_packet_in[i].inst);
-				//	OPB_IS_B_IMM: opb_mux_out_br[count_branch] = `RV32_signext_Bimm(issue_ex_packet_in[i].inst);
-				//	OPB_IS_U_IMM: opb_mux_out_br[count_branch] = `RV32_signext_Uimm(issue_ex_packet_in[i].inst);
-				//	OPB_IS_J_IMM: opb_mux_out_br[count_branch] = `RV32_signext_Jimm(issue_ex_packet_in[i].inst);
-				//endcase 
+				//opa_mux_out_br[count_branch] = issue_ex_packet_in[i].PC;
+				//opb_mux_out_br[count_branch] = `RV32_signext_Bimm(issue_ex_packet_in[i].inst);
+				opa_mux_out_br[count_branch] = `XLEN'hdeadfbac;
+				case (issue_ex_packet_in[i].opa_select)
+				      OPA_IS_RS1:  opa_mux_out_br[count_branch] = issue_ex_packet_in[i].rs1_value;
+				      OPA_IS_NPC:  opa_mux_out_br[count_branch] = issue_ex_packet_in[i].NPC;
+				      OPA_IS_PC:   opa_mux_out_br[count_branch] = issue_ex_packet_in[i].PC;
+				      OPA_IS_ZERO: opa_mux_out_br[count_branch] = 0;
+				endcase
+				opb_mux_out_br[count_branch] = `XLEN'hfacefeed;
+				case (issue_ex_packet_in[i].opb_select)
+					OPB_IS_RS2:   opb_mux_out_br[count_branch] = issue_ex_packet_in[i].rs2_value;
+					OPB_IS_I_IMM: opb_mux_out_br[count_branch] = `RV32_signext_Iimm(issue_ex_packet_in[i].inst);
+					OPB_IS_S_IMM: opb_mux_out_br[count_branch] = `RV32_signext_Simm(issue_ex_packet_in[i].inst);
+					OPB_IS_B_IMM: opb_mux_out_br[count_branch] = `RV32_signext_Bimm(issue_ex_packet_in[i].inst);
+					OPB_IS_U_IMM: opb_mux_out_br[count_branch] = `RV32_signext_Uimm(issue_ex_packet_in[i].inst);
+					OPB_IS_J_IMM: opb_mux_out_br[count_branch] = `RV32_signext_Jimm(issue_ex_packet_in[i].inst);
+				endcase 
 
 				count_branch = count_branch + 1;
 			end
@@ -346,7 +348,7 @@ module ex_stage(
 			alu alu_0 (// Inputsissue_ex_packet_in[i].
 				.opa(opa_mux_out[j]),
 				.opb(opb_mux_out[j]),
-				.func(issue_ex_packet_in[j].alu_func),
+				.func(alu_func[j]),
 				.start(start_alu[j]),
 				.dest_tag_in(dest_tag_in_alu[j]),
 				// Output
@@ -417,7 +419,7 @@ module ex_stage(
 	logic [2*`N_WAY-1 : 0] [`CDB_BITS-1:0] complete_dest_tag_wire,complete_dest_tag_next,complete_dest_tag_fifo;
 	logic [2*`N_WAY-1 : 0] head,head_next,tail,tail_next;
 	logic [2*`N_WAY-1 : 0] [`XLEN-1:0] result_out_wire,result_out_next,result_out_fifo;
-	logic tmp3;
+	logic tmp3,tmp_out;
 	always_comb begin
 		count_comp = 0;
 		completed_mult = 0;
@@ -426,9 +428,9 @@ module ex_stage(
 		complete_dest_tag_wire = 0;
 		result_out_wire = 0;
 		take_branch_out_wire = 0;  
-		for(int i=0; i<`N_WAY; i=i+1) begin
+		//for(int i=0; i<`N_WAY; i=i+1) begin
 			for(int j=0; j<`EX_MULT_UNITS; j=j+1) begin
-				if(done_mult[j] && !completed_mult[j]) begin
+				if(done_mult[j] && !completed_mult[j] && (count_comp<`N_WAY)) begin
 					complete_dest_tag_wire[count_comp] = dest_tag_out_mult[j];
 					result_out_wire[count_comp] = mult_result[j];
 					completed_mult[j] = 1;
@@ -436,7 +438,7 @@ module ex_stage(
 				end	
 			end
 			for(int j=0; j<`EX_BRANCH_UNITS; j=j+1) begin
-				if(start_branch[j] && !completed_branch[j]) begin
+				if(start_branch[j] && !completed_branch[j] && (count_comp<`N_WAY)) begin
 					complete_dest_tag_wire[count_comp] = dest_tag_in_branch[j];
 					take_branch_out_wire = take_branch;  
 					result_out_wire[count_comp] = 0; 
@@ -446,7 +448,7 @@ module ex_stage(
 			end
 			for(int j=0; j<`EX_ALU_UNITS; j=j+1) begin
 				//if(done_alu[j] && !completed_alu[j]) begin
-				if(start_alu[j] && !completed_alu[j]) begin
+				if(start_alu[j] && !completed_alu[j] && (count_comp<`N_WAY)) begin
 					//complete_dest_tag_wire[count_comp] = dest_tag_out_alu[j];
 					complete_dest_tag_wire[count_comp] = dest_tag_in_alu[j];
 					result_out_wire[count_comp] = alu_result[j];
@@ -454,7 +456,7 @@ module ex_stage(
 					count_comp =  count_comp + 1;
 				end	
 			end		
-		end	
+		//end	
 	end 
 	always_comb begin
 		complete_dest_tag_next = complete_dest_tag_fifo;
@@ -463,20 +465,24 @@ module ex_stage(
 		tail_next = tail;
 		count_out = 0;
 		complete_dest_tag= 0 ; 
-		for(int i=0; i<2*`N_WAY; i=i+1) begin
-			if(head_next[i] && (count_out < `N_WAY)) begin
-				complete_dest_tag[count_out] = complete_dest_tag_next[i];
-				ex_result_out[count_out] = result_out_next[i];
-				if(complete_dest_tag_next[i] != 0) begin
-					head_next[i] = 0; 	
-					if(i == 2*`N_WAY-1)
-						head_next[0] = 1; 	
-					else
-						head_next[i+1] = 1; 	
+		for(int j=0; j<`N_WAY; j=j+1) begin
+			tmp_out = 0;
+			for(int i=0; i<2*`N_WAY; i=i+1) begin
+				if(head_next[i] && !tmp_out) begin
+					complete_dest_tag[j] = complete_dest_tag_next[i];
+					ex_result_out[j] = result_out_next[i];
+					if(complete_dest_tag_next[i] != 0) begin
+						head_next[i] = 0; 	
+						if(i == 2*`N_WAY-1)
+							head_next[0] = 1; 	
+						else
+							head_next[i+1] = 1; 	
+					end
+					complete_dest_tag_next[i] = 0;
+					result_out_next[i] = 0;
+					tmp_out = 1;	
+					//count_out = count_out + 1;	
 				end
-				complete_dest_tag_next[i] = 0;
-				result_out_next[i] = 0;
-				count_out = count_out + 1;	
 			end
 		end
 		for(int i=0; i<2*`N_WAY; i=i+1) begin

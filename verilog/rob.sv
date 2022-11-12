@@ -95,8 +95,10 @@ module rob (
 			for(int j=0; j<`N_ROB; j=j+1) begin
 				if ((rob_packet_wire[j].tag == complete_dest_tag[i]) && (complete_dest_tag[i]!=0) && (!branch_haz)) begin
 					rob_packet_wire[j].completed = 1;
-					rob_packet_wire[j].take_branch = take_branch;
-					rob_packet_wire[j].br_result = br_result;
+					if(rob_packet_wire[j].branch_inst) begin
+						rob_packet_wire[j].take_branch = take_branch;
+						rob_packet_wire[j].br_result = br_result;
+					end
 				end
 			end
 		end	

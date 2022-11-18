@@ -65,7 +65,7 @@ module map_table(
 			if(dis_packet[n_d].valid) begin
 				for(int n_d1=0; n_d1<`N_WAY; n_d1=n_d1+1) begin
 					if(n_d1<n_d) begin
-						if((dis_packet[n_d].dest == dis_packet[n_d1].dest) && (dis_packet[n_d1].valid)) begin
+						if((dis_packet[n_d].dest == dis_packet[n_d1].dest) && (dis_packet[n_d1].valid) && (dis_packet[n_d1].dest!=0)) begin
 							dest_match[n_d] = 1;
 							pr_old[n_d] = pr_freelist[n_d1];
 							

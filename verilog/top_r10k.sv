@@ -18,7 +18,14 @@ module top_r10k (
 	output EX_MEM_PACKET [`N_WAY-1 : 0] ex_packet_out,
 	//output logic [$clog2(`N_WAY) : 0] free_num, //to dispatch stage
 	//debug signals
-	output logic [`N_ROB+32-1 : 0] free //debug
+	output logic [`N_ROB+32-1 : 0] free, //debug
+	output logic [`N_WAY-1:0] wr_en,
+	output logic [`N_WAY-1:0][`XLEN-1:0] wr_data,
+	output logic [`N_WAY-1:0] [`CDB_BITS-1:0] complete_dest_tag,
+	output logic [`XLEN-1:0][`CDB_BITS-1:0] arch_reg_next,
+	output logic retire_branch,
+	output logic [`XLEN-1:0] retire_branch_PC,
+	output RETIRE_ROB_PACKET [`N_WAY-1:0] retire_packet
 	);
 
 	RS_PACKET_DISPATCH [`N_WAY-1:0] rs_packet_dispatch;
@@ -31,11 +38,8 @@ module top_r10k (
 	logic [$clog2(`N_WAY):0] dispatch_num; //generated internally to rob and rs
 	logic [$clog2(`N_RS):0]  rs_empty;
 	ISSUE_EX_PACKET   [`N_WAY-1 : 0] issue_ex_packet_in;
-	logic [`N_WAY-1 : 0] [`CDB_BITS-1:0] complete_dest_tag; //i/p from  execute stage to rob, not latched from the execute stage
 	logic   [`N_WAY-1:0] [`CDB_BITS-1:0]  ex_rs_dest_idx,ex_rs_dest_idx_reg; //from issue stage latched 
 	logic [$clog2(`N_WAY):0] issue_num,issue_num_reg;
-	logic [`N_WAY-1:0] wr_en;
-	logic [`N_WAY-1:0][`XLEN-1:0] wr_data;
 	logic take_branch_ex;
 	logic [`EX_BRANCH_UNITS-1 : 0] [`XLEN-1:0] br_result;
 
@@ -76,6 +80,9 @@ module top_r10k (
 	always_comb begin
 		dispatch_num = 0 ;
 		for (int k=0; k<`N_WAY ; k=k+1) begin
+			dispatch_packet_rob[k].PC = dispatch_packet[k].PC;
+			dispatch_packet_rob[k].illegal = dispatch_packet[k].illegal;
+			dispatch_packet_rob[k].halt = dispatch_packet[k].halt;
 			dispatch_packet_rob[k].src1 = dispatch_packet[k].src1;
 			dispatch_packet_rob[k].src2 = dispatch_packet[k].src2;
 			dispatch_packet_rob[k].dest = dispatch_packet[k].dest;
@@ -100,7 +107,11 @@ module top_r10k (
 		.br_target_pc(br_target_pc),
 		.free_list_out(free_list_out),
 		//.cdb_tag(cdb_tag),
-		.free(free)
+		.free(free),
+		.retire_packet(retire_packet),
+		.retire_branch(retire_branch),
+		.retire_branch_PC(retire_branch_PC),
+		.arch_reg_next(arch_reg_next)
         );
 
 reservation_station rs0 (

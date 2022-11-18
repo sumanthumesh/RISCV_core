@@ -26,6 +26,8 @@ DISPATCH_PACKET_R10K [`N_WAY-1:0] dispatch_out_reg;
 ALU_OPA_SELECT opa_select;
 ALU_OPB_SELECT opb_select;
 DEST_REG_SEL   dest_reg;
+logic halt;
+logic illegal;
 DISPATCH_PACKET_R10K [`N_WAY-1:0] next_dispatch_out;
 
 initial 
@@ -61,6 +63,8 @@ begin
         opa_select = OPA_IS_RS1;
 	opb_select = OPB_IS_RS2;
 		dest_reg = DEST_NONE;
+		halt = `FALSE;
+		illegal = `FALSE;
 		next_branch_inst = 0;
         casez (next_dispatch_out[count].inst)
             `RV32_LUI: begin
@@ -85,8 +89,6 @@ begin
 			end
 			`RV32_BEQ, `RV32_BNE, `RV32_BLT, `RV32_BGE,
 			`RV32_BLTU, `RV32_BGEU: begin
-			//	opa_select  = OPA_IS_PC;
-			//	opb_select  = OPB_IS_B_IMM;
 				next_branch_inst = 1;
 			end
 			`RV32_LB, `RV32_LH, `RV32_LW,
@@ -175,7 +177,14 @@ begin
 			`RV32_MULHU: begin
 				dest_reg   = DEST_RD;
 			end
+				`RV32_CSRRW, `RV32_CSRRS, `RV32_CSRRC: begin
+					illegal = `FALSE;
+				end
+				`WFI: begin
+					halt = `TRUE;
+				end
             default: begin
+		illegal = `TRUE;
                 opa_select = OPA_IS_RS1;
     	        opb_select = OPB_IS_RS2;
 	            dest_reg = DEST_NONE;
@@ -196,6 +205,8 @@ begin
             next_dispatch_out[count].src2 = next_dispatch_out[count].inst.r.rs2;
         else
             next_dispatch_out[count].src2 = 0;
+	next_dispatch_out[count].halt = halt;
+	next_dispatch_out[count].illegal = illegal;
         count = count + 1;
         next_head = next_head + 1;
     end
@@ -204,7 +215,7 @@ begin
 end
 
 
-always @ (posedge clock)
+always_ff @ (posedge clock)
 begin
     if(reset)
     begin

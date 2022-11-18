@@ -335,6 +335,9 @@ typedef struct packed {
 
 `define PIPELINE_DEPTH 2
 `define MULT_WIDTH 16
+`define NUM_STAGE 2 //mult stage
+`define NUM_BITS 32 
+//`define NUM_BITS (2*`XLEN)/`NUM_STAGE 
 
 
 // Functional unit macros
@@ -425,6 +428,9 @@ typedef struct packed {
 	logic [`XLEN_BITS-1 :0] src2;
 	logic [`XLEN_BITS-1 :0] dest;
 	logic valid;
+	logic [`XLEN-1:0] PC;
+	logic halt;
+	logic illegal;
 } DISPATCH_PACKET;
 
 typedef struct packed {
@@ -435,6 +441,8 @@ typedef struct packed {
 	logic valid;
 	logic [`XLEN-1:0]	NPC;
 	logic [`XLEN-1:0]	PC;
+	logic halt;
+	logic illegal;
 } DISPATCH_PACKET_R10K;
 
 
@@ -442,6 +450,9 @@ typedef struct packed {
 	logic [`CDB_BITS-1:0] tag; // physical registor number
 	logic [`CDB_BITS-1:0] tag_old; // physical registor number
 	logic ret_valid;
+	logic [`XLEN-1:0] PC;
+	logic halt;
+	logic illegal;
 } RETIRE_ROB_PACKET;
 
 typedef struct packed {
@@ -531,6 +542,9 @@ typedef struct packed {
 	logic completed;
 	logic take_branch;
 	logic [`XLEN-1:0] br_result;
+	logic [`XLEN-1:0] PC;
+	logic halt;
+	logic illegal;
 
 } ROB_PACKET; //Rob packet
 
@@ -539,7 +553,11 @@ typedef struct packed {
 	logic [`CDB_BITS-1:0] tag_old; 
 	logic valid;
 	logic branch_inst;
+	logic [`XLEN-1:0] PC;
+	logic halt;
+	logic illegal;
 } ROB_PACKET_DISPATCH;
 
 
 `endif // __SYS_DEFS_VH__
+

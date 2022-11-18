@@ -100,87 +100,106 @@ module brcond(// Inputs
 	end
 	
 endmodule // brcond
-module mult(
-	input clock, reset,
-	input [`XLEN-1:0] mcand, mplier,
-	input start,
-	input [`CDB_BITS-1:0] dest_tag_in,
-	
-	output [`XLEN-1:0] product,
-	output [`CDB_BITS-1:0] dest_tag_out,
-	output done
+
+module mult  (
+				input clock, reset,
+				input start,
+				input [1:0] sign,
+       				input [`CDB_BITS-1:0] dest_tag_in,
+				input [`XLEN-1:0] mcand, mplier,
+				
+				output [(2*`XLEN)-1:0] product,
+       				output [`CDB_BITS-1:0] dest_tag_out,
+				output done
 			);
+	logic [(2*`XLEN)-1:0] mcand_out, mplier_out, mcand_in, mplier_in;
+	logic [`NUM_STAGE:0][2*`XLEN-1:0] internal_mcands, internal_mpliers;
+	logic [`NUM_STAGE:0][2*`XLEN-1:0] internal_products,internal_products_comb;
+	logic [`NUM_STAGE:0] internal_dones;
+       logic  [`NUM_STAGE:0][`CDB_BITS-1:0]  internal_dest_tag;
 
-  logic [`XLEN-1:0] mcand_out, mplier_out;
-  logic [((`PIPELINE_DEPTH -1)*32)-1:0] internal_products, internal_mcands, internal_mpliers;
-  logic [(`PIPELINE_DEPTH -2):0] internal_dones;
-  //logic done_last;
-  logic [((`PIPELINE_DEPTH -1)*`CDB_BITS)-1:0] internal_dest_tag;
-  //logic [`CDB_BITS-1:0] dest_tag_out_last;
-  
-	mult_stage mstage [(`PIPELINE_DEPTH -1):0]  (
-		.clock(clock),
-		.reset(reset),
-		.product_in({internal_products,32'h0}),
-		.mplier_in({internal_mpliers,mplier}),
-		.mcand_in({internal_mcands,mcand}),
-		.start({internal_dones,start}),
-		.dest_tag_in({internal_dest_tag,dest_tag_in}),
-		.product_out({product,internal_products}),
-		.mplier_out({mplier_out,internal_mpliers}),
-		.mcand_out({mcand_out,internal_mcands}),
-		.dest_tag_out({dest_tag_out, internal_dest_tag}),
-		.done({done,internal_dones})
-	);
+	assign mcand_in  = sign[0] ? {{`XLEN{mcand[`XLEN-1]}}, mcand}   : {{`XLEN{1'b0}}, mcand} ;
+	assign mplier_in = sign[1] ? {{`XLEN{mplier[`XLEN-1]}}, mplier} : {{`XLEN{1'b0}}, mplier};
 
-	//assign done = internal_dones[`PIPELINE_DEPTH-2];
-	//assign dest_tag_out = internal_dest_tag[((`PIPELINE_DEPTH -1)*`CDB_BITS)-1 : ((`PIPELINE_DEPTH -2)*`CDB_BITS)];
+	assign internal_mcands[0]   = mcand_in;
+	assign internal_mpliers[0]  = mplier_in;
+	assign internal_products[0] = 'h0;
+	assign internal_products_comb[0] = 'h0;
+	assign internal_dones[0]    = start;
+	assign internal_dest_tag[0]    = dest_tag_in;
+
+	assign done    = internal_dones[`NUM_STAGE-1];
+	//assign product = internal_products[`NUM_STAGE];
+	assign product = internal_products_comb[`NUM_STAGE];
+	assign dest_tag_out = internal_dest_tag[`NUM_STAGE-1];
+
+	genvar i;
+	for (i = 0; i < `NUM_STAGE; ++i) begin : mstage
+		mult_stage  ms (
+			.clock(clock),
+			.reset(reset),
+			.product_in(internal_products[i]),
+			.mplier_in(internal_mpliers[i]),
+			.mcand_in(internal_mcands[i]),
+       			.dest_tag_in(internal_dest_tag[i]),
+			.start(internal_dones[i]),
+			.product_out_comb(internal_products_comb[i+1]),
+			.product_out(internal_products[i+1]),
+			.mplier_out(internal_mpliers[i+1]),
+			.mcand_out(internal_mcands[i+1]),
+       			.dest_tag_out(internal_dest_tag[i+1]),
+			.done(internal_dones[i+1])
+		);
+	end
 endmodule
 
-module mult_stage(
-		input clock, reset, start,
-		input [`XLEN-1:0] product_in, mplier_in, mcand_in,
-		input [`CDB_BITS-1:0] dest_tag_in,
 
-		output logic done,
-		output logic[`CDB_BITS-1:0] dest_tag_out,
-		output logic [`XLEN-1:0] product_out, mplier_out, mcand_out
+
+module mult_stage (
+					input clock, reset, start,
+					input [(2*`XLEN)-1:0] mplier_in, mcand_in,
+					input [(2*`XLEN)-1:0] product_in,
+       					input [`CDB_BITS-1:0] dest_tag_in,
+
+					output logic done,
+					output logic [(2*`XLEN)-1:0] mplier_out, mcand_out,
+       					output logic[`CDB_BITS-1:0] dest_tag_out,
+					output logic [(2*`XLEN)-1:0] product_out_comb,
+					output logic [(2*`XLEN)-1:0] product_out
 				);
 
 
+	logic [(2*`XLEN)-1:0] prod_in_reg, partial_prod, next_partial_product, partial_prod_unsigned;
+	logic [(2*`XLEN)-1:0] next_mplier, next_mcand;
 
-	logic [`XLEN-1:0] prod_in_reg, partial_prod_reg;
-	logic [`XLEN-1:0] partial_product, next_mplier, next_mcand;
+	assign product_out = prod_in_reg + partial_prod;
+	assign product_out_comb = product_in + next_partial_product;
 
-	assign product_out = prod_in_reg + partial_prod_reg;
+	assign next_partial_product = mplier_in[(`NUM_BITS-1):0] * mcand_in;
 
-	assign partial_product = mplier_in[(`MULT_WIDTH -1 ):0] * mcand_in;
-
-	assign next_mplier = {`MULT_WIDTH'b0,mplier_in[(`XLEN-1):`MULT_WIDTH]};
-	assign next_mcand = {mcand_in[((`XLEN-1)-`MULT_WIDTH):0],`MULT_WIDTH'b0};
+	assign next_mplier = {{(`NUM_BITS){1'b0}},mplier_in[2*`XLEN-1:(`NUM_BITS)]};
+	assign next_mcand  = {mcand_in[(2*`XLEN-1-`NUM_BITS):0],{(`NUM_BITS){1'b0}}};
 
 	//synopsys sync_set_reset "reset"
 	always_ff @(posedge clock) begin
-		prod_in_reg      <= #1 product_in;
-		partial_prod_reg <= #1 partial_product;
-		mplier_out       <= #1 next_mplier;
-		mcand_out        <= #1 next_mcand;
+		prod_in_reg      <= product_in;
+		partial_prod     <= next_partial_product;
+		mplier_out       <= next_mplier;
+		mcand_out        <= next_mcand;
 	end
 
 	// synopsys sync_set_reset "reset"
 	always_ff @(posedge clock) begin
 		if(reset) begin
-			done <= #1 1'b0;
-			dest_tag_out <= `SD 0;
+			done     <= 1'b0;
+       			dest_tag_out <= `SD 0;
 		end else begin
-			done <= #1 start;
-			dest_tag_out <= `SD dest_tag_in;
+			done     <= start;
+       			dest_tag_out <= `SD dest_tag_in;
 		end
 	end
 
-
-endmodule //mult stage
-
+endmodule
 
 
 
@@ -277,6 +296,7 @@ module ex_stage(
 	logic [`EX_MULT_UNITS-1 : 0] start_mult,done_mult;
 	logic [`EX_MULT_UNITS-1 : 0] [`XLEN-1:0] mult_result;
 	logic [`EX_MULT_UNITS-1 : 0][`CDB_BITS-1:0] dest_tag_in_mult, dest_tag_out_mult;
+	logic [`EX_MULT_UNITS-1 : 0][1:0] sign_mult;
 	always_comb begin
 		count_mult = 0;
 		start_mult = 0;
@@ -285,6 +305,7 @@ module ex_stage(
 			if(issue_ex_packet_in[i].execution_unit == MULT && !tmp1 && issue_ex_packet_in[i].valid) begin
 				mcand[count_mult] = issue_ex_packet_in[i].rs1_value;
 				mplier[count_mult] = issue_ex_packet_in[i].rs2_value;
+				sign_mult[count_mult] = 0;
 				start_mult[count_mult] = 1;
 				dest_tag_in_mult[count_mult] = issue_ex_packet_in[i].dest_reg_idx; 
 				tmp1 = 1;
@@ -366,6 +387,7 @@ module ex_stage(
 			mult m0 (//Inputs
 				.clock(clock),
 				.reset(reset),
+				.sign(sign_mult[k]),
 				.mcand(mcand[k]),
 				.mplier(mplier[k]),
 				.start(start_mult[k]),
@@ -507,7 +529,8 @@ module ex_stage(
 
 	always_comb begin
 		for(int i=0; i<`N_WAY; i=i+1) begin
-			reg_wr_en_out[i]  = complete_dest_tag[i]!= `ZERO_REG_PR;
+		//	reg_wr_en_out[i]  = complete_dest_tag[i]!= `ZERO_REG_PR;
+			reg_wr_en_out[i]  = (complete_dest_tag[i]!= `ZERO_REG_PR) && (complete_dest_tag[i]!=0);
 		end	
 	end
 

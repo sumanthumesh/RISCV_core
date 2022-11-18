@@ -15,14 +15,13 @@ module testbench;
     logic	[$clog2(`N_WAY):0] issue_num;
     logic	[$clog2(`N_WAY):0] actual_issue_num;
     
-    logic   [$clog2(`N_PHY_REG):0]  zero_reg_pr; // shows which physical register is mapped to the zero register
     logic [$clog2(`N_PHY_REG):0]    i;
 
     RS_PACKET_ISSUE         [35:0]    rs_packet_issue_test;
     logic                   [35:0]      enable_test;
     logic                   [35:0]      memory_index;
     logic                   [35:0]      memory_data;
-
+    logic   [`N_WAY-1:0][`CDB_BITS-1:0] ex_dest_tag;
     int inst_counter;
 
 
@@ -34,9 +33,8 @@ module testbench;
 	.wb_reg_wr_idx_out(wb_reg_wr_idx_out),
     .wb_reg_wr_data_out(wb_reg_wr_data_out),
 	.issue_packet(issue_packet),
-    .count(count),
     .issue_num(issue_num),
-    .zero_reg_pr(zero_reg_pr)
+    .ex_dest_tag(ex_dest_tag)
     );
 
     always #5 clock = ~clock;
@@ -45,7 +43,6 @@ module testbench;
     begin
         clock = 0;
         reset = 1;
-        zero_reg_pr = 45;
         for(int i = 0; i < `N_WAY; i++)
         begin
             rs_packet_issue[i] = {
@@ -196,7 +193,7 @@ module testbench;
             @(negedge clock);
             wb_reg_wr_idx_out[0] = i;
             wb_reg_wr_data_out[0] = i;
-            wb_reg_wr_en_out[0] = (i != zero_reg_pr);
+            wb_reg_wr_en_out[0] = (i != `ZERO_REG_PR);
         end
 
         for(i = 0; i < 12; i++)

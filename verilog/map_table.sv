@@ -6,12 +6,14 @@ module map_table(
 	input DISPATCH_PACKET [`N_WAY -1 : 0] dis_packet,
 	input [`N_WAY-1 : 0] [`CDB_BITS -1 :0] pr_freelist,
 	input [`N_WAY-1 : 0] [`CDB_BITS-1 :0] pr_reg_complete,
+	input [`XLEN-1:0][`CDB_BITS-1:0] arch_reg,
+	input branch_haz,
 	output PR_PACKET [`N_WAY-1 : 0] pr_packet_out1,
 	output PR_PACKET [`N_WAY-1 : 0] pr_packet_out2,
 	output logic [`N_WAY-1:0][`CDB_BITS-1:0] pr_old
 );
 
-	PR_PACKET map_reg[`XLEN];
+	PR_PACKET [`XLEN-1:0] map_reg;
 	logic [`XLEN_BITS : 0] i;
 	logic [`XLEN_BITS : 0] j;
 	logic [3 : 0] n,n1,n2,k,k1;
@@ -25,13 +27,21 @@ module map_table(
 				map_reg[i].status <= `SD 1;	
 			end
 		end else begin
+			if(branch_haz) begin
+				for(int i=0; i<`XLEN_BITS; i=i+1) begin
+					map_reg[i].phy_reg <= `SD arch_reg[i];
+					map_reg[i].status <= `SD 1;
+				end
+			end
 			for (n1=0; n1<`N_WAY; n1=n1+1) begin
 				if(dis_packet[n1].valid && (pr_freelist[n1] !=0)) begin //updating the map table in dispatch stage based on the inst
-					map_reg[dis_packet[n1].dest].phy_reg <= `SD pr_freelist[n1];
-					if (dis_packet[n1].dest!=0)
+					if (dis_packet[n1].dest!=0) begin
 						map_reg[dis_packet[n1].dest].status <= `SD 0;
-					else 
+						map_reg[dis_packet[n1].dest].phy_reg <= `SD pr_freelist[n1];
+					end else begin 
 						map_reg[dis_packet[n1].dest].status <= `SD 1;
+						map_reg[dis_packet[n1].dest].phy_reg <= `SD 1;
+					end
 				end
 				map_reg[arch_reg_complete[n1]].status <= `SD 1;
 			end	
@@ -55,7 +65,7 @@ module map_table(
 			if(dis_packet[n_d].valid) begin
 				for(int n_d1=0; n_d1<`N_WAY; n_d1=n_d1+1) begin
 					if(n_d1<n_d) begin
-						if((dis_packet[n_d].dest == dis_packet[n_d1].dest) && (dis_packet[n_d1].valid)) begin
+						if((dis_packet[n_d].dest == dis_packet[n_d1].dest) && (dis_packet[n_d1].valid) && (dis_packet[n_d1].dest!=0)) begin
 							dest_match[n_d] = 1;
 							pr_old[n_d] = pr_freelist[n_d1];
 							

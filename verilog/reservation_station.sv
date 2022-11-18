@@ -23,7 +23,8 @@ module reservation_station(
 	input   [`N_WAY-1:0] [`CDB_BITS-1:0]  ex_rs_dest_idx,      
 	input   [`N_WAY-1:0][`CDB_BITS-1:0] cdb_rs_reg_idx,    
 	input   [`N_WAY-1:0] dispatched_rob,    
-	input [$clog2(`N_WAY)-1:0] issue_num,
+	input branch_haz,    
+	input [$clog2(`N_WAY):0] issue_num,
 	output  RS_PACKET_ISSUE [`N_WAY-1:0]    rs_packet_issue,
 	//output  PR_PACKET       [`N_WAY-1:0]    pr_packet_out1,
 	//output  PR_PACKET       [`N_WAY-1:0]    pr_packet_out2,
@@ -45,7 +46,6 @@ module reservation_station(
 	RS_PACKET   [`N_RS-1:0] rs_data_next;
 	logic [`N_RS-1:0] [$clog2(`N_RS):0] order_idx_ex; //to track the oldest instruction
 
-
 	
 	//completet stage logic
 	logic [$clog2(`N_RS):0] i_c1,i1;
@@ -57,7 +57,7 @@ module reservation_station(
 		end
 		for (i_c1=0; i_c1 < `N_RS; i_c1=i_c1+1) begin
 			for (i_c2=0; i_c2 < `N_WAY; i_c2=i_c2+1) begin
-				if(rs_data[i_c1].busy) begin
+				if(rs_data[i_c1].busy && !branch_haz) begin
 					if(cdb_rs_reg_idx[i_c2] == rs_data[i_c1].source_tag_1) begin
 						rs_data_wire[i_c1].source_tag_1_plus = 1;
 					end
@@ -73,12 +73,17 @@ module reservation_station(
 	logic [$clog2(`N_WAY):0] i_x2;
 	always_comb begin
 		for(i2=0; i2<`N_RS; i2=i2+1) begin
-			rs_data_wire[i2].busy = rs_data[i2].busy;
-			order_idx_ex[i2]=rs_data[i2].order_idx;
+			if(!branch_haz) begin
+				rs_data_wire[i2].busy = rs_data[i2].busy;
+				order_idx_ex[i2]=rs_data[i2].order_idx;
+			end else begin
+				rs_data_wire[i2].busy =0 ;
+				order_idx_ex[i2]= 0 ;
+			end
 		end
 		for (i_x1=0; i_x1 < `N_RS; i_x1=i_x1+1) begin
 			for (i_x2=0; i_x2 < `N_WAY; i_x2=i_x2+1) begin
-				if(rs_data[i_x1].busy) begin
+				if(rs_data[i_x1].busy && !branch_haz) begin
 					if(ex_rs_dest_idx[i_x2] == rs_data[i_x1].dest_tag) begin
 						rs_data_wire[i_x1].busy=0;
 						order_idx_ex[i_x1] = 0;
@@ -92,10 +97,14 @@ module reservation_station(
 	always_comb begin
 		rs_empty = `N_RS;
 		for(i3=0; i3<`N_RS; i3=i3+1) begin
-			rs_data_wire[i3].order_idx= rs_data[i3].order_idx;
+			if(!branch_haz) begin
+				rs_data_wire[i3].order_idx= rs_data[i3].order_idx;
+			end else begin
+				rs_data_wire[i3].order_idx= 0;
+			end
 		end
 		for(i_ix=0; i_ix<`N_RS; i_ix=i_ix+1) begin
-			if(rs_data[i_ix].busy) begin
+			if(rs_data[i_ix].busy && !branch_haz) begin
 				rs_empty = rs_empty - 1;
 				if(rs_data[i_ix].order_idx != order_idx_ex[i_ix]) begin
 					rs_data_wire[i_ix].order_idx = order_idx_ex[i_ix];
@@ -128,7 +137,7 @@ module reservation_station(
 		for (i_o=1; i_o<=`N_RS; i_o=i_o+1) begin
 			//tmp1 = 0;
 			for(i_is=0; i_is<`N_RS; i_is=i_is+1) begin
-				if(rs_data[i_is].busy) begin
+				if(rs_data[i_is].busy && !branch_haz) begin
 					if((rs_data_wire[i_is].source_tag_1_plus && rs_data_wire[i_is].source_tag_2_plus) && (!rs_data[i_is].issued) && (rs_data_wire[i_is].order_idx == i_o) && (count < issue_num)) begin
 					//if((rs_data_wire[i_is].source_tag_1_plus && rs_data_wire[i_is].source_tag_2_plus) && (rs_data_wire[i_is].order_idx == i_o) && (count <issue_num)) begin
 						rs_packet_issue[count].source_tag_1 = rs_data[i_is].source_tag_1;
@@ -136,6 +145,8 @@ module reservation_station(
 						rs_packet_issue[count].dest_tag = rs_data[i_is].dest_tag;
 						rs_packet_issue[count].inst = rs_data[i_is].inst;
 						rs_packet_issue[count].valid = 1;
+						rs_packet_issue[count].NPC = rs_data[i_is].NPC;
+						rs_packet_issue[count].PC = rs_data[i_is].PC;
 						//rs_data_wire[i_is].issued = 1;
 						issued_dest_tag[count] = rs_data[i_is].dest_tag;
 						count= count+1;
@@ -167,7 +178,7 @@ module reservation_station(
 		end
 		for(integer i6=0;i6<`N_WAY;i6=i6+1) begin
 			for(integer i7=0; i7<`N_RS;i7=i7+1) begin
-				if((rs_data[i7].dest_tag == issued_dest_tag[i6])) begin
+				if((rs_data[i7].dest_tag == issued_dest_tag[i6]) && rs_packet_issue[i6].valid) begin
 					rs_data_next[i7].issued = 1;
 				end
 			end
@@ -185,6 +196,8 @@ module reservation_station(
 						rs_data_next[i_d2].source_tag_1_plus= rs_packet_dispatch[i_d1].source_tag_1_plus;
 						rs_data_next[i_d2].source_tag_2_plus= rs_packet_dispatch[i_d1].source_tag_2_plus;
 						rs_data_next[i_d2].order_idx = rs_packet_dispatch[i_d1].order_idx;
+						rs_data_next[i_d2].NPC = rs_packet_dispatch[i_d1].NPC;
+						rs_data_next[i_d2].PC = rs_packet_dispatch[i_d1].PC;						
 						rs_data_next[i_d2].issued = 0;
 						tmp = 0;
 					end

@@ -543,7 +543,7 @@ module testbench;
 	cdb_rs_reg_idx[0] = 33;
 	cdb_rs_reg_idx[1] = 34;
 	cdb_rs_reg_idx[2] = 35;
-	ex_rs_dest_idx[0] = 0;
+	ex_rs_dest_idx[0] = 39;
 	ex_rs_dest_idx[1] = 0;
 	ex_rs_dest_idx[2] = 0;
 	rs_packet_dispatch[0].busy = 1;
@@ -580,7 +580,7 @@ module testbench;
         @(negedge clock);
         check_all();
         `SD 
-	cdb_rs_reg_idx[0] = 0;
+	cdb_rs_reg_idx[0] = 39;
 	cdb_rs_reg_idx[1] = 0;
 	cdb_rs_reg_idx[2] = 0;
 	ex_rs_dest_idx[0] = 36;

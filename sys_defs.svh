@@ -298,8 +298,20 @@ typedef struct packed {
 	logic       valid;         // is inst a valid instruction to be counted for CPI calculations?
 } ID_EX_PACKET;
 
+//typedef struct packedt {
+//	logic [`XLEN-1: 0] alu_result; // alu_result
+//	logic [`XLEN-1: 0] NPC; //pc + 4
+//	logic              take_branch; // is this a taken branch?
+//	//pass throughs  from decode stage
+//	logic [`XLEN-1: 0] rs2_value;
+//	logic              rd_mem, wr_mem;
+//	logic [4:0]        dest_reg_idx;
+//	logic              halt, illegal, csr_op, valid;
+//	logic [2:0]        mem_size; // byte, half-word or word
+//} EX_MEM_PACKET;     }
+
 typedef struct packed {
-	logic [`XLEN-1:0] alu_result; // alu_result
+	logic [`XLEN-1:0] result; // result
 	logic [`XLEN-1:0] NPC; //pc + 4
 	logic             take_branch; // is this a taken branch?
 	//pass throughs from decode stage
@@ -309,21 +321,101 @@ typedef struct packed {
 	logic             halt, illegal, csr_op, valid;
 	logic [2:0]       mem_size; // byte, half-word or word
 } EX_MEM_PACKET;
-
 //OOO
-`define N_WAY 3
+`define N_WAY_3
 `define CDB_BITS 7
-`define N_ROB 9
+`define N_ROB 64
 `define FIFO_BITS 6
 `define XLEN_BITS 5
-`define N_RS 8
+`define N_RS 16
 `define N_RS_IDX 4
 `define ARCH_REG 32
 `define N_PHY_REG `ARCH_REG+`N_ROB
+`define ZERO_REG_PR `CDB_BITS'b1
+
+`define PIPELINE_DEPTH 2
+`define MULT_WIDTH 16
+`define NUM_STAGE 2 //mult stage
+`define NUM_BITS 32 
+//`define NUM_BITS (2*`XLEN)/`NUM_STAGE 
+
 
 // Functional unit macros
+`ifdef N_WAY_1
+`define N_WAY 1
+`define EX_MULT_UNITS	1
+`define EX_ALU_UNITS	1
+`define EX_LOAD_UNITS	1
+`define EX_STORE_UNITS	1
+`define EX_BRANCH_UNITS	1
+
+`elsif N_WAY_2
+`define N_WAY 2
 `define EX_MULT_UNITS	1
 `define EX_ALU_UNITS	2
+`define EX_LOAD_UNITS	1
+`define EX_STORE_UNITS	1
+`define EX_BRANCH_UNITS	1
+
+`elsif N_WAY_3
+`define N_WAY 3
+`define EX_MULT_UNITS	2
+`define EX_ALU_UNITS	3
+`define EX_LOAD_UNITS	1
+`define EX_STORE_UNITS	1
+`define EX_BRANCH_UNITS	1
+
+`elsif N_WAY_4
+`define N_WAY 4
+`define EX_MULT_UNITS	2
+`define EX_ALU_UNITS	3
+`define EX_LOAD_UNITS	1
+`define EX_STORE_UNITS	1
+`define EX_BRANCH_UNITS	1
+
+`elsif N_WAY_5
+`define N_WAY 5
+`define EX_MULT_UNITS	3
+`define EX_ALU_UNITS	5
+`define EX_LOAD_UNITS	1
+`define EX_STORE_UNITS	1
+`define EX_BRANCH_UNITS	1
+
+`elsif N_WAY_6
+`define N_WAY 6
+`define EX_MULT_UNITS	3
+`define EX_ALU_UNITS	5
+`define EX_LOAD_UNITS	1
+`define EX_STORE_UNITS	1
+`define EX_BRANCH_UNITS	1
+
+`elsif N_WAY_7
+`define N_WAY 7
+`define EX_MULT_UNITS	3
+`define EX_ALU_UNITS	5
+`define EX_LOAD_UNITS	1
+`define EX_STORE_UNITS	1
+`define EX_BRANCH_UNITS	1
+
+`elsif N_WAY_8
+`define N_WAY 8
+`define EX_MULT_UNITS	3
+`define EX_ALU_UNITS	5
+`define EX_LOAD_UNITS	1
+`define EX_STORE_UNITS	1
+`define EX_BRANCH_UNITS	1
+
+`endif
+
+typedef enum logic [2:0] {
+	ALU  	= 3'h0,
+	MULT   	= 3'h1,
+	LOAD	= 3'h2,
+	STORE	= 3'h3,
+	BRANCH  = 3'h4
+} EXECUTION_UNIT;
+
+
 
 
 typedef struct packed {
@@ -336,6 +428,9 @@ typedef struct packed {
 	logic [`XLEN_BITS-1 :0] src2;
 	logic [`XLEN_BITS-1 :0] dest;
 	logic valid;
+	logic [`XLEN-1:0] PC;
+	logic halt;
+	logic illegal;
 } DISPATCH_PACKET;
 
 typedef struct packed {
@@ -344,6 +439,10 @@ typedef struct packed {
 	logic [`XLEN_BITS-1 :0] dest;
 	INST inst;
 	logic valid;
+	logic [`XLEN-1:0]	NPC;
+	logic [`XLEN-1:0]	PC;
+	logic halt;
+	logic illegal;
 } DISPATCH_PACKET_R10K;
 
 
@@ -351,6 +450,9 @@ typedef struct packed {
 	logic [`CDB_BITS-1:0] tag; // physical registor number
 	logic [`CDB_BITS-1:0] tag_old; // physical registor number
 	logic ret_valid;
+	logic [`XLEN-1:0] PC;
+	logic halt;
+	logic illegal;
 } RETIRE_ROB_PACKET;
 
 typedef struct packed {
@@ -363,7 +465,9 @@ typedef struct packed {
 	logic [`CDB_BITS-1:0] source_tag_2; // is this a taken branch?
 	logic source_tag_2_plus;
 	logic issued;
-	logic [$clog2(`N_RS)-1:0] order_idx; //to track the oldest instruction 
+	logic [$clog2(`N_RS):0] order_idx; //to track the oldest instruction 
+	logic [`XLEN-1:0] NPC; // PC + 4
+	logic [`XLEN-1:0] PC;  // PC
 } RS_PACKET;  
 typedef struct packed {
 	logic busy; // alu_result
@@ -375,7 +479,9 @@ typedef struct packed {
 	logic [`CDB_BITS-1:0] source_tag_2; 
 	logic source_tag_2_plus;
 	logic valid;
-	logic [$clog2(`N_RS):0] order_idx;  
+	logic [$clog2(`N_RS):0] order_idx;
+	logic [`XLEN-1:0] NPC; // PC + 4
+	logic [`XLEN-1:0] PC;  // PC
 } RS_PACKET_DISPATCH;  
 typedef struct packed {
 	logic [`CDB_BITS-1 : 0] source_tag_1;
@@ -383,12 +489,15 @@ typedef struct packed {
 	logic [`CDB_BITS-1 : 0] dest_tag;
 	INST 		inst;
 	logic valid;
+	logic [`XLEN-1:0] NPC; // PC + 4
+	logic [`XLEN-1:0] PC;  // PC 
 } RS_PACKET_ISSUE; //output packet from RS to issue
 
 typedef struct packed {
 	logic busy;
 	logic [`CDB_BITS-1:0] phy_reg_idx;
 } ROB_PACKET_ISSUE;
+
 
 typedef struct packed {
 	logic	valid;
@@ -408,6 +517,9 @@ typedef struct packed {
 	logic       halt;          // is this a halt?
 	logic       illegal;       // is this instruction illegal?
 	logic       csr_op;        // is this a CSR operation? (we only used this as a cheap way to get return code)
+	EXECUTION_UNIT execution_unit;
+	logic [`XLEN-1:0] NPC; // PC + 4
+	logic [`XLEN-1:0] PC;  // PC 
 } ISSUE_EX_PACKET;
 
 typedef struct packed {
@@ -424,9 +536,15 @@ typedef struct packed {
 typedef struct packed {
 	logic [`CDB_BITS-1 : 0] tag;
 	logic [`CDB_BITS-1 : 0] tag_old;
+	logic branch_inst;
 	logic head;
 	logic tail;
 	logic completed;
+	logic take_branch;
+	logic [`XLEN-1:0] br_result;
+	logic [`XLEN-1:0] PC;
+	logic halt;
+	logic illegal;
 
 } ROB_PACKET; //Rob packet
 
@@ -434,8 +552,12 @@ typedef struct packed {
 	logic [`CDB_BITS-1:0] tag; 
 	logic [`CDB_BITS-1:0] tag_old; 
 	logic valid;
+	logic branch_inst;
+	logic [`XLEN-1:0] PC;
+	logic halt;
+	logic illegal;
 } ROB_PACKET_DISPATCH;
 
 
-
 `endif // __SYS_DEFS_VH__
+

@@ -93,8 +93,13 @@ VISFLAGS = -lncurses
 ##		verilog/mem_stage.sv	\
 ##		verilog/wb_stage.sv	\
 
+##TESTBENCH =     sys_defs.svh	\
+##		testbench/test_top_r10k.sv
 TESTBENCH =     sys_defs.svh	\
-		testbench/test_top_r10k.sv
+				ISA.svh \
+		testbench/program_dispatch.sv \
+		testbench/testbench.sv  \
+		testbench/pipe_print.c
 ##SIMFILES =	verilog/top_rob.sv	\
 ##		verilog/map_table.sv	\
 ##		verilog/architecture_table.sv	\
@@ -106,10 +111,13 @@ SIMFILES =	verilog/top_r10k.sv	\
 		verilog/top_rob.sv	\
 		verilog/map_table.sv	\
 		verilog/architecture_table.sv	\
-		verilog/cdb.sv	\
+		verilog/ex_stage.sv	\
 		verilog/free_list.sv	\
 		verilog/reservation_station.sv	\
-		verilog/rob.sv			
+		verilog/rob.sv \
+		verilog/regfile.sv \
+		verilog/issue_stage.sv
+
 
 ##SYNFILES = synth/pipeline.vg
 SYNFILES = synth/top_r10k.vg
@@ -124,9 +132,11 @@ VTUBER = sys_defs.svh	\
 
 ##synth/pipeline.vg:        $(SIMFILES) synth/pipeline.tcl
 ##	cd synth && dc_shell-t -f ./pipeline.tcl | tee synth.out 
+##synth/top_r10k.vg:        $(SIMFILES) synth/top_r10k.tcl
+##	cd synth && dc_shell-t -f ./top_r10k.tcl | tee synth.out 
+
 synth/top_r10k.vg:        $(SIMFILES) synth/top_r10k.tcl
 	cd synth && dc_shell-t -f ./top_r10k.tcl | tee synth.out 
-
 
 #####
 # Should be no need to modify after here
@@ -163,7 +173,7 @@ clean:
 	rm -rf dve* inter.vpd DVEfiles
 	rm -rf syn_simv syn_simv.daidir syn_program.out
 	rm -rf synsimv synsimv.daidir csrc vcdplus.vpd vcs.key synprog.out pipeline.out writeback.out vc_hdrs.h
-	rm -f *.elf *.dump *.mem debug_bin
+	rm -f *.elf *.dump debug_bin
 	rm -rf verdi* novas* *fsdb*
 
 nuke:	clean

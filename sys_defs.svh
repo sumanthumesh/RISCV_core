@@ -324,10 +324,11 @@ typedef struct packed {
 //OOO
 `define N_WAY_3
 `define CDB_BITS 7
-`define N_ROB 64
+`define N_ROB 9
+`define N_SQ 8
 `define FIFO_BITS 6
 `define XLEN_BITS 5
-`define N_RS 16
+`define N_RS 8
 `define N_RS_IDX 4
 `define ARCH_REG 32
 `define N_PHY_REG `ARCH_REG+`N_ROB
@@ -425,6 +426,7 @@ typedef struct packed {
 	logic [`XLEN_BITS-1 :0] src2;
 	logic [`XLEN_BITS-1 :0] dest;
 	logic valid;
+	logic [1:0] ld_st_bits; //00: no ld store, 01: store, 10: load , 11:reserve
 } DISPATCH_PACKET;
 
 typedef struct packed {
@@ -447,28 +449,30 @@ typedef struct packed {
 typedef struct packed {
 	logic busy; // alu_result
 	INST inst; //pc + 4
-	logic [`CDB_BITS-1:0] dest_tag; // is this a taken branch?
-	//logic dest_tag_plus;
-	logic [`CDB_BITS-1:0] source_tag_1; // is this a taken branch?
+	logic [`CDB_BITS-1:0] dest_tag; 
+	logic [`CDB_BITS-1:0] source_tag_1; 
 	logic source_tag_1_plus;
-	logic [`CDB_BITS-1:0] source_tag_2; // is this a taken branch?
+	logic [`CDB_BITS-1:0] source_tag_2; 
 	logic source_tag_2_plus;
 	logic issued;
 	logic [$clog2(`N_RS):0] order_idx; //to track the oldest instruction 
+	logic [$clog2(`N_SQ):0] storeq_idx;
+	logic [1:0] ld_st_bits; //00: no ld store, 01: store, 10: load , 11:reserve
 	logic [`XLEN-1:0] NPC; // PC + 4
 	logic [`XLEN-1:0] PC;  // PC
 } RS_PACKET;  
 typedef struct packed {
-	logic busy; // alu_result
-	INST inst; //pc + 4
-	logic [`CDB_BITS-1:0] dest_tag; // is this a taken branch?
-	//logic dest_tag_plus;
+	logic busy; 
+	INST inst; 
+	logic [`CDB_BITS-1:0] dest_tag; 
 	logic [`CDB_BITS-1:0] source_tag_1; 
 	logic source_tag_1_plus;
 	logic [`CDB_BITS-1:0] source_tag_2; 
 	logic source_tag_2_plus;
 	logic valid;
 	logic [$clog2(`N_RS):0] order_idx;
+	logic [$clog2(`N_SQ):0] storeq_idx;
+	logic [1:0] ld_st_bits; //00: no ld store, 01: store, 10: load , 11:reserve
 	logic [`XLEN-1:0] NPC; // PC + 4
 	logic [`XLEN-1:0] PC;  // PC
 } RS_PACKET_DISPATCH;  
@@ -478,6 +482,7 @@ typedef struct packed {
 	logic [`CDB_BITS-1 : 0] dest_tag;
 	INST 		inst;
 	logic valid;
+	logic [$clog2(`N_SQ):0] storeq_idx;
 	logic [`XLEN-1:0] NPC; // PC + 4
 	logic [`XLEN-1:0] PC;  // PC 
 } RS_PACKET_ISSUE; //output packet from RS to issue
@@ -540,6 +545,43 @@ typedef struct packed {
 	logic valid;
 	logic branch_inst;
 } ROB_PACKET_DISPATCH;
+
+typedef struct packed {
+	logic [`XLEN-1:0] address; 
+	logic [`XLEN-1:0] value; 
+	logic [`XLEN-1:0] store_pos; 
+	logic valid;
+} STORE_PACKET;
+
+typedef struct packed {
+	logic [`XLEN-1:0] address; 
+	logic [`XLEN-1:0] value; 
+	logic valid;
+} STORE_PACKET_RET;
+
+
+typedef struct packed {
+	logic [`XLEN-1:0] address; 
+	logic [`XLEN-1:0] value; 
+	logic head;
+	logic tail;
+	logic valid;
+	logic ex; // tracks if store is executed or not
+	logic [$clog2(`N_SQ):0] order_idx;
+} STORE_PACKET_REG;
+
+typedef struct packed {
+	logic [`XLEN-1:0] value; 
+	logic valid;
+} LOAD_PACKET_OUT;
+
+typedef struct packed {
+	logic [`XLEN-1:0] address; 
+	logic [$clog2(`N_SQ):0] load_pos; 
+	logic valid;
+} LOAD_PACKET_IN;
+
+
 
 
 `endif // __SYS_DEFS_VH__

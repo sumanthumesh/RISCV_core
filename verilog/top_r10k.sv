@@ -44,7 +44,9 @@ module top_r10k (
 	logic   [`N_WAY-1:0] [`CDB_BITS-1:0]  ex_rs_dest_idx,ex_rs_dest_idx_reg; //from issue stage latched 
 	logic [$clog2(`N_WAY):0] issue_num,issue_num_reg;
 	logic take_branch_ex;
+	logic [$clog2(`N_SQ):0] storeq_idx, storeq_idx_wire;
 	logic [`EX_BRANCH_UNITS-1 : 0] [`XLEN-1:0] br_result;
+	logic [$clog2(`N_SQ):0] last_str_ex_idx;
 
 
 //////icache integration with pipeline
@@ -122,7 +124,8 @@ module top_r10k (
 		end	
 	end
 
-	always_comb begin // to rs 
+	always_comb begin // to rs
+		storeq_idx_wire = storeq_idx; 
 		for (int i=0; i<`N_WAY ; i=i+1) begin
 			if(dispatch_packet[i].valid) begin
 			//	rs_packet_dispatch[i].busy = 1; 
@@ -133,9 +136,17 @@ module top_r10k (
 				rs_packet_dispatch[i].source_tag_2 = pr_packet_out2[i].phy_reg ;
 				rs_packet_dispatch[i].source_tag_2_plus = pr_packet_out2[i].status ;
 				rs_packet_dispatch[i].dest_tag= free_list_out[i];
+				rs_packet_dispatch[i].ld_st_bits=dispatch_packet[i].ld_st_bits;
 				rs_packet_dispatch[i].order_idx = `N_RS - rs_empty - ex_count + i + 1;
 				rs_packet_dispatch[i].NPC = dispatch_packet[i].NPC;
 				rs_packet_dispatch[i].PC = dispatch_packet[i].PC;
+				if(dispatch_packet[i].ld_st_bits == 2'b01) begin
+					if(storeq_idx_wire < `N_SQ) 
+						storeq_idx_wire = storeq_idx_wire + 1;
+					else
+						storeq_idx_wire = 1;
+					rs_packet_dispatch[i].storeq_idx = storeq_idx_wire;
+				end
 				if(rs_packet_dispatch[i].order_idx <= `N_RS ) begin
 					rs_packet_dispatch[i].valid = 1;
 					rs_packet_dispatch[i].busy = 1; 
@@ -246,6 +257,7 @@ reservation_station rs0 (
                   .reset(reset),
 		  .rs_packet_dispatch(rs_packet_dispatch), //generated internally
 		  .branch_haz(branch_haz),
+		  .last_str_ex_idx(last_str_ex_idx), //from sq module in ex stage
 		  .ex_rs_dest_idx(ex_rs_dest_idx_reg), //from ex stage
 		  .cdb_rs_reg_idx(complete_dest_tag),
 		  .issue_num(issue_num_reg), //from issue stage
@@ -271,12 +283,14 @@ issue_stage		is0 (
 	always_ff @(posedge clock) begin
 		if(reset)begin
 			issue_num_reg <= `SD 0;
+			storeq_idx <= `SD 0;
 			for(int i=0; i<`N_WAY; i=i+1)begin
 				issue_ex_packet_in[i] <= `SD 0;
 				ex_rs_dest_idx_reg[i] <= `SD 0;
 			end
 		end else begin
 			issue_num_reg <= `SD issue_num;
+			storeq_idx <= `SD storeq_idx_wire;
 			for(int i=0; i<`N_WAY; i=i+1)begin
 				if(!branch_haz) begin
 					issue_ex_packet_in[i] <= `SD issue_packet[i];

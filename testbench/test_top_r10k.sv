@@ -231,7 +231,7 @@ module test_top_r10k;
 
  end 
 
-   always #10 clock = ~clock;    
+   always #5 clock = ~clock;    
 
 endmodule
 

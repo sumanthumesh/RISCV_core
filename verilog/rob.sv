@@ -49,7 +49,7 @@ module rob (
 				for(int j=0; j<`N_ROB; j=j+1) begin
 					if(!tmp && !branch_haz) begin
 						if((rob_packet_wire[j].head) && rob_packet[j].completed ) begin
-							if (rob_packet[j].branch_inst) begin
+							if (rob_packet[j].branch_inst && rob_packet[j].take_branch) begin
 								branch_haz = rob_packet[j].take_branch;
 								retire_branch= 1;
 								retire_branch_PC= rob_packet[j].PC;

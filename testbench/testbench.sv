@@ -101,52 +101,33 @@ module testbench;
 	logic tmp;
 
 
-	// Instantiate the Pipeline
-//	pipeline core(
-//		// Inputs
-//		.clock             (clock),
-//		.reset             (reset),
-//		.mem2proc_response (mem2proc_response),
-//		.mem2proc_data     (mem2proc_data),
-//		.mem2proc_tag      (mem2proc_tag),
-//		
-//		
-//		// Outputs
-//		.proc2mem_command  (proc2mem_command),
-//		.proc2mem_addr     (proc2mem_addr),
-//		.proc2mem_data     (proc2mem_data),
-//		.proc2mem_size     (proc2mem_size),
-//		
-//		.pipeline_completed_insts(pipeline_completed_insts),
-//		.pipeline_error_status(pipeline_error_status),
-//		.pipeline_commit_wr_data(pipeline_commit_wr_data),
-//		.pipeline_commit_wr_idx(pipeline_commit_wr_idx),
-//		.pipeline_commit_wr_en(pipeline_commit_wr_en),
-//		.pipeline_commit_NPC(pipeline_commit_NPC),
-//		
-//		.if_NPC_out(if_NPC_out),
-//		.if_IR_out(if_IR_out),
-//		.if_valid_inst_out(if_valid_inst_out),
-//		.if_id_NPC(if_id_NPC),
-//		.if_id_IR(if_id_IR),
-//		.if_id_valid_inst(if_id_valid_inst),
-//		.id_ex_NPC(id_ex_NPC),
-//		.id_ex_IR(id_ex_IR),
-//		.id_ex_valid_inst(id_ex_valid_inst),
-//		.ex_mem_NPC(ex_mem_NPC),
-//		.ex_mem_IR(ex_mem_IR),
-//		.ex_mem_valid_inst(ex_mem_valid_inst),
-//		.mem_wb_NPC(mem_wb_NPC),
-//		.mem_wb_IR(mem_wb_IR),
-//		.mem_wb_valid_inst(mem_wb_valid_inst)
-//	);
+////memory connectionsw
+ 
+	logic [1:0] imem_command;
+	logic mode_mem; 	// controls which would go into command port of memory
+	logic [1:0] ex_command;
+	logic [63:0] imem_data, ex_data;
+	logic [`XLEN-1:0] imem_addr, ex_addr;
+        logic [3:0]  Imem2proc_response;
+        logic [63:0] Imem2proc_data;
+        logic [3:0]  Imem2proc_tag;
+        logic [1:0] proc2Imem_command;
+        logic [`XLEN-1:0] proc2Imem_addr;
+
+	assign imem_command = mode_mem ? ex_command : proc2Imem_command;
+	assign imem_data = ex_data;
+	assign imem_addr = mode_mem ? ex_addr : proc2Imem_addr;
+
 
 
 	top_r10k dut(
 		.clock(clock),
 		.reset(reset),
-		.dispatch_packet(dispatch_packet),
-		.branch_inst(branch_inst),
+		.Imem2proc_response(Imem2proc_response),
+		.Imem2proc_data(Imem2proc_data),
+		.Imem2proc_tag(Imem2proc_tag),
+		//.dispatch_packet(dispatch_packet),
+		//.branch_inst(branch_inst),
 		.rs_packet_issue(rs_packet_issue),
 		.issue_packet(issue_packet),
 		.rs_data(rs_data),
@@ -162,22 +143,33 @@ module testbench;
 		.complete_dest_tag(reg_complete_dest_tag),
 		.arch_reg_next(arch_reg_next),
 		.branch_haz(branch_haz),
-		.br_target_pc(br_target_pc)
+		.br_target_pc(br_target_pc),
+		.proc2Imem_command(proc2Imem_command),
+		.proc2Imem_addr(proc2Imem_addr)
 	);
 
-	program_dispatch pd0 (
-		.clock(clock),
-		.reset(reset),
-		.dispatched(dispatched),
-		.dispatch_out(dispatch_packet),
-		.branch_haz(branch_haz),
-		.br_result(br_target_pc),
-		.branch_inst(branch_inst)
-		);
+//	program_dispatch pd0 (
+//		.clock(clock),
+//		.reset(reset),
+//		.dispatched(dispatched),
+//		.dispatch_out(dispatch_packet),
+//		.branch_haz(branch_haz),
+//		.br_result(br_target_pc),
+//		.branch_inst(branch_inst)
+//		);
 	
 	
 	
 	// Instantiate the Data Memory
+	mem memory(.clk(clock),
+               .proc2mem_addr(imem_addr),
+               .proc2mem_data(imem_data),
+               .proc2mem_command(imem_command),
+               .mem2proc_response(Imem2proc_response),
+               .mem2proc_data(Imem2proc_data),
+               .mem2proc_tag(Imem2proc_tag));
+
+	
 //	mem memory (
 //		// Inputs
 //		.clk               (clock),
@@ -275,6 +267,10 @@ module testbench;
 	
 		clock = 1'b0;
 		reset = 1'b0;
+		mode_mem = 1'b0;
+		ex_data = 0;
+		ex_addr= 0;
+		ex_command = 0;
 		
 		// Pulse the reset signal
 		$display("@@\n@@\n@@  %t  Asserting System reset......", $realtime);
@@ -282,7 +278,7 @@ module testbench;
 		@(posedge clock);
 		@(posedge clock);
 		
-	//	$readmemh("program.mem", memory.unified_memory);
+		$readmemh("program.mem", memory.unified_memory);
 		
 		@(posedge clock);
 		@(posedge clock);

@@ -298,18 +298,6 @@ typedef struct packed {
 	logic       valid;         // is inst a valid instruction to be counted for CPI calculations?
 } ID_EX_PACKET;
 
-//typedef struct packedt {
-//	logic [`XLEN-1: 0] alu_result; // alu_result
-//	logic [`XLEN-1: 0] NPC; //pc + 4
-//	logic              take_branch; // is this a taken branch?
-//	//pass throughs  from decode stage
-//	logic [`XLEN-1: 0] rs2_value;
-//	logic              rd_mem, wr_mem;
-//	logic [4:0]        dest_reg_idx;
-//	logic              halt, illegal, csr_op, valid;
-//	logic [2:0]        mem_size; // byte, half-word or word
-//} EX_MEM_PACKET;     }
-
 typedef struct packed {
 	logic [`XLEN-1:0] result; // result
 	logic [`XLEN-1:0] NPC; //pc + 4
@@ -332,9 +320,15 @@ typedef struct packed {
 `define ARCH_REG 32
 `define N_PHY_REG `ARCH_REG+`N_ROB
 `define ZERO_REG_PR `CDB_BITS'b1
+`define DISP_Q_SIZE 8
+`define CACHE_LINES 32
+`define CACHE_LINE_BITS $clog2(`CACHE_LINES)
+`define ICACHE_Q_SIZE 16
+`define N_IC_PREFETCH 2
+`define ICACHE_Q2_SIZE 16
 
-`define PIPELINE_DEPTH 2
-`define MULT_WIDTH 16
+//`define PIPELINE_DEPTH 2
+//`define MULT_WIDTH 16
 `define NUM_STAGE 2 //mult stage
 `define NUM_BITS 32 
 //`define NUM_BITS (2*`XLEN)/`NUM_STAGE 
@@ -417,6 +411,37 @@ typedef enum logic [2:0] {
 
 
 
+
+//Packet of dispatched requests - icache
+
+typedef struct packed {
+	logic [63:0]                     data;
+    logic [12 - `CACHE_LINE_BITS:0]  tags;
+    logic                            valids;
+} ICACHE_PACKET;
+
+typedef struct packed {
+    logic [`XLEN-1:0] addr;
+    logic [12 - `CACHE_LINE_BITS:0] tags;
+    logic [`CACHE_LINE_BITS-1:0] line_idx;
+    logic  valid;
+} ICACHE_REQ;
+
+typedef enum logic[1:0] { 
+    IDLE = 2'b00,
+    WAIT  = 2'b01
+} state;
+
+typedef struct packed {
+    logic [`XLEN-1:0] addr;
+    logic valid;
+} STORE_REQ;
+
+typedef struct packed {
+    logic [`XLEN-1:0] addr;
+    logic [3:0] expected_tag;
+    logic valid;
+} DISP_REQ;
 
 typedef struct packed {
 	logic [`CDB_BITS-1:0] phy_reg; // physical registor number

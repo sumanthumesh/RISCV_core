@@ -3,8 +3,9 @@
 module top_r10k (
 	input clock,
 	input reset,
-	input  DISPATCH_PACKET_R10K [`N_WAY-1:0] dispatch_packet, //from dispatch stage to rob and rs
-	input [`N_WAY-1:0] branch_inst, // BRANCH instruction identification
+        input [3:0]  Imem2proc_response,
+        input [63:0] Imem2proc_data,
+        input [3:0]  Imem2proc_tag,
 	//input [$clog2(`N_WAY):0] dispatch_num, //from dispatch stage to rob and rs
 	output  RS_PACKET_ISSUE [`N_WAY-1:0]    rs_packet_issue,
 	output  ISSUE_EX_PACKET [`N_WAY-1:0]  issue_packet,
@@ -25,7 +26,9 @@ module top_r10k (
 	output logic [`XLEN-1:0][`CDB_BITS-1:0] arch_reg_next,
 	output logic retire_branch,
 	output logic [`XLEN-1:0] retire_branch_PC,
-	output RETIRE_ROB_PACKET [`N_WAY-1:0] retire_packet
+	output RETIRE_ROB_PACKET [`N_WAY-1:0] retire_packet,
+        output logic [1:0] proc2Imem_command,
+        output logic [`XLEN-1:0] proc2Imem_addr
 	);
 
 	RS_PACKET_DISPATCH [`N_WAY-1:0] rs_packet_dispatch;
@@ -43,12 +46,80 @@ module top_r10k (
 	logic take_branch_ex;
 	logic [`EX_BRANCH_UNITS-1 : 0] [`XLEN-1:0] br_result;
 
+
+//////icache integration with pipeline
+	DISPATCH_PACKET_R10K [`N_WAY-1:0] dispatch_packet; //from dispatch stage to rob and rs
+	logic [`N_WAY-1:0] branch_inst; // BRANCH instruction identification
+
+ 	logic [`N_WAY-1:0][`XLEN-1:0] Icache_data_out; 
+ 	logic [`N_WAY-1:0][`XLEN-1:0] Icache_addr_out; 
+    logic [`N_WAY-1:0] Icache_valid_out;    
+    logic [$clog2(`N_WAY):0] Icache_hit_count;  
+	logic [`XLEN-1:0] buff2Icache_addr; //Address or PC to fetch instructions from
+	logic [$clog2(`N_WAY):0] buff2Icache_count; //Num of instructions that buff wants
+	logic [`N_WAY-1:0][`XLEN-1:0] buff2proc_addr;
+	logic [`N_WAY-1:0][`XLEN-1:0] buff2proc_data;
+	logic [`N_WAY-1:0] buff2proc_valid;
+    logic [`XLEN-1:0] proc2Icache_addr; 
+    logic [`N_WAY-1:0][`XLEN-1:0] Icache_data_out; 
+    logic [`N_WAY-1:0] Icache_valid_out;    
+    //ICACHE_PACKET [`CACHE_LINES-1:0] icache_data;
+    //STORE_REQ [`N_WAY-1:0] saved_reqs;
+    //STORE_REQ [`N_WAY-1:0] saved_reqs_d; 
+    //logic disp_queue_empty; 
+    //logic data_out_valid;
+    //logic queue_wr_en;
+    //DISP_REQ queue_data_in;
+    //DISP_REQ queue_data_out;
+    //DISP_REQ delayed_fetch;
+    //logic [63:0] data_to_place_in_cache;
+    //logic queue_data_out_valid;
+	logic [`N_WAY-1:0][`XLEN-1:0] out_PC;
+	logic [`N_WAY-1:0][`XLEN-1:0] out_NPC;
+	INST [`N_WAY-1:0] out_inst;
+	logic [`N_WAY-1:0][`XLEN_BITS-1:0] src1;
+	logic [`N_WAY-1:0][`XLEN_BITS-1:0] src2;
+	logic [`N_WAY-1:0][`XLEN_BITS-1:0] dest;
+	logic [`N_WAY-1:0] is_branch;
+	logic [`N_WAY-1:0] halt;
+	logic [`N_WAY-1:0] out_valid;
+	logic [`N_WAY-1:0] illegal;
+
+
 	always_comb begin
 		ex_count = 0 ;
 		for (int j=0; j<`N_WAY ; j=j+1) begin
 			if(ex_rs_dest_idx_reg[j] > 0)
 				ex_count = ex_count + 1;
 		end
+	end
+
+	always_comb begin //can be latched
+		for (int i=0; i<`N_WAY ; i=i+1) begin
+			if(!branch_haz) begin
+				dispatch_packet[i].src1 = src1[i]; 
+				dispatch_packet[i].src2 = src2[i]; 
+				dispatch_packet[i].dest = dest[i]; 
+				dispatch_packet[i].inst = out_inst[i]; 
+				dispatch_packet[i].valid = out_valid[i]; 
+				dispatch_packet[i].PC = out_PC[i]; 
+				dispatch_packet[i].NPC = out_NPC[i]; 
+				dispatch_packet[i].halt= halt[i]; 
+				dispatch_packet[i].illegal = illegal[i];
+				branch_inst[i] = is_branch[i]; 
+			end else begin
+				dispatch_packet[i].src1 = 0; 
+				dispatch_packet[i].src2 = 0; 
+				dispatch_packet[i].dest = 0; 
+				dispatch_packet[i].inst = 0; 
+				dispatch_packet[i].valid = 0; 
+				dispatch_packet[i].PC = 0; 
+				dispatch_packet[i].NPC = 0; 
+				dispatch_packet[i].halt= 0; 
+				dispatch_packet[i].illegal = 0;
+				branch_inst[i] = 0; 
+			end
+		end	
 	end
 
 	always_comb begin // to rs 
@@ -90,6 +161,61 @@ module top_r10k (
 			if (dispatch_packet_rob[k].valid) dispatch_num = dispatch_num + 1;
 		end
 	end
+
+
+
+ icache dut(.clock(clock),
+               .reset(reset),
+    		.enable(1'b1),
+               .Imem2proc_response(Imem2proc_response),
+               .Imem2proc_data(Imem2proc_data),
+               .Imem2proc_tag(Imem2proc_tag),
+               .proc2Icache_addr(proc2Icache_addr),
+               .proc2Icache_count(buff2Icache_count),
+               .proc2Imem_command(proc2Imem_command),
+               .proc2Imem_addr(proc2Imem_addr),
+               .Icache_data_out(Icache_data_out),
+               .Icache_addr_out(Icache_addr_out),
+               .Icache_valid_out(Icache_valid_out),
+               .Icache_hit_count(Icache_hit_count));
+               
+
+ instruction_buffer inst_buff(
+			   .clock(clock),
+              		   .reset(reset),
+			   .enable(1'b1),
+			   .Icache2buff_addr(Icache_addr_out),
+              		   .Icache2buff_data(Icache_data_out),
+              		   .Icache2buff_valid(Icache_valid_out),
+              		   .Icache2buff_hit_count(Icache_hit_count),
+              		   .branch_taken(branch_haz),
+              		   .branch_addr(br_target_pc),
+			   .proc2buff_dispatched(dispatched),//from top r10k --> dispatched
+        	           .buff2Icache_addr(buff2Icache_addr),//maybe for branch ??
+			   .buff2Icache_count(buff2Icache_count),
+        		   .pc_wire(proc2Icache_addr),
+			   .buff2proc_addr(buff2proc_addr),
+			   .buff2proc_data(buff2proc_data),
+			   .buff2proc_valid(buff2proc_valid)
+	);
+
+instruction_decoder instruction_decoder(
+		.input_PC(buff2proc_addr),
+		.input_inst(buff2proc_data),
+		.in_valid(buff2proc_valid),
+		//outputs
+		.out_PC(out_PC),
+		.out_NPC(out_NPC),
+		.out_inst(out_inst),
+		.src1(src1),
+		.src2(src2),
+		.dest(dest),
+		.is_branch(is_branch),
+		.halt(halt),
+		.out_valid(out_valid),
+		.illegal(illegal)
+	);
+    
  top_rob top_rob0 (
 		.clock(clock), 
                 .reset(reset), 

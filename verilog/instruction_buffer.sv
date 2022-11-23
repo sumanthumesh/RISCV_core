@@ -61,6 +61,7 @@ module instruction_buffer(
 	//at next cycle with input vector proc2buff_dispatched
 	logic [`N_WAY-1:0] inst_showed;
 	logic [`N_WAY-1:0] next_inst_showed;
+	logic branch_taken_reg;
 
 
 	assign total_out_count = out_new_counter + out_stay_counter;
@@ -95,12 +96,12 @@ module instruction_buffer(
 		next_valid = valid;
 		if(~trailing_zeros) begin
         	for(int i=0;i<`N_WAY;i=i+1) begin
-        	    if(Icache2buff_valid[i] && (slots != 0) && (slots > fill_count) && enable) begin
+        	    if(Icache2buff_valid[i] && (slots != 0) && (slots > fill_count) && !branch_taken_reg &&enable) begin
         	        next_data[data_pointer] = Icache2buff_data[i];
 					next_addr[data_pointer] = Icache2buff_addr[i];
 					next_valid[data_pointer] = 1;
         	        data_pointer = data_pointer + 1;
-					fill_count = fill_count + 1;
+					fill_count = (fill_count + 1);
         	    end
         	end
 		end
@@ -163,9 +164,11 @@ module instruction_buffer(
 			buff2proc_data    <= `SD 0;
 			buff2proc_valid   <= `SD 0;
 			inst_showed <= `SD 0;
+			branch_taken_reg <= `SD 0;
         end
         else if(enable) begin
 			// enabled -> update registers
+			branch_taken_reg <= `SD branch_taken;
 			if(branch_taken==0) begin
 				// branch is not taken 
 				buff2Icache_addr <= `SD next_pc;
@@ -186,7 +189,7 @@ module instruction_buffer(
 				buff2Icache_addr <= `SD branch_addr;
 				buff2Icache_count <= `SD num_request;
 				head <= `SD 0;
-				tail <= `SD 0;
+				tail <= `SD `ICACHE_BUFF_SIZE -1  ;
 				slots <= `SD `ICACHE_BUFF_SIZE;
 				data <= `SD 0;
 				addr <= `SD 0;

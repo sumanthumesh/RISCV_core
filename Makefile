@@ -94,18 +94,17 @@ VISFLAGS = -lncurses
 ##		verilog/wb_stage.sv	\
 
 ##TESTBENCH =     sys_defs.svh	\
-##		testbench/test_top_r10k.sv
+##		testbench/mem.sv \
+		testbench/program_dispatch.sv \
+##		testbench/test_imem.sv
 TESTBENCH =     sys_defs.svh	\
 				ISA.svh \
-		testbench/program_dispatch.sv \
+		testbench/mem.sv \
 		testbench/testbench.sv  \
 		testbench/pipe_print.c
-##SIMFILES =	verilog/top_rob.sv	\
-##		verilog/map_table.sv	\
-##		verilog/architecture_table.sv	\
-##		verilog/cdb.sv	\
-##		verilog/free_list.sv	\
-##		verilog/rob.sv		
+##SIMFILES =	verilog/icache.sv	\
+##		verilog/icache_queue.sv	\
+##		verilog/instruction_buffer.sv	
 ##SIMFILES =	verilog/free_list.sv
 SIMFILES =	verilog/top_r10k.sv	\
 		verilog/top_rob.sv	\
@@ -116,7 +115,11 @@ SIMFILES =	verilog/top_r10k.sv	\
 		verilog/reservation_station.sv	\
 		verilog/rob.sv \
 		verilog/regfile.sv \
-		verilog/issue_stage.sv
+		verilog/icache.sv	\
+		verilog/icache_queue.sv	\
+		verilog/issue_stage.sv \
+		verilog/instruction_decoder.sv \
+		verilog/instruction_buffer.sv  	
 
 
 ##SYNFILES = synth/pipeline.vg
@@ -173,7 +176,8 @@ clean:
 	rm -rf dve* inter.vpd DVEfiles
 	rm -rf syn_simv syn_simv.daidir syn_program.out
 	rm -rf synsimv synsimv.daidir csrc vcdplus.vpd vcs.key synprog.out pipeline.out writeback.out vc_hdrs.h
-	rm -f *.elf *.dump debug_bin
+	rm -f *.elf debug_bin
+	##rm -f *.elf *.dump debug_bin
 	rm -rf verdi* novas* *fsdb*
 
 nuke:	clean

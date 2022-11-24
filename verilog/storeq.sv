@@ -1,10 +1,11 @@
-module (
+module storeq(
 	input clock,
 	input reset,
-	input [$clog2(`N_WAY):0] store_num_dis, //from dispatch
-	input [$clog2(`N_SQ):0] order_idx_in,
+	input [$clog2(`N_WAY):0] store_num_dis, //from dispatch,  make zero in rob for branch hazard
+	input [`N_WAY-1:0][$clog2(`N_SQ):0] order_idx_in,
+	input branch_haz,    
 	input STORE_PACKET [`N_WAY-1:0] store_ex_packet_in, //from execute
-	input [$clog2(`N_WAY):0] store_num_ret, //from rob
+	input [$clog2(`N_WAY):0] store_num_ret, //from rob, make zero in rob for branch hazard
 	input LOAD_PACKET_IN [`N_WAY-1:0] load_packet_in,
 	output STORE_PACKET_RET [`N_WAY-1:0] store_ret_packet_out, //from storeQ to Dcache
 	output logic [$clog2(`N_WAY):0] empty_storeq,
@@ -70,7 +71,7 @@ module (
 	always_comb begin
 		storeq_wire_ex= storeq_wire_ret;
 		for(int i=0; i<`N_WAY; i=i+1) begin
-			if (store_ex_packet_in[i].valid) begin
+			if (store_ex_packet_in[i].valid && !branch_haz) begin
 				for(int j=0; j<`N_SQ; j=j+1) begin
 					if (j == store_ex_packet[i].store_pos) begin
 						storeq_wire_ex[j].ex = 1;
@@ -97,10 +98,10 @@ module (
 					tmp1 = 1;
 					if(j == `N_SQ-1) begin
 						storeq_next[0].tail = 1;
-						storeq_next[0].order_idx = order_idx_in[i];
+						storeq_next[0].order_idx = order_idx_in[i] - store_num_ret;
 					end else begin
 						storeq_next[j+1].tail = 1;
-						storeq_next[j+1].order_idx = order_idx_in[i];
+						storeq_next[j+1].order_idx = order_idx_in[i] - store_num_ret;
 					end
 				end
 			end
@@ -157,8 +158,27 @@ module (
 			end
 			empty_storeq_reg <= `SD `N_SQ;
 		end else begin
-			storeq_reg <= `SD storeq_next;
-			empty_storeq_reg <= `SD empty_storeq_next;
+			if (!branch_haz) begin
+				storeq_reg <= `SD storeq_next;
+				empty_storeq_reg <= `SD empty_storeq_next;
+			end else begin
+				for (int m=0; m<`N_SQ; m=m+1) begin
+					storeq_reg[m].valid <= `SD 0;
+					storeq_reg[m].ex<= `SD 0;
+					storeq_reg[m].address <= `SD 0;
+					storeq_reg[m].value<= `SD 0;
+					storeq_reg[m].order_idx<= `SD 0;
+					if (m==0) 
+					storeq_reg[m].head<= `SD 1;
+					else 
+					storeq_reg[m].head<= `SD 0;
+					if (m==`N_ROB-1) 
+					storeq_reg[m].tail <= `SD 1;
+					else 
+					storeq_reg[m].tail <= `SD 0;
+				end
+				empty_storeq_reg <= `SD `N_SQ;
+			end
 		end
 	end
 endmodule

@@ -12,15 +12,7 @@ module top_rob (
 	output ROB_PACKET [`N_ROB-1:0] rob_packet,//debug
 	output PR_PACKET [`N_WAY-1 : 0] pr_packet_out1, //to reservation station
 	output PR_PACKET [`N_WAY-1 : 0] pr_packet_out2, //to reservation station
-	//output logic [$clog2(`N_WAY):0] empty_rob, //to dispatch stage
 	output logic [`N_WAY-1:0]dispatched,   //to dispatch stage
-	//output logic [`N_WAY-1 : 0] [`CDB_BITS-1 : 0] cdb_tag,  // to reservation station
-	//output logic [$clog2(`N_WAY) : 0] free_num, //to dispatch stage
-	//debug signals
-	//output ROB_PACKET_DISPATCH [`N_WAY-1:0] rob_packet_dis,//generated from dis packet and free list output
-	//output logic [`N_WAY-1:0][`CDB_BITS-1:0] retire_tag, 
-	//output logic [`N_WAY-1:0][`CDB_BITS-1:0] retire_told,
-	//output logic [`N_WAY-1:0]retire_valid,
 	output logic [`N_WAY-1:0][`CDB_BITS-1 : 0] free_list_out,
 	output logic branch_haz,
 	output logic [`EX_BRANCH_UNITS-1 : 0] [`XLEN-1:0] br_target_pc,
@@ -34,6 +26,7 @@ module top_rob (
 	output logic retire_branch,
 	output logic [`XLEN-1:0] retire_branch_PC,
 	output logic [`XLEN-1:0][`CDB_BITS-1:0] arch_reg_next
+	output logic [$clog2(`N_WAY):0] store_num_ret //from rob, make zero in rob for branch hazard
 );
 
 	ROB_PACKET_DISPATCH [`N_WAY-1:0] rob_packet_dis;//generated from dis packet and free list output
@@ -110,7 +103,8 @@ module top_rob (
 		.rob_packet(rob_packet),
 		.branch_haz(branch_haz),
 		.br_target_pc(br_target_pc),
-		.dispatched(dispatched)	
+		.dispatched(dispatched),	
+		.store_num_ret(store_num_ret)
                   );
 
 map_table map_table0 (
@@ -149,12 +143,6 @@ map_table map_table0 (
 		  .dispatched(dispatched)	
                   );
 
-// cdb cdb0 (
-//		.clock(clock),
-//		.reset(reset),
-//		.input_tag(complete_dest_tag),
-//		.cdb_tag(cdb_tag)
-//		 );
 
 endmodule
 

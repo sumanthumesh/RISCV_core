@@ -104,19 +104,20 @@ endmodule // brcond
 module mult  (
 				input clock, reset,
 				input start,
-				input [1:0] sign,
+				MULT_FUNC     func,
        				input [`CDB_BITS-1:0] dest_tag_in,
 				input [`XLEN-1:0] mcand, mplier,
 				
-				output [(2*`XLEN)-1:0] product,
+				output [(`XLEN)-1:0] product,
        				output [`CDB_BITS-1:0] dest_tag_out,
 				output done
 			);
+	logic [1:0] sign;
 	logic [(2*`XLEN)-1:0] mcand_out, mplier_out, mcand_in, mplier_in;
 	logic [`NUM_STAGE:0][2*`XLEN-1:0] internal_mcands, internal_mpliers;
 	logic [`NUM_STAGE:0][2*`XLEN-1:0] internal_products,internal_products_comb;
 	logic [`NUM_STAGE:0] internal_dones;
-       logic  [`NUM_STAGE:0][`CDB_BITS-1:0]  internal_dest_tag;
+       	logic  [`NUM_STAGE:0][`CDB_BITS-1:0]  internal_dest_tag;
 
 	assign mcand_in  = sign[0] ? {{`XLEN{mcand[`XLEN-1]}}, mcand}   : {{`XLEN{1'b0}}, mcand} ;
 	assign mplier_in = sign[1] ? {{`XLEN{mplier[`XLEN-1]}}, mplier} : {{`XLEN{1'b0}}, mplier};
@@ -130,8 +131,34 @@ module mult  (
 
 	assign done    = internal_dones[`NUM_STAGE-1];
 	//assign product = internal_products[`NUM_STAGE];
-	assign product = internal_products_comb[`NUM_STAGE];
+	//assign product = internal_products_comb[`NUM_STAGE];
 	assign dest_tag_out = internal_dest_tag[`NUM_STAGE-1];
+	
+	always_comb begin
+		case (func)
+			MUL:    begin 
+					sign = 2'b11; 
+					product = internal_products_comb[`NUM_STAGE][`XLEN-1:0];		
+				end
+			MULH:   begin  
+					sign = 2'b11; 
+					product =internal_products_comb[`NUM_STAGE] [2*`XLEN-1:`XLEN];
+				end
+			MULHSU: begin  
+					sign = 2'b01;
+					product = internal_products_comb[`NUM_STAGE][2*`XLEN-1:`XLEN];
+				end
+			MULHU:  begin  
+					sign = 2'b00; 
+					product = internal_products_comb[`NUM_STAGE][2*`XLEN-1:`XLEN];
+				end
+
+			default: begin    
+				 sign = 2'b11; 
+				 product = `XLEN'hfacebeec;  // here to prevent latches
+				end
+		endcase
+	end
 
 	genvar i;
 	for (i = 0; i < `NUM_STAGE; ++i) begin : mstage
@@ -201,18 +228,23 @@ module mult_stage (
 
 endmodule
 
-
-
 module ex_stage(
 	input clock,               // system clock
 	input reset,               // system reset
+	input [`N_WAY-1:0][$clog2(`N_SQ):0] store_order_idx_in,
+	input [$clog2(`N_WAY):0] store_num_dis, //from dispatch,  make zero in rob for branch hazard
+	input [$clog2(`N_WAY):0] store_num_ret, //from rob, make zero in rob for branch hazard
+	input branch_haz,
 	input ISSUE_EX_PACKET   [`N_WAY-1 : 0] issue_ex_packet_in,
 	output logic [`N_WAY-1 : 0] [`CDB_BITS-1:0] complete_dest_tag,//to r10k
 	output logic [`N_WAY-1 : 0]  reg_wr_en_out,//to r10k
 	output logic [`N_WAY-1 : 0] [`XLEN-1:0] ex_result_out,
 	output logic take_branch_out,
 	output logic [`EX_BRANCH_UNITS-1 : 0] [`XLEN-1:0] br_result,
-	output EX_MEM_PACKET [`N_WAY-1 : 0] ex_packet_out
+	output EX_MEM_PACKET [`N_WAY-1 : 0] ex_packet_out,
+	output logic [$clog2(`N_WAY):0] empty_storeq,
+	output STORE_PACKET_RET [`N_WAY-1:0] store_ret_packet_out, //from storeQ to Dcache
+	output logic [$clog2(`N_SQ):0] last_str_ex_idx
 );
 	// Pass-throughs
 	always_comb begin
@@ -241,12 +273,13 @@ module ex_stage(
 	logic [`EX_ALU_UNITS-1 : 0] [`XLEN-1:0] alu_result;
 	logic [`EX_ALU_UNITS-1 : 0][`CDB_BITS-1:0] dest_tag_in_alu, dest_tag_out_alu;
 	logic tmp,tmp2;
+	logic [`N_WAY-1 : 0] [$clog2(`EX_ALU_UNITS) : 0] store_alu_idx;	
 	always_comb begin
 		start_alu = 0;
 		count_alu_a = 0; 
 		for(int i=0; i<`N_WAY; i=i+1) begin
 			tmp2=0;
-			if(issue_ex_packet_in[i].execution_unit == ALU && !tmp2 && issue_ex_packet_in[i].valid) begin
+			if(((issue_ex_packet_in[i].execution_unit == ALU) || (issue_ex_packet_in[i].execution_unit == STORE) || (issue_ex_packet_in[i].execution_unit == LOAD)) && !tmp2 && issue_ex_packet_in[i].valid) begin
 				opa_mux_out[count_alu_a] = `XLEN'hdeadfbac;
 				case (issue_ex_packet_in[i].opa_select)
 					OPA_IS_RS1:  opa_mux_out[count_alu_a] = issue_ex_packet_in[i].rs1_value;
@@ -255,8 +288,9 @@ module ex_stage(
 					OPA_IS_ZERO: opa_mux_out[count_alu_a] = 0;
 				endcase
 				start_alu[count_alu_a] = 1; 
-				dest_tag_in_alu[count_alu_a] = issue_ex_packet_in[i].dest_reg_idx; 
+			        dest_tag_in_alu[count_alu_a] = issue_ex_packet_in[i].dest_reg_idx; 
 				alu_func[count_alu_a] = issue_ex_packet_in[i].alu_func;
+				if((issue_ex_packet_in[i].execution_unit == STORE) || (issue_ex_packet_in[i].execution_unit == LOAD) ) store_alu_idx[i] = count_alu_a;
 				count_alu_a = count_alu_a+1;
 				tmp2=1;
 			end
@@ -273,7 +307,7 @@ module ex_stage(
 		count_alu_b = 0;
 		for(int i=0; i<`N_WAY; i=i+1) begin
 			tmp=0;
-			if(issue_ex_packet_in[i].execution_unit == ALU && !tmp && issue_ex_packet_in[i].valid ) begin
+			if(((issue_ex_packet_in[i].execution_unit == ALU) || (issue_ex_packet_in[i].execution_unit == STORE) || (issue_ex_packet_in[i].execution_unit == LOAD)) && !tmp && issue_ex_packet_in[i].valid ) begin
 				opb_mux_out[count_alu_b] = `XLEN'hfacefeed;
 				case (issue_ex_packet_in[i].opb_select)
 					OPB_IS_RS2:   opb_mux_out[count_alu_b] = issue_ex_packet_in[i].rs2_value;
@@ -358,6 +392,47 @@ module ex_stage(
 			end
 		end
 	end
+// STOREq input mux
+	logic tmp_st;
+	STORE_PACKET store_ex_packet_in;
+	LOAD_PACKET_IN [`N_WAY-1:0] load_packet_in;
+	LOAD_PACKET_OUT [`N_WAY-1:0] load_packet_out; //from storeQ
+	always_comb begin
+		store_ex_packet_in= 0;
+		for(int i=0; i<`N_WAY; i=i+1) begin
+			tmp_st = 0;
+			if(issue_ex_packet_in[i].execution_unit == STORE  && !tmp_st && issue_ex_packet_in[i].valid ) begin
+				store_ex_packet_in[i].valid = 1;
+				store_ex_packet_in[i].store_pos = issue_ex_packet_in[i].storeq_idx;
+				store_ex_packet_in[i].value = issue_ex_packet_in[i].rs2_value;
+				store_ex_packet_in[i].address = alu_result[store_alu_idx[i]];
+				tmp_st = 1;
+			end
+			if(issue_ex_packet_in[i].execution_unit ==  LOAD && !tmp_st && issue_ex_packet_in[i].valid ) begin
+				load_packet_in[i].valid = 1;
+				load_packet_in[i].load_pos = issue_ex_packet_in[i].storeq_idx;
+				load_packet_in[i].address = alu_result[store_alu_idx[i]];
+				tmp_st = 1;
+			end
+
+		end
+	end
+	// instantiate the STOREq unit
+	
+		storeq storeq_0 (
+				.clock(clock),
+				.reset(reset),
+				.store_num_dis(store_num_dis),
+				.order_idx_in(store_order_idx_in),
+				.branch_haz(branch_haz),
+				.store_ex_packet_in(store_ex_packet_in),
+				.store_num_ret(store_num_ret),
+				.load_packet_in(load_packet_in),
+				.store_ret_packet_out(store_ret_packet_out),	
+				.empty_storeq(empty_storeq),
+				.last_str_ex_idx(last_str_ex_idx),
+				.load_packet_out(load_packet_out)
+				);	
 
 	//
 	// instantiate the ALU
@@ -387,7 +462,7 @@ module ex_stage(
 			mult m0 (//Inputs
 				.clock(clock),
 				.reset(reset),
-				.sign(sign_mult[k]),
+				.func(mult_func[j]),
 				.mcand(mcand[k]),
 				.mplier(mplier[k]),
 				.start(start_mult[k]),

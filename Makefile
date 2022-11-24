@@ -176,8 +176,8 @@ clean:
 	rm -rf dve* inter.vpd DVEfiles
 	rm -rf syn_simv syn_simv.daidir syn_program.out
 	rm -rf synsimv synsimv.daidir csrc vcdplus.vpd vcs.key synprog.out pipeline.out writeback.out vc_hdrs.h
-	rm -f *.elf debug_bin
-	##rm -f *.elf *.dump debug_bin
+	##rm -f *.elf *.dump *.mem debug_bin
+	rm -f *.elf *.dump debug_bin
 	rm -rf verdi* novas* *fsdb*
 
 nuke:	clean

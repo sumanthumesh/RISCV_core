@@ -13,7 +13,8 @@ module instruction_decoder(
 	output logic [`N_WAY-1:0] is_branch,
 	output logic [`N_WAY-1:0] halt,
 	output logic [`N_WAY-1:0] out_valid,
-	output logic [`N_WAY-1:0] illegal	
+	output logic [`N_WAY-1:0] illegal,	
+	output logic [`N_WAY-1:0][1:0] ld_st_bits
 );
 	ALU_OPA_SELECT [`N_WAY-1:0] opa_select;
 	ALU_OPB_SELECT [`N_WAY-1:0] opb_select;
@@ -30,6 +31,7 @@ module instruction_decoder(
 			halt[i] = `FALSE;
 			illegal[i] = `FALSE;
 			is_branch[i] = 0;
+			ld_st_bits[i] = 0;
 
 			casez (input_inst[i])
 				`RV32_LUI: begin
@@ -60,9 +62,11 @@ module instruction_decoder(
 				`RV32_LBU, `RV32_LHU: begin
 					dest_reg[i]   = DEST_RD;
 					opb_select[i] = OPB_IS_I_IMM;
+					ld_st_bits[i] = 2'b10;
 				end
 				`RV32_SB, `RV32_SH, `RV32_SW: begin
 					opb_select[i] = OPB_IS_S_IMM;
+					ld_st_bits[i] = 2'b01;
 				end
 				`RV32_ADDI: begin
 					dest_reg[i]   = DEST_RD;

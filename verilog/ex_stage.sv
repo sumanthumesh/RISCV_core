@@ -100,86 +100,133 @@ module brcond(// Inputs
 	end
 	
 endmodule // brcond
-module mult(
-	input clock, reset,
-	input [`XLEN-1:0] mcand, mplier,
-	input start,
-	input [`CDB_BITS-1:0] dest_tag_in,
-	
-	output [`XLEN-1:0] product,
-	output [`CDB_BITS-1:0] dest_tag_out,
-	output done
+
+module mult  (
+				input clock, reset,
+				input start,
+				MULT_FUNC     func,
+       				input [`CDB_BITS-1:0] dest_tag_in,
+				input [`XLEN-1:0] mcand, mplier,
+				
+				output [(`XLEN)-1:0] product,
+       				output [`CDB_BITS-1:0] dest_tag_out,
+				output done
 			);
+	logic [1:0] sign;
+	logic [(2*`XLEN)-1:0] mcand_out, mplier_out, mcand_in, mplier_in;
+	logic [`NUM_STAGE:0][2*`XLEN-1:0] internal_mcands, internal_mpliers;
+	logic [`NUM_STAGE:0][2*`XLEN-1:0] internal_products,internal_products_comb;
+	logic [`NUM_STAGE:0] internal_dones;
+       	logic  [`NUM_STAGE:0][`CDB_BITS-1:0]  internal_dest_tag;
 
-  logic [`XLEN-1:0] mcand_out, mplier_out;
-  logic [((`PIPELINE_DEPTH -1)*32)-1:0] internal_products, internal_mcands, internal_mpliers;
-  logic [(`PIPELINE_DEPTH -2):0] internal_dones;
-  //logic done_last;
-  logic [((`PIPELINE_DEPTH -1)*`CDB_BITS)-1:0] internal_dest_tag;
-  //logic [`CDB_BITS-1:0] dest_tag_out_last;
-  
-	mult_stage mstage [(`PIPELINE_DEPTH -1):0]  (
-		.clock(clock),
-		.reset(reset),
-		.product_in({internal_products,32'h0}),
-		.mplier_in({internal_mpliers,mplier}),
-		.mcand_in({internal_mcands,mcand}),
-		.start({internal_dones,start}),
-		.dest_tag_in({internal_dest_tag,dest_tag_in}),
-		.product_out({product,internal_products}),
-		.mplier_out({mplier_out,internal_mpliers}),
-		.mcand_out({mcand_out,internal_mcands}),
-		.dest_tag_out({dest_tag_out, internal_dest_tag}),
-		.done({done,internal_dones})
-	);
+	assign mcand_in  = sign[0] ? {{`XLEN{mcand[`XLEN-1]}}, mcand}   : {{`XLEN{1'b0}}, mcand} ;
+	assign mplier_in = sign[1] ? {{`XLEN{mplier[`XLEN-1]}}, mplier} : {{`XLEN{1'b0}}, mplier};
 
-	//assign done = internal_dones[`PIPELINE_DEPTH-2];
-	//assign dest_tag_out = internal_dest_tag[((`PIPELINE_DEPTH -1)*`CDB_BITS)-1 : ((`PIPELINE_DEPTH -2)*`CDB_BITS)];
+	assign internal_mcands[0]   = mcand_in;
+	assign internal_mpliers[0]  = mplier_in;
+	assign internal_products[0] = 'h0;
+	assign internal_products_comb[0] = 'h0;
+	assign internal_dones[0]    = start;
+	assign internal_dest_tag[0]    = dest_tag_in;
+
+	assign done    = internal_dones[`NUM_STAGE-1];
+	//assign product = internal_products[`NUM_STAGE];
+	//assign product = internal_products_comb[`NUM_STAGE];
+	assign dest_tag_out = internal_dest_tag[`NUM_STAGE-1];
+	
+	always_comb begin
+		case (func)
+			MUL:    begin 
+					sign = 2'b11; 
+					product = internal_products_comb[`NUM_STAGE][`XLEN-1:0];		
+				end
+			MULH:   begin  
+					sign = 2'b11; 
+					product =internal_products_comb[`NUM_STAGE] [2*`XLEN-1:`XLEN];
+				end
+			MULHSU: begin  
+					sign = 2'b01;
+					product = internal_products_comb[`NUM_STAGE][2*`XLEN-1:`XLEN];
+				end
+			MULHU:  begin  
+					sign = 2'b00; 
+					product = internal_products_comb[`NUM_STAGE][2*`XLEN-1:`XLEN];
+				end
+
+			default: begin    
+				 sign = 2'b11; 
+				 product = `XLEN'hfacebeec;  // here to prevent latches
+				end
+		endcase
+	end
+
+	genvar i;
+	for (i = 0; i < `NUM_STAGE; ++i) begin : mstage
+		mult_stage  ms (
+			.clock(clock),
+			.reset(reset),
+			.product_in(internal_products[i]),
+			.mplier_in(internal_mpliers[i]),
+			.mcand_in(internal_mcands[i]),
+       			.dest_tag_in(internal_dest_tag[i]),
+			.start(internal_dones[i]),
+			.product_out_comb(internal_products_comb[i+1]),
+			.product_out(internal_products[i+1]),
+			.mplier_out(internal_mpliers[i+1]),
+			.mcand_out(internal_mcands[i+1]),
+       			.dest_tag_out(internal_dest_tag[i+1]),
+			.done(internal_dones[i+1])
+		);
+	end
 endmodule
 
-module mult_stage(
-		input clock, reset, start,
-		input [`XLEN-1:0] product_in, mplier_in, mcand_in,
-		input [`CDB_BITS-1:0] dest_tag_in,
 
-		output logic done,
-		output logic[`CDB_BITS-1:0] dest_tag_out,
-		output logic [`XLEN-1:0] product_out, mplier_out, mcand_out
+
+module mult_stage (
+					input clock, reset, start,
+					input [(2*`XLEN)-1:0] mplier_in, mcand_in,
+					input [(2*`XLEN)-1:0] product_in,
+       					input [`CDB_BITS-1:0] dest_tag_in,
+
+					output logic done,
+					output logic [(2*`XLEN)-1:0] mplier_out, mcand_out,
+       					output logic[`CDB_BITS-1:0] dest_tag_out,
+					output logic [(2*`XLEN)-1:0] product_out_comb,
+					output logic [(2*`XLEN)-1:0] product_out
 				);
 
 
+	logic [(2*`XLEN)-1:0] prod_in_reg, partial_prod, next_partial_product, partial_prod_unsigned;
+	logic [(2*`XLEN)-1:0] next_mplier, next_mcand;
 
-	logic [`XLEN-1:0] prod_in_reg, partial_prod_reg;
-	logic [`XLEN-1:0] partial_product, next_mplier, next_mcand;
+	assign product_out = prod_in_reg + partial_prod;
+	assign product_out_comb = product_in + next_partial_product;
 
-	assign product_out = prod_in_reg + partial_prod_reg;
+	assign next_partial_product = mplier_in[(`NUM_BITS-1):0] * mcand_in;
 
-	assign partial_product = mplier_in[(`MULT_WIDTH -1 ):0] * mcand_in;
-
-	assign next_mplier = {`MULT_WIDTH'b0,mplier_in[(`XLEN-1):`MULT_WIDTH]};
-	assign next_mcand = {mcand_in[((`XLEN-1)-`MULT_WIDTH):0],`MULT_WIDTH'b0};
+	assign next_mplier = {{(`NUM_BITS){1'b0}},mplier_in[2*`XLEN-1:(`NUM_BITS)]};
+	assign next_mcand  = {mcand_in[(2*`XLEN-1-`NUM_BITS):0],{(`NUM_BITS){1'b0}}};
 
 	//synopsys sync_set_reset "reset"
 	always_ff @(posedge clock) begin
-		prod_in_reg      <= #1 product_in;
-		partial_prod_reg <= #1 partial_product;
-		mplier_out       <= #1 next_mplier;
-		mcand_out        <= #1 next_mcand;
+		prod_in_reg      <= product_in;
+		partial_prod     <= next_partial_product;
+		mplier_out       <= next_mplier;
+		mcand_out        <= next_mcand;
 	end
 
 	// synopsys sync_set_reset "reset"
 	always_ff @(posedge clock) begin
 		if(reset) begin
-			done <= #1 1'b0;
-			dest_tag_out <= `SD 0;
+			done     <= 1'b0;
+       			dest_tag_out <= `SD 0;
 		end else begin
-			done <= #1 start;
-			dest_tag_out <= `SD dest_tag_in;
+			done     <= start;
+       			dest_tag_out <= `SD dest_tag_in;
 		end
 	end
 
-
-endmodule //mult stage
+endmodule
 
 
 
@@ -187,13 +234,20 @@ endmodule //mult stage
 module ex_stage(
 	input clock,               // system clock
 	input reset,               // system reset
+	input [`N_WAY-1:0][$clog2(`N_SQ):0] store_order_idx_in,
+	input [$clog2(`N_WAY):0] store_num_dis, //from dispatch,  make zero in rob for branch hazard
+	input [$clog2(`N_WAY):0] store_num_ret, //from rob, make zero in rob for branch hazard
+	input branch_haz,
 	input ISSUE_EX_PACKET   [`N_WAY-1 : 0] issue_ex_packet_in,
 	output logic [`N_WAY-1 : 0] [`CDB_BITS-1:0] complete_dest_tag,//to r10k
 	output logic [`N_WAY-1 : 0]  reg_wr_en_out,//to r10k
 	output logic [`N_WAY-1 : 0] [`XLEN-1:0] ex_result_out,
 	output logic take_branch_out,
 	output logic [`EX_BRANCH_UNITS-1 : 0] [`XLEN-1:0] br_result,
-	output EX_MEM_PACKET [`N_WAY-1 : 0] ex_packet_out
+	output EX_MEM_PACKET [`N_WAY-1 : 0] ex_packet_out,
+	output logic [$clog2(`N_WAY):0] empty_storeq,
+	output STORE_PACKET_RET [`N_WAY-1:0] store_ret_packet_out, //from storeQ to Dcache
+	output logic [$clog2(`N_SQ):0] last_str_ex_idx
 );
 	// Pass-throughs
 	always_comb begin
@@ -222,12 +276,13 @@ module ex_stage(
 	logic [`EX_ALU_UNITS-1 : 0] [`XLEN-1:0] alu_result;
 	logic [`EX_ALU_UNITS-1 : 0][`CDB_BITS-1:0] dest_tag_in_alu, dest_tag_out_alu;
 	logic tmp,tmp2;
+	logic [`N_WAY-1 : 0] [$clog2(`EX_ALU_UNITS) : 0] store_alu_idx;	
 	always_comb begin
 		start_alu = 0;
 		count_alu_a = 0; 
 		for(int i=0; i<`N_WAY; i=i+1) begin
 			tmp2=0;
-			if(issue_ex_packet_in[i].execution_unit == ALU && !tmp2 && issue_ex_packet_in[i].valid) begin
+			if(((issue_ex_packet_in[i].execution_unit == ALU) || (issue_ex_packet_in[i].execution_unit == STORE) || (issue_ex_packet_in[i].execution_unit == LOAD)) && !tmp2 && issue_ex_packet_in[i].valid) begin
 				opa_mux_out[count_alu_a] = `XLEN'hdeadfbac;
 				case (issue_ex_packet_in[i].opa_select)
 					OPA_IS_RS1:  opa_mux_out[count_alu_a] = issue_ex_packet_in[i].rs1_value;
@@ -236,8 +291,9 @@ module ex_stage(
 					OPA_IS_ZERO: opa_mux_out[count_alu_a] = 0;
 				endcase
 				start_alu[count_alu_a] = 1; 
-				dest_tag_in_alu[count_alu_a] = issue_ex_packet_in[i].dest_reg_idx; 
+			        dest_tag_in_alu[count_alu_a] = issue_ex_packet_in[i].dest_reg_idx; 
 				alu_func[count_alu_a] = issue_ex_packet_in[i].alu_func;
+				if((issue_ex_packet_in[i].execution_unit == STORE) || (issue_ex_packet_in[i].execution_unit == LOAD) ) store_alu_idx[i] = count_alu_a;
 				count_alu_a = count_alu_a+1;
 				tmp2=1;
 			end
@@ -254,7 +310,7 @@ module ex_stage(
 		count_alu_b = 0;
 		for(int i=0; i<`N_WAY; i=i+1) begin
 			tmp=0;
-			if(issue_ex_packet_in[i].execution_unit == ALU && !tmp && issue_ex_packet_in[i].valid ) begin
+			if(((issue_ex_packet_in[i].execution_unit == ALU) || (issue_ex_packet_in[i].execution_unit == STORE) || (issue_ex_packet_in[i].execution_unit == LOAD)) && !tmp && issue_ex_packet_in[i].valid ) begin
 				opb_mux_out[count_alu_b] = `XLEN'hfacefeed;
 				case (issue_ex_packet_in[i].opb_select)
 					OPB_IS_RS2:   opb_mux_out[count_alu_b] = issue_ex_packet_in[i].rs2_value;
@@ -337,6 +393,47 @@ module ex_stage(
 			end
 		end
 	end
+// STOREq input mux
+	logic tmp_st;
+	STORE_PACKET store_ex_packet_in;
+	LOAD_PACKET_IN [`N_WAY-1:0] load_packet_in;
+	LOAD_PACKET_OUT [`N_WAY-1:0] load_packet_out; //from storeQ
+	always_comb begin
+		store_ex_packet_in= 0;
+		for(int i=0; i<`N_WAY; i=i+1) begin
+			tmp_st = 0;
+			if(issue_ex_packet_in[i].execution_unit == STORE  && !tmp_st && issue_ex_packet_in[i].valid ) begin
+				store_ex_packet_in[i].valid = 1;
+				store_ex_packet_in[i].store_pos = issue_ex_packet_in[i].storeq_idx;
+				store_ex_packet_in[i].value = issue_ex_packet_in[i].rs2_value;
+				store_ex_packet_in[i].address = alu_result[store_alu_idx[i]];
+				tmp_st = 1;
+			end
+			if(issue_ex_packet_in[i].execution_unit ==  LOAD && !tmp_st && issue_ex_packet_in[i].valid ) begin
+				load_packet_in[i].valid = 1;
+				load_packet_in[i].load_pos = issue_ex_packet_in[i].storeq_idx;
+				load_packet_in[i].address = alu_result[store_alu_idx[i]];
+				tmp_st = 1;
+			end
+
+		end
+	end
+	// instantiate the STOREq unit
+	
+		storeq storeq_0 (
+				.clock(clock),
+				.reset(reset),
+				.store_num_dis(store_num_dis),
+				.order_idx_in(store_order_idx_in),
+				.branch_haz(branch_haz),
+				.store_ex_packet_in(store_ex_packet_in),
+				.store_num_ret(store_num_ret),
+				.load_packet_in(load_packet_in),
+				.store_ret_packet_out(store_ret_packet_out),	
+				.empty_storeq(empty_storeq),
+				.last_str_ex_idx(last_str_ex_idx),
+				.load_packet_out(load_packet_out)
+				);	
 
 	//
 	// instantiate the ALU
@@ -366,6 +463,7 @@ module ex_stage(
 			mult m0 (//Inputs
 				.clock(clock),
 				.reset(reset),
+				.func(mult_func[j]),
 				.mcand(mcand[k]),
 				.mplier(mplier[k]),
 				.start(start_mult[k]),
@@ -507,7 +605,8 @@ module ex_stage(
 
 	always_comb begin
 		for(int i=0; i<`N_WAY; i=i+1) begin
-			reg_wr_en_out[i]  = complete_dest_tag[i]!= `ZERO_REG_PR;
+		//	reg_wr_en_out[i]  = complete_dest_tag[i]!= `ZERO_REG_PR;
+			reg_wr_en_out[i]  = (complete_dest_tag[i]!= `ZERO_REG_PR) && (complete_dest_tag[i]!=0);
 		end	
 	end
 

@@ -363,6 +363,7 @@ module issue_stage(
 							issue_packet[count].csr_op = ready_to_execute[j].issue_ex_packet.csr_op;
 							issue_packet[count].NPC = ready_to_execute[j].issue_ex_packet.NPC;							
 							issue_packet[count].PC = ready_to_execute[j].issue_ex_packet.PC;							
+							issue_packet[count].storeq_idx = ready_to_execute[j].issue_ex_packet.storeq_idx;							
 
 							next_ready_to_execute[j].busy = 0;
 							order_idx_ex[j] = 0;
@@ -503,6 +504,7 @@ module issue_stage(
 																					ALU;
 					next_ready_to_execute_wire[j].issue_ex_packet.NPC = rs_packet_issue[i].NPC; 
 					next_ready_to_execute_wire[j].issue_ex_packet.PC = rs_packet_issue[i].PC;					
+					next_ready_to_execute_wire[j].issue_ex_packet.storeq_idx = rs_packet_issue[i].storeq_idx;					
 				end
 			end
 		end

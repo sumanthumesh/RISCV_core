@@ -133,6 +133,14 @@ typedef enum logic [4:0] {
 	ALU_REMU    = 5'h11
 } ALU_FUNC;
 
+typedef enum logic [1:0] {
+	MUL     = 2'h00,
+	MULH    = 2'h01,
+	MULHSU  = 2'h10,
+	MULHU   = 2'h11
+} MULT_FUNC;
+
+
 //////////////////////////////////////////////
 //
 // Assorted things it is not wise to change
@@ -437,6 +445,7 @@ typedef struct packed {
 	logic valid;
 	logic [`XLEN-1:0]	NPC;
 	logic [`XLEN-1:0]	PC;
+	logic [1:0] ld_st_bits; //00: no ld store, 01: store, 10: load , 11:reserve
 } DISPATCH_PACKET_R10K;
 
 
@@ -512,6 +521,7 @@ typedef struct packed {
 	logic       illegal;       // is this instruction illegal?
 	logic       csr_op;        // is this a CSR operation? (we only used this as a cheap way to get return code)
 	EXECUTION_UNIT execution_unit;
+	logic [$clog2(`N_SQ):0] storeq_idx;
 	logic [`XLEN-1:0] NPC; // PC + 4
 	logic [`XLEN-1:0] PC;  // PC 
 } ISSUE_EX_PACKET;
@@ -536,6 +546,7 @@ typedef struct packed {
 	logic completed;
 	logic take_branch;
 	logic [`XLEN-1:0] br_result;
+	logic [1:0] ld_st_bits; //00: no ld store, 01: store, 10: load , 11:reserve
 
 } ROB_PACKET; //Rob packet
 

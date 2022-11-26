@@ -116,10 +116,11 @@ SIMFILES =	verilog/top_r10k.sv	\
 		verilog/rob.sv \
 		verilog/regfile.sv \
 		verilog/icache.sv	\
-		verilog/icache_queue.sv	\
 		verilog/issue_stage.sv \
+		verilog/storeq.sv \
 		verilog/instruction_decoder.sv \
 		verilog/instruction_buffer.sv  	
+		##verilog/icache_queue.sv	\
 
 
 ##SYNFILES = synth/pipeline.vg

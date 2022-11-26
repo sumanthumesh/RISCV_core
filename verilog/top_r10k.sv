@@ -228,7 +228,7 @@ module top_r10k (
 
  
 
-icache dut(.clock(clock),
+icache icache(.clock(clock),
                .reset(reset),
     		.enable(1'b1),
                .Imem2proc_response(Imem2proc_response),
@@ -278,7 +278,7 @@ instruction_decoder instruction_decoder(
 		.halt(halt),
 		.out_valid(out_valid),
 		.illegal(illegal),
-		.ld_st_bits(ld_st_bits),
+		.ld_st_bits(ld_st_bits)
 	);
 
  top_rob top_rob0 (

@@ -24,6 +24,7 @@ module decoder(
 	output ALU_OPB_SELECT   [`N_WAY-1:0]    opb_select,
 	output DEST_REG_SEL     [`N_WAY-1:0]    dest_reg_select, // mux selects
 	output ALU_FUNC         [`N_WAY-1:0]	alu_func,
+	output MULT_FUNC         [`N_WAY-1:0]	mult_func,
 	output logic 			[`N_WAY-1:0]	rd_mem,
 	output logic 			[`N_WAY-1:0]	wr_mem, 
 	output logic 			[`N_WAY-1:0]	cond_branch, 
@@ -55,6 +56,7 @@ module decoder(
 			opa_select[i] = OPA_IS_RS1;
 			opb_select[i] = OPB_IS_RS2;
 			alu_func[i] = ALU_ADD;
+			mult_func[i] = MUL;
 			dest_reg_select[i] = DEST_NONE;
 			csr_op[i] = `FALSE;
 			rd_mem[i] = `FALSE;
@@ -190,19 +192,19 @@ module decoder(
 					end
 					`RV32_MUL: begin
 						dest_reg_select[i]   = DEST_RD;
-						alu_func[i]   = ALU_MUL;
+						mult_func[i]   = MUL;
 					end
 					`RV32_MULH: begin
 						dest_reg_select[i]   = DEST_RD;
-						alu_func[i]   = ALU_MULH;
+						mult_func[i]   = MULH;
 					end
 					`RV32_MULHSU: begin
 						dest_reg_select[i]   = DEST_RD;
-						alu_func[i]   = ALU_MULHSU;
+						mult_func[i]   = MULHSU;
 					end
 					`RV32_MULHU: begin
 						dest_reg_select[i]   = DEST_RD;
-						alu_func[i]   = ALU_MULHU;
+						mult_func[i]   = MULHU;
 					end
 					`RV32_CSRRW, `RV32_CSRRS, `RV32_CSRRC: begin
 						csr_op[i] = `TRUE;
@@ -272,6 +274,7 @@ module issue_stage(
 	ALU_OPB_SELECT   [`N_WAY-1:0]    opb_select;
 	DEST_REG_SEL     [`N_WAY-1:0]    dest_reg_select;
 	ALU_FUNC         [`N_WAY-1:0]	alu_func;
+	MULT_FUNC         [`N_WAY-1:0]	mult_func;
 	logic [`N_WAY-1:0][`CDB_BITS-1:0] dest_reg_idx;
 	logic 			[`N_WAY-1:0]	rd_mem;
 	logic 			[`N_WAY-1:0]	wr_mem; 
@@ -354,6 +357,7 @@ module issue_stage(
 							issue_packet[count].dest_reg_idx = ready_to_execute[j].issue_ex_packet.dest_reg_idx;
 							issue_packet[count].execution_unit = ready_to_execute[j].issue_ex_packet.execution_unit;
 							issue_packet[count].alu_func = ready_to_execute[j].issue_ex_packet.alu_func;
+							issue_packet[count].mult_func = ready_to_execute[j].issue_ex_packet.mult_func;
 							issue_packet[count].rd_mem = ready_to_execute[j].issue_ex_packet.rd_mem;
 							issue_packet[count].wr_mem = ready_to_execute[j].issue_ex_packet.wr_mem;
 							issue_packet[count].cond_branch = ready_to_execute[j].issue_ex_packet.cond_branch;
@@ -439,6 +443,7 @@ module issue_stage(
 						issue_packet[count].inst = rs_packet_issue[i].inst;
 						issue_packet[count].dest_reg_idx = dest_reg_idx[i];
 						issue_packet[count].alu_func = alu_func[i];
+						issue_packet[count].mult_func = mult_func[i];
 						issue_packet[count].rd_mem = rd_mem[i];
 						issue_packet[count].wr_mem = wr_mem[i];
 						issue_packet[count].cond_branch = cond_branch[i];
@@ -490,6 +495,7 @@ module issue_stage(
 					next_ready_to_execute_wire[j].issue_ex_packet.inst = rs_packet_issue[i].inst;
 					next_ready_to_execute_wire[j].issue_ex_packet.dest_reg_idx = dest_reg_idx[i];
 					next_ready_to_execute_wire[j].issue_ex_packet.alu_func = alu_func[i];
+					next_ready_to_execute_wire[j].issue_ex_packet.mult_func = mult_func[i];
 					next_ready_to_execute_wire[j].issue_ex_packet.rd_mem = rd_mem[i];
 					next_ready_to_execute_wire[j].issue_ex_packet.wr_mem = wr_mem[i];
 					next_ready_to_execute_wire[j].issue_ex_packet.cond_branch = cond_branch[i];
@@ -542,6 +548,7 @@ module issue_stage(
 		.opb_select(opb_select),
 		.dest_reg_select(dest_reg_select),
 		.alu_func(alu_func),
+		.mult_func(mult_func),
 		.rd_mem(rd_mem),
 		.wr_mem(wr_mem), 
 		.cond_branch(cond_branch), 

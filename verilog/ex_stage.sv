@@ -108,9 +108,9 @@ module mult  (
        				input [`CDB_BITS-1:0] dest_tag_in,
 				input [`XLEN-1:0] mcand, mplier,
 				
-				output [(`XLEN)-1:0] product,
-       				output [`CDB_BITS-1:0] dest_tag_out,
-				output done
+				output logic [(`XLEN)-1:0] product,
+       				output logic [`CDB_BITS-1:0] dest_tag_out,
+				output logic done
 			);
 	logic [1:0] sign;
 	logic [(2*`XLEN)-1:0] mcand_out, mplier_out, mcand_in, mplier_in;
@@ -330,7 +330,7 @@ module ex_stage(
 	logic [`EX_MULT_UNITS-1 : 0] start_mult,done_mult;
 	logic [`EX_MULT_UNITS-1 : 0] [`XLEN-1:0] mult_result;
 	logic [`EX_MULT_UNITS-1 : 0][`CDB_BITS-1:0] dest_tag_in_mult, dest_tag_out_mult;
-	logic [`EX_MULT_UNITS-1 : 0][1:0] sign_mult;
+	MULT_FUNC [`EX_MULT_UNITS-1 : 0]   mult_func;
 	always_comb begin
 		count_mult = 0;
 		start_mult = 0;
@@ -339,7 +339,7 @@ module ex_stage(
 			if(issue_ex_packet_in[i].execution_unit == MULT && !tmp1 && issue_ex_packet_in[i].valid) begin
 				mcand[count_mult] = issue_ex_packet_in[i].rs1_value;
 				mplier[count_mult] = issue_ex_packet_in[i].rs2_value;
-				sign_mult[count_mult] = 0;
+				mult_func[count_mult] = issue_ex_packet_in[i].mult_func;
 				start_mult[count_mult] = 1;
 				dest_tag_in_mult[count_mult] = issue_ex_packet_in[i].dest_reg_idx; 
 				tmp1 = 1;
@@ -394,7 +394,7 @@ module ex_stage(
 	end
 // STOREq input mux
 	logic tmp_st;
-	STORE_PACKET store_ex_packet_in;
+	STORE_PACKET [`N_WAY-1:0] store_ex_packet_in;
 	LOAD_PACKET_IN [`N_WAY-1:0] load_packet_in;
 	LOAD_PACKET_OUT [`N_WAY-1:0] load_packet_out; //from storeQ
 	always_comb begin
@@ -462,7 +462,7 @@ module ex_stage(
 			mult m0 (//Inputs
 				.clock(clock),
 				.reset(reset),
-				.func(mult_func[j]),
+				.func(mult_func[k]),
 				.mcand(mcand[k]),
 				.mplier(mplier[k]),
 				.start(start_mult[k]),

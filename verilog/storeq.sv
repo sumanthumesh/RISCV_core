@@ -17,9 +17,9 @@ module storeq(
 	STORE_PACKET_REG [`N_SQ-1:0] storeq_wire_ret;
 	STORE_PACKET_REG [`N_SQ-1:0] storeq_wire_ex;
 	STORE_PACKET_REG [`N_SQ-1:0] storeq_next;
-	logic [$clog2(`N_SQ):0] empty_storeq_reg,
-	logic [$clog2(`N_SQ):0] empty_storeq_wire,
-	logic [$clog2(`N_SQ):0] empty_storeq_next,
+	logic [$clog2(`N_SQ):0] empty_storeq_reg;
+	logic [$clog2(`N_SQ):0] empty_storeq_wire;
+	logic [$clog2(`N_SQ):0] empty_storeq_next;
 	logic tmp,tmp1;
 	logic [`N_WAY-1:0] [$clog2(`N_SQ):0] order_pos;
 	logic [$clog2(`N_SQ):0] tmp_order_pos;
@@ -73,7 +73,7 @@ module storeq(
 		for(int i=0; i<`N_WAY; i=i+1) begin
 			if (store_ex_packet_in[i].valid && !branch_haz) begin
 				for(int j=0; j<`N_SQ; j=j+1) begin
-					if (j == store_ex_packet[i].store_pos) begin
+					if (j == store_ex_packet_in[i].store_pos) begin
 						storeq_wire_ex[j].ex = 1;
 						storeq_wire_ex[j].address = store_ex_packet_in[i].address;
 						storeq_wire_ex[j].value = store_ex_packet_in[i].value;
@@ -93,15 +93,16 @@ module storeq(
 			if (i < store_num_dis) begin
 				for(int j=0; j<`N_SQ; j=j+1) begin
 					if (!tmp1) begin
-					storeq_next[j].tail = 0;
-					empty_storeq_next= empty_storeq_next - 1;
-					tmp1 = 1;
-					if(j == `N_SQ-1) begin
-						storeq_next[0].tail = 1;
-						storeq_next[0].order_idx = order_idx_in[i] - store_num_ret;
-					end else begin
-						storeq_next[j+1].tail = 1;
-						storeq_next[j+1].order_idx = order_idx_in[i] - store_num_ret;
+						storeq_next[j].tail = 0;
+						empty_storeq_next= empty_storeq_next - 1;
+						tmp1 = 1;
+						if(j == `N_SQ-1) begin
+							storeq_next[0].tail = 1;
+							storeq_next[0].order_idx = order_idx_in[i] - store_num_ret;
+						end else begin
+							storeq_next[j+1].tail = 1;
+							storeq_next[j+1].order_idx = order_idx_in[i] - store_num_ret;
+						end
 					end
 				end
 			end
@@ -134,7 +135,7 @@ module storeq(
 		end
 		for (int k=1; k<=`N_SQ; k=k+1) begin
 			if((k==storeq_reg[k].order_idx)&& storeq_reg[k].ex) begin
-				last_str_ex_idx = storeq_reg[k].store_pos;
+				last_str_ex_idx = storeq_reg[k].order_idx;
 			end
 		end
 	end

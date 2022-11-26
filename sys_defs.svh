@@ -134,10 +134,10 @@ typedef enum logic [4:0] {
 } ALU_FUNC;
 
 typedef enum logic [1:0] {
-	MUL     = 2'h00,
-	MULH    = 2'h01,
-	MULHSU  = 2'h10,
-	MULHU   = 2'h11
+	MUL     = 2'b00,
+	MULH    = 2'b01,
+	MULHSU  = 2'b10,
+	MULHU   = 2'b11
 } MULT_FUNC;
 
 
@@ -549,6 +549,7 @@ typedef struct packed {
 	
 	logic [`CDB_BITS-1:0] dest_reg_idx;  // destination (writeback) register index      
 	ALU_FUNC    alu_func;      // ALU function select (ALU_xxx *)
+	MULT_FUNC    mult_func;      // ALU function select (ALU_xxx *)
 	logic       rd_mem;        // does inst read memory?
 	logic       wr_mem;        // does inst write memory?
 	logic       cond_branch;   // is inst a conditional branch?
@@ -597,12 +598,13 @@ typedef struct packed {
 	logic [`XLEN-1:0] PC;
 	logic halt;
 	logic illegal;
+	logic [1:0] ld_st_bits; //00: no ld store, 01: store, 10: load , 11:reserve
 } ROB_PACKET_DISPATCH;
 
 typedef struct packed {
 	logic [`XLEN-1:0] address; 
 	logic [`XLEN-1:0] value; 
-	logic [`XLEN-1:0] store_pos; 
+	logic [$clog2(`N_SQ):0] store_pos;
 	logic valid;
 } STORE_PACKET;
 

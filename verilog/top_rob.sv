@@ -25,7 +25,7 @@ module top_rob (
 	output RETIRE_ROB_PACKET [`N_WAY-1:0] retire_packet,
 	output logic retire_branch,
 	output logic [`XLEN-1:0] retire_branch_PC,
-	output logic [`XLEN-1:0][`CDB_BITS-1:0] arch_reg_next
+	output logic [`XLEN-1:0][`CDB_BITS-1:0] arch_reg_next,
 	output logic [$clog2(`N_WAY):0] store_num_ret //from rob, make zero in rob for branch hazard
 );
 
@@ -54,6 +54,7 @@ module top_rob (
 			rob_packet_dis[i].PC = dispatch_packet[i].PC;
 			rob_packet_dis[i].halt = dispatch_packet[i].halt;
 			rob_packet_dis[i].illegal = dispatch_packet[i].illegal;
+			rob_packet_dis[i].ld_st_bits= dispatch_packet[i].ld_st_bits;
 			if(free_list_out[i] == 0)
 				rob_packet_dis[i].valid = 0;
 			else

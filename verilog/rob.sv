@@ -20,7 +20,7 @@ module rob (
 	output ROB_PACKET [`N_ROB-1:0] rob_packet,
 	output logic [$clog2(`N_WAY):0] empty_rob,
 	output logic [`XLEN-1:0] retire_branch_PC,
-	output logic retire_branch
+	output logic retire_branch,
 	output logic [$clog2(`N_WAY):0] store_num_ret //from rob, make zero in rob for branch hazard
 );
 	ROB_PACKET [`N_ROB-1:0] rob_packet_next;
@@ -75,6 +75,7 @@ module rob (
 								end
 							end
 							if(!branch_haz) begin
+								if(rob_packet[j].branch_inst) retire_branch = 1;
 								if(rob_packet[j].ld_st_bits == 2'b01) store_num_ret = store_num_ret + 1;
 								if(rob_packet[j].tag_old != `ZERO_REG_PR) begin
 									retire_valid[i] = 1 ;		

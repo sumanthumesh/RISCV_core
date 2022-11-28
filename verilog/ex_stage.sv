@@ -30,7 +30,8 @@ module alu(
 	input start,
 	input [`CDB_BITS-1:0] dest_tag_in,
 
-	output logic [`XLEN-1:0] result
+	output logic [`XLEN-1:0] result,
+	input logic [$clog2(`N_WAY):0] issue_ex_packet_in_idx
 );
 	wire signed [`XLEN-1:0] signed_opa, signed_opb;
 	wire signed [2*`XLEN-1:0] signed_mul, mixed_mul;
@@ -292,6 +293,7 @@ module ex_stage(
 	logic [`EX_ALU_UNITS-1 : 0] [`XLEN-1:0] opa_mux_out, opb_mux_out;
 	logic [`EX_BRANCH_UNITS-1 : 0] [`XLEN-1:0] opa_mux_out_br, opb_mux_out_br;
 	ALU_FUNC [`EX_ALU_UNITS-1:0] alu_func;
+	logic [`EX_ALU_UNITS-1:0][$clog2(`N_WAY):0] issue_ex_packet_in_idx;
 	//
 	// ALU opA mux
 	//
@@ -315,8 +317,9 @@ module ex_stage(
 					OPA_IS_ZERO: opa_mux_out[count_alu_a] = 0;
 				endcase
 				start_alu[count_alu_a] = 1; 
-			        dest_tag_in_alu[count_alu_a] = issue_ex_packet_in[i].dest_reg_idx; 
+			    dest_tag_in_alu[count_alu_a] = issue_ex_packet_in[i].dest_reg_idx; 
 				alu_func[count_alu_a] = issue_ex_packet_in[i].alu_func;
+				issue_ex_packet_in_idx[count_alu_a] = i;
 				if((issue_ex_packet_in[i].execution_unit == STORE) || (issue_ex_packet_in[i].execution_unit == LOAD) ) store_alu_idx[i] = count_alu_a;
 				count_alu_a = count_alu_a+1;
 				tmp2=1;
@@ -413,8 +416,7 @@ module ex_stage(
 					OPB_IS_B_IMM: opb_mux_out_br[count_branch] = `RV32_signext_Bimm(issue_ex_packet_in[i].inst);
 					OPB_IS_U_IMM: opb_mux_out_br[count_branch] = `RV32_signext_Uimm(issue_ex_packet_in[i].inst);
 					OPB_IS_J_IMM: opb_mux_out_br[count_branch] = `RV32_signext_Jimm(issue_ex_packet_in[i].inst);
-				endcase 
-
+				endcase
 				count_branch = count_branch + 1;
 			end
 		end
@@ -621,6 +623,7 @@ module ex_stage(
 				.func(alu_func[j]),
 				.start(start_alu[j]),
 				.dest_tag_in(dest_tag_in_alu[j]),
+				.issue_ex_packet_in_idx(issue_ex_packet_in_idx[j]),
 				// Output
 				.result(alu_result[j])
 			);
@@ -736,7 +739,10 @@ module ex_stage(
 				if(start_alu[j] && !completed_alu[j]) begin
 					//complete_dest_tag_wire[count_comp] = dest_tag_out_alu[j];
 					complete_dest_tag_wire[count_comp] = dest_tag_in_alu[j];
-					result_out_wire[count_comp] = alu_result[j];
+					if(issue_ex_packet_in[issue_ex_packet_in_idx[j]].uncond_branch)
+						result_out_wire[count_comp] = issue_ex_packet_in[issue_ex_packet_in_idx[j]].NPC;
+					else
+						result_out_wire[count_comp] = alu_result[j]; 
 					completed_alu[j] = 1;
 					count_comp =  count_comp + 1;
 				end	

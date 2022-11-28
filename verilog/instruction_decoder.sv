@@ -48,11 +48,13 @@ module instruction_decoder(
 					dest_reg[i]      = DEST_RD;
 					opa_select[i]    = OPA_IS_PC;
 					opb_select[i]    = OPB_IS_J_IMM;
+					is_branch[i] = 1;
 				end
 				`RV32_JALR: begin
 					dest_reg[i]      = DEST_RD;
 					opa_select[i]    = OPA_IS_RS1;
 					opb_select[i]    = OPB_IS_I_IMM;
+					is_branch[i] = 1;
 				end
 				`RV32_BEQ, `RV32_BNE, `RV32_BLT, `RV32_BGE,
 				`RV32_BLTU, `RV32_BGEU: begin

@@ -36,6 +36,7 @@ module top_rob (
 	logic [`N_WAY-1:0] retire_halt;
 	logic [`N_WAY-1:0] retire_illegal;
 	logic [`N_WAY-1:0]retire_valid;
+	logic [`N_WAY-1:0] retire_inst_is_branch;
 	//logic [`N_WAY-1:0][`CDB_BITS-1 : 0] free_list_out;
 	logic [$clog2(`N_WAY) : 0] free_num; //to dispatch stage
 	logic [$clog2(`N_WAY):0] empty_rob; //to dispatch stage
@@ -71,6 +72,7 @@ module top_rob (
 			retire_packet[i].PC = retire_PC[i];
 			retire_packet[i].halt = retire_halt[i];
 			retire_packet[i].illegal = retire_illegal[i];
+			retire_packet[i].inst_is_branch = retire_inst_is_branch[i];
 		end
 	end
 
@@ -105,7 +107,8 @@ module top_rob (
 		.branch_haz(branch_haz),
 		.br_target_pc(br_target_pc),
 		.dispatched(dispatched),	
-		.store_num_ret(store_num_ret)
+		.store_num_ret(store_num_ret),
+		.retire_inst_is_branch(retire_inst_is_branch)
                   );
 
 map_table map_table0 (

@@ -118,6 +118,7 @@ module mult  (
 	logic [`NUM_STAGE:0][2*`XLEN-1:0] internal_products,internal_products_comb;
 	logic [`NUM_STAGE:0] internal_dones;
        	logic  [`NUM_STAGE:0][`CDB_BITS-1:0]  internal_dest_tag;
+	MULT_FUNC     func_reg;
 
 	assign mcand_in  = sign[0] ? {{`XLEN{mcand[`XLEN-1]}}, mcand}   : {{`XLEN{1'b0}}, mcand} ;
 	assign mplier_in = sign[1] ? {{`XLEN{mplier[`XLEN-1]}}, mplier} : {{`XLEN{1'b0}}, mplier};
@@ -138,28 +139,49 @@ module mult  (
 		case (func)
 			MUL:    begin 
 					sign = 2'b11; 
-					product = internal_products_comb[`NUM_STAGE][`XLEN-1:0];		
 				end
 			MULH:   begin  
 					sign = 2'b11; 
-					product =internal_products_comb[`NUM_STAGE] [2*`XLEN-1:`XLEN];
 				end
 			MULHSU: begin  
 					sign = 2'b01;
-					product = internal_products_comb[`NUM_STAGE][2*`XLEN-1:`XLEN];
 				end
 			MULHU:  begin  
 					sign = 2'b00; 
-					product = internal_products_comb[`NUM_STAGE][2*`XLEN-1:`XLEN];
 				end
 
 			default: begin    
 				 sign = 2'b11; 
+				end
+		endcase
+	end
+	always_comb begin
+		case (func_reg)
+			MUL:    begin 
+					product = internal_products_comb[`NUM_STAGE][`XLEN-1:0];		
+				end
+			MULH:   begin  
+					product =internal_products_comb[`NUM_STAGE] [2*`XLEN-1:`XLEN];
+				end
+			MULHSU: begin  
+					product = internal_products_comb[`NUM_STAGE][2*`XLEN-1:`XLEN];
+				end
+			MULHU:  begin  
+					product = internal_products_comb[`NUM_STAGE][2*`XLEN-1:`XLEN];
+				end
+
+			default: begin    
 				 product = `XLEN'hfacebeec;  // here to prevent latches
 				end
 		endcase
 	end
-
+	always_ff @(posedge clock) begin
+		if(reset) begin
+			func_reg <= `SD 0;	
+		end else begin
+			func_reg <= `SD func;	
+		end
+	end
 	genvar i;
 	for (i = 0; i < `NUM_STAGE; ++i) begin : mstage
 		mult_stage  ms (
@@ -236,6 +258,9 @@ module ex_stage(
 	input [$clog2(`N_WAY):0] store_num_ret, //from rob, make zero in rob for branch hazard
 	input branch_haz,
 	input ISSUE_EX_PACKET   [`N_WAY-1 : 0] issue_ex_packet_in,
+	input [63:0] mem2dcache_data,
+	input [3:0] mem2dcache_response,
+	input [3:0] mem2dcache_tag,
 	output logic [`N_WAY-1 : 0] [`CDB_BITS-1:0] complete_dest_tag,//to r10k
 	output logic [`N_WAY-1 : 0]  reg_wr_en_out,//to r10k
 	output logic [`N_WAY-1 : 0] [`XLEN-1:0] ex_result_out,
@@ -243,8 +268,10 @@ module ex_stage(
 	output logic [`EX_BRANCH_UNITS-1 : 0] [`XLEN-1:0] br_result,
 	output EX_MEM_PACKET [`N_WAY-1 : 0] ex_packet_out,
 	output logic [$clog2(`N_WAY):0] empty_storeq,
-	output STORE_PACKET_RET [`N_WAY-1:0] store_ret_packet_out, //from storeQ to Dcache
-	output logic [$clog2(`N_SQ):0] last_str_ex_idx
+	output logic [$clog2(`N_SQ):0] last_str_ex_idx,
+	output logic [`XLEN-1:0] dcache2mem_addr,
+	output logic [1:0] dcache2mem_command,
+	output logic [63:0] dcache2mem_data
 );
 	// Pass-throughs
 	always_comb begin
@@ -397,6 +424,26 @@ module ex_stage(
 	STORE_PACKET [`N_WAY-1:0] store_ex_packet_in;
 	LOAD_PACKET_IN [`N_WAY-1:0] load_packet_in;
 	LOAD_PACKET_OUT [`N_WAY-1:0] load_packet_out; //from storeQ
+	STORE_PACKET_RET [`N_WAY-1:0] store_ret_packet_out; //from storeQ to Dcache
+	STORE_PACKET_RET [`STOREQ_DCACHE_FIFO_SIZE-1:0] store2dcache_fifo,store2dcache_fifo_next; //from storeQ to Dcache
+	logic [`STOREQ_DCACHE_FIFO_SIZE-1:0] head_fifo,head_fifo_next;
+	logic [`STOREQ_DCACHE_FIFO_SIZE-1:0] tail_fifo,tail_fifo_next;
+	logic tmp_store1,tmp_store2;
+	LOAD_PACKET_RET [`N_RD_PORTS-1:0] load_packet_in_dcache;
+	STORE_PACKET_RET [`N_WR_PORTS-1:0] store_packet_in_dcache; //from fifo b/w lsq and cache
+	LOAD_PACKET_EX_STAGE [`N_RD_PORTS-1:0] load_packet_out_dcache;// to complete stage
+	STORE_PACKET_EX_STAGE [`N_WR_PORTS-1:0] store_packet_out_dcache; //ack to lsq
+	VICTIM_CACHE_ROW [`N_RD_PORTS-1:0] load_victim_cache_in;
+	VICTIM_CACHE_ROW [`N_WR_PORTS-1:0] store_victim_cache_in;
+	VICTIM_CACHE_ROW [`N_RD_PORTS-1:0] load_victim_cache_out;
+	VICTIM_CACHE_ROW [`N_WR_PORTS-1:0] store_victim_cache_out;
+	logic [`MSHR_SIZE-1:0][`XLEN-1:0] victim_cache_hit_in;
+	logic [`MSHR_SIZE-1:0] victim_cache_hit_valid_in;
+	logic [`MSHR_SIZE-1:0] victim_cache_hit_valid_out;
+	logic [`MSHR_SIZE-1:0][63:0] victim_cache_hit_out;
+	logic victim_cache_full_evict;
+	logic victim_cache_partial_evict;
+
 	always_comb begin
 		store_ex_packet_in= 0;
 		for(int i=0; i<`N_WAY; i=i+1) begin
@@ -406,12 +453,15 @@ module ex_stage(
 				store_ex_packet_in[i].store_pos = issue_ex_packet_in[i].storeq_idx;
 				store_ex_packet_in[i].value = issue_ex_packet_in[i].rs2_value;
 				store_ex_packet_in[i].address = alu_result[store_alu_idx[i]];
+				store_ex_packet_in[i].size= issue_ex_packet_in[i].inst.r.funct3;
 				tmp_st = 1;
 			end
 			if(issue_ex_packet_in[i].execution_unit ==  LOAD && !tmp_st && issue_ex_packet_in[i].valid ) begin
 				load_packet_in[i].valid = 1;
 				load_packet_in[i].load_pos = issue_ex_packet_in[i].storeq_idx;
+				load_packet_in[i].dest_tag= issue_ex_packet_in[i].dest_reg_idx;
 				load_packet_in[i].address = alu_result[store_alu_idx[i]];
+				load_packet_in[i].size= issue_ex_packet_in[i].inst.r.funct3;
 				tmp_st = 1;
 			end
 
@@ -428,12 +478,136 @@ module ex_stage(
 				.store_ex_packet_in(store_ex_packet_in),
 				.store_num_ret(store_num_ret),
 				.load_packet_in(load_packet_in),
-				.store_ret_packet_out(store_ret_packet_out),	
+				.store_packet_dcache(store_packet_out_dcache),
+				.store_ret_packet_out(store_ret_packet_out),
 				.empty_storeq(empty_storeq),
 				.last_str_ex_idx(last_str_ex_idx),
 				.load_packet_out(load_packet_out)
 				);	
+	//FIFO b/w lsq and dcache
+	always_comb begin
+		store2dcache_fifo_next = store2dcache_fifo;
+		head_fifo_next = head_fifo;
+		tail_fifo_next = tail_fifo;
+		store_packet_in_dcache = 0;
+		//adding stores to fifo
+		for(int i=0; i<`N_WAY; i=i+1) begin
+			tmp_store1 = 0;
+			if(store_ret_packet_out[i].valid) begin
+				for(int j=0; j<`STOREQ_DCACHE_FIFO_SIZE; j=j+1) begin
+					if(tail_fifo_next[j] == 1 && !tmp_store1) begin
+						if(j == `STOREQ_DCACHE_FIFO_SIZE-1) begin
+							store2dcache_fifo_next[0] = store_ret_packet_out[i];	
+							tail_fifo_next[0] = 1;
+						end else begin
+							store2dcache_fifo_next[j+1] = store_ret_packet_out[i];	
+							tail_fifo_next[j+1] = 1;
+						end
+						tail_fifo_next[j] = 0;
+						tmp_store1 = 1;
+					end	
+				end
+			end
+		end
+		//sending single store from fifo to dcache
+		tmp_store2 = 0;
+		for(int i=0; i< `STOREQ_DCACHE_FIFO_SIZE; i=i+1) begin
+			if(head_fifo_next[i] && store2dcache_fifo_next[i].valid && !tmp_store2) begin
+				store_packet_in_dcache = store2dcache_fifo_next[i];
+				if(i == `STOREQ_DCACHE_FIFO_SIZE-1) begin
+					head_fifo_next[0] = 1;
+				end else begin
+					head_fifo_next[i+1] = 1;
+				end		
+				head_fifo_next[i] = 0;
+				store2dcache_fifo_next[i].valid = 0;
+				tmp_store2 = 1;
+			end
+		end
+	end
 
+	always_ff @(posedge clock) begin
+		if(reset) begin
+			store2dcache_fifo <= `SD 0;
+			for(int m=0; m<`STOREQ_DCACHE_FIFO_SIZE; m=m+1) begin
+				if(m==0) head_fifo[m] <= `SD 1;	
+				else head_fifo[m] <= `SD 0;
+				if(m==`STOREQ_DCACHE_FIFO_SIZE-1) tail_fifo[m] <= `SD 1;	
+				else tail_fifo[m] <= `SD 0;
+			end
+		end else begin
+			if(!branch_haz) begin
+				store2dcache_fifo <= `SD store2dcache_fifo_next;
+				head_fifo <= `SD head_fifo_next;
+				tail_fifo <= `SD tail_fifo_next;
+			end else begin	
+				store2dcache_fifo <= `SD 0;
+				for(int m=0; m<`STOREQ_DCACHE_FIFO_SIZE; m=m+1) begin
+					if(m==0) head_fifo[m] <= `SD 1;	
+					else head_fifo[m] <= `SD 0;
+					if(m==`STOREQ_DCACHE_FIFO_SIZE-1 ) tail_fifo[m] <= `SD 1;	
+					else tail_fifo[m] <= `SD 0;
+				end
+			end
+		end
+	end
+	//
+	//instantiate the Dcache and victiim cache
+	//
+
+	always_comb begin
+		load_packet_in_dcache[0] = 0;
+		for(int i=0; i<`N_WAY; i=i+1) begin
+			if(!load_packet_out[i].valid) begin
+				load_packet_in_dcache[0].address = load_packet_in[i].address;
+				load_packet_in_dcache[0].dest_tag = issue_ex_packet_in[i].dest_reg_idx;
+				load_packet_in_dcache[0].valid = load_packet_in[i].valid;
+				load_packet_in_dcache[0].size = issue_ex_packet_in[i].inst.r.funct3;
+			end
+		end
+	end
+
+		dcache dcache_dut(
+		    .clock(clock),
+		    .reset(reset),
+		    .load_packet_in(load_packet_in_dcache),
+		    .store_packet_in(store_packet_in_dcache),
+		    .load_packet_out(load_packet_out_dcache),
+		    .store_packet_out(store_packet_out_dcache),
+		    .load_victim_cache_in3(load_victim_cache_in),
+		    .store_victim_cache_in3(store_victim_cache_in),
+		    .load_victim_cache_out(load_victim_cache_out),
+		    .store_victim_cache_out(store_victim_cache_out),
+		    .victim_cache_hit_in(victim_cache_hit_in),
+		    .victim_cache_hit_valid_in(victim_cache_hit_valid_in),
+		    .victim_cache_hit_valid_out(victim_cache_hit_valid_out),
+		    .victim_cache_hit_out(victim_cache_hit_out),
+		    .victim_cache_full_evict_next(victim_cache_full_evict),
+		    .victim_cache_partial_evict_next(victim_cache_partial_evict),
+		    .dcache2mem_addr(dcache2mem_addr),
+		    .dcache2mem_command(dcache2mem_command),
+		    .mem2dcache_response(mem2dcache_response),
+		    .mem2dcache_data(mem2dcache_data),
+		    .mem2dcache_tag(mem2dcache_tag),
+		    .dcache2mem_data(dcache2mem_data)
+		);
+		
+		
+		victim_cache vc0(
+		    .clock(clock), 
+		    .reset(reset),
+		    .victim_cache_hit_in(victim_cache_hit_in),
+		    .victim_cache_hit_valid_in(victim_cache_hit_valid_in),
+		    .victim_cache_hit_valid_out(victim_cache_hit_valid_out),
+		    .victim_cache_hit_out(victim_cache_hit_out),
+		    .load_victim_cache_in(load_victim_cache_in),
+		    .store_victim_cache_in(store_victim_cache_in),
+		    .load_victim_cache_out(load_victim_cache_out),
+		    .store_victim_cache_out(store_victim_cache_out),
+		    .victim_cache_full_evict(victim_cache_full_evict),
+		    .victim_cache_partial_evict(victim_cache_partial_evict)
+		);
+	
 	//
 	// instantiate the ALU
 	//
@@ -509,13 +683,13 @@ module ex_stage(
 
 //complete stage
 	logic [$clog2(`N_WAY) : 0] count_out;
-	logic [$clog2(2*`N_WAY) : 0] count_comp;
+	logic [$clog2(`MAX_EX_UNITS) : 0] count_comp;
 	logic [`EX_MULT_UNITS-1 : 0] completed_mult;
 	logic [`EX_ALU_UNITS-1 : 0]  completed_alu;
 	logic [`EX_BRANCH_UNITS-1 : 0]  completed_branch;
-	logic [2*`N_WAY-1 : 0] [`CDB_BITS-1:0] complete_dest_tag_wire,complete_dest_tag_next,complete_dest_tag_fifo;
-	logic [2*`N_WAY-1 : 0] head,head_next,tail,tail_next;
-	logic [2*`N_WAY-1 : 0] [`XLEN-1:0] result_out_wire,result_out_next,result_out_fifo;
+	logic [`MAX_EX_UNITS-1 : 0] [`CDB_BITS-1:0] complete_dest_tag_wire,complete_dest_tag_next,complete_dest_tag_fifo;
+	logic [`MAX_EX_UNITS-1 : 0] head,head_next,tail,tail_next;
+	logic [`MAX_EX_UNITS-1 : 0] [`XLEN-1:0] result_out_wire,result_out_next,result_out_fifo;
 	logic tmp3,tmp_out;
 	always_comb begin
 		count_comp = 0;
@@ -526,8 +700,22 @@ module ex_stage(
 		result_out_wire = 0;
 		take_branch_out_wire = 0;  
 		//for(int i=0; i<`N_WAY; i=i+1) begin
+			for(int j=0; j<`N_RD_PORTS; j=j+1) begin
+				if(load_packet_out_dcache[j].valid) begin
+					complete_dest_tag_wire[count_comp] = load_packet_out_dcache[j].dest_tag;
+					result_out_wire[count_comp] = load_packet_out_dcache[j].data;
+					count_comp =  count_comp + 1;
+				end	
+			end
+			for(int j=0; j<`N_WAY; j=j+1) begin
+				if(load_packet_out[j].valid) begin
+					complete_dest_tag_wire[count_comp] = load_packet_out[j].dest_tag;
+					result_out_wire[count_comp] = load_packet_out[j].value;
+					count_comp =  count_comp + 1;
+				end	
+			end
 			for(int j=0; j<`EX_MULT_UNITS; j=j+1) begin
-				if(done_mult[j] && !completed_mult[j] && (count_comp<`N_WAY)) begin
+				if(done_mult[j] && !completed_mult[j]) begin
 					complete_dest_tag_wire[count_comp] = dest_tag_out_mult[j];
 					result_out_wire[count_comp] = mult_result[j];
 					completed_mult[j] = 1;
@@ -535,7 +723,7 @@ module ex_stage(
 				end	
 			end
 			for(int j=0; j<`EX_BRANCH_UNITS; j=j+1) begin
-				if(start_branch[j] && !completed_branch[j] && (count_comp<`N_WAY)) begin
+				if(start_branch[j] && !completed_branch[j]) begin
 					complete_dest_tag_wire[count_comp] = dest_tag_in_branch[j];
 					take_branch_out_wire = take_branch;  
 					result_out_wire[count_comp] = 0; 
@@ -545,7 +733,7 @@ module ex_stage(
 			end
 			for(int j=0; j<`EX_ALU_UNITS; j=j+1) begin
 				//if(done_alu[j] && !completed_alu[j]) begin
-				if(start_alu[j] && !completed_alu[j] && (count_comp<`N_WAY)) begin
+				if(start_alu[j] && !completed_alu[j]) begin
 					//complete_dest_tag_wire[count_comp] = dest_tag_out_alu[j];
 					complete_dest_tag_wire[count_comp] = dest_tag_in_alu[j];
 					result_out_wire[count_comp] = alu_result[j];
@@ -564,13 +752,13 @@ module ex_stage(
 		complete_dest_tag= 0 ; 
 		for(int j=0; j<`N_WAY; j=j+1) begin
 			tmp_out = 0;
-			for(int i=0; i<2*`N_WAY; i=i+1) begin
+			for(int i=0; i<`MAX_EX_UNITS; i=i+1) begin
 				if(head_next[i] && !tmp_out) begin
 					complete_dest_tag[j] = complete_dest_tag_next[i];
 					ex_result_out[j] = result_out_next[i];
 					if(complete_dest_tag_next[i] != 0) begin
 						head_next[i] = 0; 	
-						if(i == 2*`N_WAY-1)
+						if(i == `MAX_EX_UNITS-1)
 							head_next[0] = 1; 	
 						else
 							head_next[i+1] = 1; 	
@@ -582,13 +770,13 @@ module ex_stage(
 				end
 			end
 		end
-		for(int i=0; i<2*`N_WAY; i=i+1) begin
+		for(int i=0; i<`MAX_EX_UNITS; i=i+1) begin
 			tmp3 = 0;
-			for(int j=0; j<2*`N_WAY; j=j+1) begin
+			for(int j=0; j<`MAX_EX_UNITS; j=j+1) begin
 				if(tail_next[j] && (complete_dest_tag_wire[i]!=0) && !tmp3) begin
 					tmp3 = 1;
 					tail_next[j] = 0; 	
-					if(j == 2*`N_WAY-1) begin
+					if(j == `MAX_EX_UNITS-1) begin
 						complete_dest_tag_next[0] = complete_dest_tag_wire[i];
 						result_out_next[0] = result_out_wire[i];
 						tail_next[0] = 1; 	
@@ -615,11 +803,11 @@ module ex_stage(
 			result_out_fifo <=`SD 0;
 			br_result <=`SD 0;
 			take_branch_out <= `SD 0;
-			for(int m = 0; m<2*`N_WAY; m = m+1) begin
+			for(int m = 0; m<`MAX_EX_UNITS; m = m+1) begin
 				if(m == 0) begin
 					head[m] <= `SD 1;
 					tail[m] <= `SD 0;
-				end else if(m == 2*`N_WAY-1) begin
+				end else if(m == `MAX_EX_UNITS-1) begin
 					tail[m] <= `SD 1;
 					head[m] <= `SD 0;
 				end else begin

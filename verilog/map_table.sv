@@ -28,7 +28,7 @@ module map_table(
 			end
 		end else begin
 			if(branch_haz) begin
-				for(int i=0; i<`XLEN_BITS; i=i+1) begin
+				for(int i=0; i<`XLEN; i=i+1) begin
 					map_reg[i].phy_reg <= `SD arch_reg[i];
 					map_reg[i].status <= `SD 1;
 				end

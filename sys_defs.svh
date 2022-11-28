@@ -168,14 +168,12 @@ typedef enum logic [1:0] {
 	BUS_STORE    = 2'h2
 } BUS_COMMAND;
 
-`ifndef CACHE_MODE
 typedef enum logic [1:0] {
 	BYTE = 2'h0,
 	HALF = 2'h1,
 	WORD = 2'h2,
 	DOUBLE = 2'h3
 } MEM_SIZE;
-`endif
 //
 // useful boolean single-bit definitions
 //
@@ -335,6 +333,8 @@ typedef struct packed {
 `define ICACHE_Q_SIZE 16
 `define N_IC_PREFETCH 2
 `define ICACHE_Q2_SIZE 16
+`define MAX_EX_UNITS `EX_MULT_UNITS+`EX_ALU_UNITS+2*`EX_LOAD_UNITS+`EX_BRANCH_UNITS
+`define STOREQ_DCACHE_FIFO_SIZE 16
 
 //`define PIPELINE_DEPTH 2
 //`define MULT_WIDTH 16
@@ -409,6 +409,13 @@ typedef struct packed {
 `define EX_BRANCH_UNITS	1
 
 `endif
+
+`define N_RD_PORTS	1
+`define N_WR_PORTS	1
+
+`define VICTIM_CACHE_LINES 4
+
+`define MSHR_SIZE	16
 
 typedef enum logic [2:0] {
 	ALU  	= 3'h0,
@@ -605,13 +612,23 @@ typedef struct packed {
 	logic [`XLEN-1:0] address; 
 	logic [`XLEN-1:0] value; 
 	logic [$clog2(`N_SQ):0] store_pos;
+	MEM_SIZE size;
 	logic valid;
 } STORE_PACKET;
 
 typedef struct packed {
 	logic [`XLEN-1:0] address; 
-	logic [`XLEN-1:0] value; 
+	logic [`CDB_BITS-1:0] dest_tag; 
 	logic valid;
+	MEM_SIZE size;
+} LOAD_PACKET_RET;
+
+typedef struct packed {
+	logic [`XLEN-1:0] address; 
+	logic [`XLEN-1:0] data; 
+	logic valid;
+	logic [$clog2(`N_SQ):0] store_pos;
+	MEM_SIZE size;
 } STORE_PACKET_RET;
 
 
@@ -623,18 +640,69 @@ typedef struct packed {
 	logic valid;
 	logic ex; // tracks if store is executed or not
 	logic [$clog2(`N_SQ):0] order_idx;
+	MEM_SIZE size;
+	logic retired;
 } STORE_PACKET_REG;
 
 typedef struct packed {
 	logic [`XLEN-1:0] value; 
+	logic [`CDB_BITS-1:0] dest_tag; 
 	logic valid;
 } LOAD_PACKET_OUT;
 
 typedef struct packed {
 	logic [`XLEN-1:0] address; 
 	logic [$clog2(`N_SQ):0] load_pos; 
+	logic [`CDB_BITS-1:0] dest_tag; 
+	MEM_SIZE size;
 	logic valid;
 } LOAD_PACKET_IN;
+typedef struct packed {
+	logic [`XLEN-1:0] data; 
+	logic [`CDB_BITS-1:0] dest_tag; 
+	logic valid;
+} LOAD_PACKET_EX_STAGE;
+
+typedef struct packed {
+	logic [$clog2(`N_SQ):0] store_pos;
+	logic valid;
+} STORE_PACKET_EX_STAGE;
+
+typedef struct packed {
+	logic [63:0] data;
+	logic [7:0] tag;
+	logic valid;
+	logic dirty;
+}DCACHE_ROW;
+
+typedef struct packed {
+	logic [63:0] data;
+	logic [7:0] tag;
+	logic [4:0] line_idx;
+	logic valid;
+	logic dirty;
+} VICTIM_CACHE_ROW;
+
+
+typedef struct packed {
+	logic valid;
+	logic load;
+	logic store;
+	logic dispatched;
+	logic ready;
+	logic [63:0] data;
+	logic [`XLEN-1:0] address;
+	logic [`CDB_BITS-1:0] dest_tag;
+	logic [3:0] expected_tag;
+	logic expected_tag_assigned;
+	MEM_SIZE size;
+	logic [$clog2(`MSHR_SIZE):0] order_idx;
+	logic l1_hit;
+	logic victim_hit;
+	logic [`XLEN-1:0] store_data;
+	logic [$clog2(`N_SQ):0] store_pos;
+} MSHR_ROW;
+
 
 
 

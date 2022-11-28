@@ -3,9 +3,9 @@
 module top_r10k (
 	input clock,
 	input reset,
-        input [3:0]  Imem2proc_response,
-        input [63:0] Imem2proc_data,
-        input [3:0]  Imem2proc_tag,
+        input [3:0]  mem2proc_response,
+        input [63:0] mem2proc_data,
+        input [3:0]  mem2proc_tag,
 	//input [$clog2(`N_WAY):0] dispatch_num, //from dispatch stage to rob and rs
 	output  RS_PACKET_ISSUE [`N_WAY-1:0]    rs_packet_issue,
 	output  ISSUE_EX_PACKET [`N_WAY-1:0]  issue_packet,
@@ -27,8 +27,9 @@ module top_r10k (
 	output logic retire_branch,
 	output logic [`XLEN-1:0] retire_branch_PC,
 	output RETIRE_ROB_PACKET [`N_WAY-1:0] retire_packet,
-        output logic [1:0] proc2Imem_command,
-        output logic [`XLEN-1:0] proc2Imem_addr
+	output logic [1:0] mem_command,
+	output logic [63:0] mem_data, 
+	output logic [`XLEN-1:0] mem_addr
 	);
 
 	RS_PACKET_DISPATCH [`N_WAY-1:0] rs_packet_dispatch;
@@ -84,7 +85,6 @@ module top_r10k (
 	logic [`N_WAY-1:0][$clog2(`N_SQ):0] store_order_idx_in;
 	logic [$clog2(`N_WAY):0] store_num_ret; //from rob, make zero in rob for branch hazard
 	logic [$clog2(`N_SQ):0] last_str_ex_idx;
-	STORE_PACKET_RET [`N_WAY-1:0] store_ret_packet_out; //from storeQ to Dcache
 
 
 //////icache integration with pipeline
@@ -124,8 +124,24 @@ module top_r10k (
 	logic [`N_WAY-1:0] halt;
 	logic [`N_WAY-1:0] out_valid;
 	logic [`N_WAY-1:0] illegal;
-
-
+	logic mode_mem; 	// controls which would go into command port of memory
+	logic [`XLEN-1:0] dcache2mem_addr;
+	logic [1:0] dcache2mem_command;
+	logic [63:0] dcache2mem_data;
+        logic [1:0] proc2Imem_command;
+        logic [`XLEN-1:0] proc2Imem_addr;
+	logic enable_icache;
+	
+	//icache and dcache mux with memory
+	//i/p mux
+	always_comb begin
+		assign mode_mem = (dcache2mem_command != BUS_NONE) ? 1 : 0;
+		assign mem_command = mode_mem ? dcache2mem_command : proc2Imem_command;
+		assign mem_data = dcache2mem_data;
+		assign mem_addr = mode_mem ? dcache2mem_addr : proc2Imem_addr;
+	end
+	assign enable_icache = !mode_mem;
+	
 	always_comb begin
 		ex_count = 0 ;
 		for (int j=0; j<`N_WAY ; j=j+1) begin
@@ -230,10 +246,10 @@ module top_r10k (
 
 icache icache(.clock(clock),
                .reset(reset),
-    		.enable(1'b1),
-               .Imem2proc_response(Imem2proc_response),
-               .Imem2proc_data(Imem2proc_data),
-               .Imem2proc_tag(Imem2proc_tag),
+    		.enable(enable_icache),
+               .Imem2proc_response(mem2proc_response),
+               .Imem2proc_data(mem2proc_data),
+               .Imem2proc_tag(mem2proc_tag),
                .proc2Icache_addr(proc2Icache_addr),
                .proc2Icache_count(buff2Icache_count),
                .proc2Imem_command(proc2Imem_command),
@@ -372,8 +388,13 @@ ex_stage ex0 (
 		.br_result(br_result),
 		.ex_packet_out(ex_packet_out),
 		.empty_storeq(empty_storeq),
-		.store_ret_packet_out(store_ret_packet_out),	
-		.last_str_ex_idx(last_str_ex_idx)
+		.last_str_ex_idx(last_str_ex_idx),
+	        .dcache2mem_addr(dcache2mem_addr),
+	        .dcache2mem_command(dcache2mem_command),
+	        .mem2dcache_response(mem2proc_response),
+	        .mem2dcache_data(mem2proc_data),
+	        .mem2dcache_tag(mem2proc_tag),
+	        .dcache2mem_data(dcache2mem_data)
 );
 endmodule
 

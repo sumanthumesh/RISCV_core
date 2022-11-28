@@ -108,24 +108,27 @@ module testbench;
 	logic [1:0] ex_command;
 	logic [63:0] imem_data, ex_data;
 	logic [`XLEN-1:0] imem_addr, ex_addr;
-        logic [3:0]  Imem2proc_response;
-        logic [63:0] Imem2proc_data;
-        logic [3:0]  Imem2proc_tag;
+        logic [3:0]  mem2proc_response;
+        logic [63:0] mem2proc_data;
+        logic [3:0]  mem2proc_tag;
         logic [1:0] proc2Imem_command;
         logic [`XLEN-1:0] proc2Imem_addr;
+	logic [1:0] mem_command;
+	logic [63:0] mem_data;
+	logic [`XLEN-1:0] mem_addr;
 
-	assign imem_command = mode_mem ? ex_command : proc2Imem_command;
-	assign imem_data = ex_data;
-	assign imem_addr = mode_mem ? ex_addr : proc2Imem_addr;
+	//assign imem_command = mode_mem ? dcache2mem_command : proc2Imem_command;
+	//assign imem_data = dcache2mem_data;
+	//assign imem_addr = mode_mem ? dcache2mem_addr : proc2Imem_addr;
 
 
 
 	top_r10k dut(
 		.clock(clock),
 		.reset(reset),
-		.Imem2proc_response(Imem2proc_response),
-		.Imem2proc_data(Imem2proc_data),
-		.Imem2proc_tag(Imem2proc_tag),
+		.mem2proc_response(mem2proc_response),
+		.mem2proc_data(mem2proc_data),
+		.mem2proc_tag(mem2proc_tag),
 		//.dispatch_packet(dispatch_packet),
 		//.branch_inst(branch_inst),
 		.rs_packet_issue(rs_packet_issue),
@@ -144,8 +147,9 @@ module testbench;
 		.arch_reg_next(arch_reg_next),
 		.branch_haz(branch_haz),
 		.br_target_pc(br_target_pc),
-		.proc2Imem_command(proc2Imem_command),
-		.proc2Imem_addr(proc2Imem_addr)
+		.mem_command(mem_command),
+		.mem_data(mem_data),
+		.mem_addr(mem_addr)
 	);
 
 //	program_dispatch pd0 (
@@ -162,12 +166,12 @@ module testbench;
 	
 	// Instantiate the Data Memory
 	mem memory(.clk(clock),
-               .proc2mem_addr(imem_addr),
-               .proc2mem_data(imem_data),
-               .proc2mem_command(imem_command),
-               .mem2proc_response(Imem2proc_response),
-               .mem2proc_data(Imem2proc_data),
-               .mem2proc_tag(Imem2proc_tag));
+               .proc2mem_addr(mem_addr),
+               .proc2mem_data(mem_data),
+               .proc2mem_command(mem_command),
+               .mem2proc_response(mem2proc_response),
+               .mem2proc_data(mem2proc_data),
+               .mem2proc_tag(mem2proc_tag));
 
 	
 //	mem memory (

@@ -78,11 +78,12 @@ module regfile(
       write_value_b = 0;
       if(rdb_idx[i] == `ZERO_REG_PR)
         rdb_out[i] = 0;
-      else if(wr_en[i])
+      //else if(wr_en[i])
+      else
       begin
         for(int j = 0; j < `N_WAY; j++)
         begin
-          if(rdb_idx[i] == wr_idx[j])
+          if((rdb_idx[i] == wr_idx[j]) &&(wr_en[j]))
           begin
             write_value_b = wr_data[j];
             b_write_flag = 1;            
@@ -93,8 +94,8 @@ module regfile(
         else
           rdb_out[i] = registers[rdb_idx[i]];
       end // if(wr_en)
-      else
-        rdb_out[i] = registers[rdb_idx[i]];
+      //else
+      //  rdb_out[i] = registers[rdb_idx[i]];
     end // for-loop with loop variable i
 
   

@@ -116,6 +116,7 @@ SIMFILES =	verilog/top_r10k.sv	\
 		verilog/rob.sv \
 		verilog/regfile.sv \
 		verilog/icache.sv	\
+		verilog/dcache.sv	\
 		verilog/issue_stage.sv \
 		verilog/storeq.sv \
 		verilog/instruction_decoder.sv \

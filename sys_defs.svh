@@ -489,6 +489,7 @@ typedef struct packed {
 	logic [`XLEN-1:0] PC;
 	logic halt;
 	logic illegal;
+	logic inst_is_branch;
 } RETIRE_ROB_PACKET;
 
 typedef struct packed {

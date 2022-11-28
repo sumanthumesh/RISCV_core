@@ -21,7 +21,8 @@ module rob (
 	output logic [$clog2(`N_WAY):0] empty_rob,
 	output logic [`XLEN-1:0] retire_branch_PC,
 	output logic retire_branch,
-	output logic [$clog2(`N_WAY):0] store_num_ret //from rob, make zero in rob for branch hazard
+	output logic [$clog2(`N_WAY):0] store_num_ret, //from rob, make zero in rob for branch hazard
+	output logic [`N_WAY-1:0] retire_inst_is_branch
 );
 	ROB_PACKET [`N_ROB-1:0] rob_packet_next;
 	ROB_PACKET [`N_ROB-1:0] rob_packet_wire;
@@ -45,6 +46,7 @@ module rob (
 		br_target_pc = 0;
 		empty_rob_wire = empty_rob_reg;		
 		store_num_ret = 0;
+		retire_inst_is_branch = 0;
 		//retire_stage
 		for(int i=0; i<`N_WAY; i=i+1) begin	
 			tmp = 0;
@@ -55,6 +57,7 @@ module rob (
 								branch_haz = rob_packet[j].take_branch;
 								retire_branch= 1;
 								retire_branch_PC= rob_packet[j].PC;
+								retire_inst_is_branch[i] = rob_packet[j].branch_inst;
 								br_target_pc = rob_packet[j].br_result;
 								empty_rob_wire = `N_ROB; 
 								for(int k=0; k<`N_ROB; k=k+1) begin
@@ -82,10 +85,11 @@ module rob (
 									retire_tag[i] = rob_packet[j].tag ;		
 									retire_told[i] = rob_packet[j].tag_old ;
 								end else begin
-									retire_valid[i] = 0 ;		
+									retire_valid[i] = 1 ;		
 									retire_told[i] = rob_packet[j].tag ;
 								end
 								retire_PC[i] = rob_packet[j].PC;
+								retire_inst_is_branch[i] = rob_packet[j].branch_inst;
 								retire_halt[i] = rob_packet[j].halt;
 								retire_illegal[i] = rob_packet[j].illegal;
 								if(j == `N_ROB-1)

@@ -352,64 +352,68 @@ module testbench;
 					found = 1'b0;
 					if(retire_packet[i].ret_valid)
 					begin
-						for(j = 0; j < `XLEN; j++)
+						if(retire_packet[i].tag!=0)
 						begin
-							if(retire_packet[i].tag == arch_reg_next[j])
+							for(j = 0; j < `XLEN; j++)
 							begin
-								found = 1'b1;
-								break;
-							end
-						end
-						if(found)
-						begin
-							$fdisplay(wb_fileno, "PC=%x, REG[%d]=%x",
-							retire_packet[i].PC,
-							j,
-							reg_data_lookup[retire_packet[i].tag]);
-							continue;
-						end
-						else
-						begin
-							tag = retire_packet[i].tag;
-							$display("PC=%x, tag=%d", retire_packet[i].PC, tag);
-							if(tag == 37 && retire_packet[i].PC == 32'h8c)
-							begin
-								print_arch_table;
-								print_rob_packet;
-							end
-							while(!found)
-							begin
-								for(int j = 0; j < `N_ROB; j++)
+								if(retire_packet[i].tag == arch_reg_next[j])
 								begin
-									if(rob_packet[j].tag_old == tag)
+									found = 1'b1;
+									break;
+								end
+							end
+							if(found)
+							begin
+								$fdisplay(wb_fileno, "PC=%x, REG[%d]=%x",
+								retire_packet[i].PC,
+								j,
+								reg_data_lookup[retire_packet[i].tag]);
+								continue;
+							end
+							else
+							begin
+								tag = retire_packet[i].tag;
+								$display("PC=%x, tag=%d", retire_packet[i].PC, tag);
+								while(!found)
+								begin
+									for(int j = 0; j < `N_ROB; j++)
 									begin
-										for(k = 0; k < `XLEN; k++)
+										if(rob_packet[j].tag_old == tag)
 										begin
-											if(rob_packet[j].tag == arch_reg_next[k])
+											for(k = 0; k < `XLEN; k++)
 											begin
-												found = 1'b1;
-												break;
+												if(rob_packet[j].tag == arch_reg_next[k])
+												begin
+													found = 1'b1;
+													break;
+												end
 											end
+											if(!found)
+												tag = rob_packet[j].tag;
+											else
+												break;
 										end
-										if(!found)
-											tag = rob_packet[j].tag;
-										else
+										if(found)
 											break;
 									end
-									if(found)
-										break;
 								end
-								
 							end
+							if(k != 0)
+							begin
+								$fdisplay(wb_fileno, "PC=%x, REG[%d]=%x",
+								retire_packet[i].PC,
+								k,
+								reg_data_lookup[retire_packet[i].tag]);
+							end
+							else
+							begin
+								$fdisplay(wb_fileno, "PC=%x, ---", retire_packet[i].PC);
+							end
+						
+
+
 						end
-						if(k != 0)
-						begin
-							$fdisplay(wb_fileno, "PC=%x, REG[%d]=%x",
-							retire_packet[i].PC,
-							k,
-							reg_data_lookup[retire_packet[i].tag]);
-						end
-						else
+						else if(retire_packet[i].inst_is_branch)
 						begin
 							$fdisplay(wb_fileno, "PC=%x, ---", retire_packet[i].PC);
 						end
@@ -443,7 +447,7 @@ module testbench;
 					// 		$display("@@@ System halted on unknown error code %x", 
 					// 			pipeline_error_status);
 					// endcase
-					if (retire_branch && !tmp) begin
+					if (retire_branch && !tmp && branch_haz) begin
 					tmp = 1;
 					$fdisplay(wb_fileno, "PC=%x, ---",
 							retire_branch_PC);

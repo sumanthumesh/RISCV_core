@@ -265,8 +265,8 @@ module ex_stage(
 	output logic [`N_WAY-1 : 0] [`CDB_BITS-1:0] complete_dest_tag,//to r10k
 	output logic [`N_WAY-1 : 0]  reg_wr_en_out,//to r10k
 	output logic [`N_WAY-1 : 0] [`XLEN-1:0] ex_result_out,
-	output logic take_branch_out,
-	output logic [`EX_BRANCH_UNITS-1 : 0] [`XLEN-1:0] br_result,
+	output logic [`N_WAY-1 : 0] take_branch_out,
+	output logic [`N_WAY-1 : 0] [`XLEN-1:0] br_result,
 	output EX_MEM_PACKET [`N_WAY-1 : 0] ex_packet_out,
 	output logic [$clog2(`N_SQ):0] empty_storeq,
 	output logic [$clog2(`N_SQ):0] last_str_ex_idx,
@@ -677,7 +677,7 @@ module ex_stage(
 		end
 	endgenerate
 
-	logic take_branch,take_branch_out_wire;
+	logic take_branch;
 	always_comb begin
 		 // ultimate "take branch" signal:
 		 //	unconditional, or conditional and the condition is true
@@ -699,6 +699,8 @@ module ex_stage(
 	logic [`MAX_EX_UNITS-1 : 0] [`CDB_BITS-1:0] complete_dest_tag_wire,complete_dest_tag_next,complete_dest_tag_fifo;
 	logic [`MAX_EX_UNITS-1 : 0] head,head_next,tail,tail_next;
 	logic [`MAX_EX_UNITS-1 : 0] [`XLEN-1:0] result_out_wire,result_out_next,result_out_fifo;
+	logic [`MAX_EX_UNITS-1 : 0] take_branch_out_wire,take_branch_out_next,take_branch_out_fifo;
+	logic [`MAX_EX_UNITS-1 : 0] [`XLEN-1:0] br_result_out_wire,br_result_out_next,br_result_out_fifo;
 	logic tmp3,tmp_out;
 	always_comb begin
 		count_comp = 0;
@@ -708,6 +710,7 @@ module ex_stage(
 		complete_dest_tag_wire = 0;
 		result_out_wire = 0;
 		take_branch_out_wire = 0;  
+		br_result_out_wire = 0;
 		//for(int i=0; i<`N_WAY; i=i+1) begin
 			for(int j=0; j<`N_RD_PORTS; j=j+1) begin
 				if(load_packet_out_dcache[j].valid) begin
@@ -734,7 +737,8 @@ module ex_stage(
 			for(int j=0; j<`EX_BRANCH_UNITS; j=j+1) begin
 				if(start_branch[j] && !completed_branch[j]) begin
 					complete_dest_tag_wire[count_comp] = dest_tag_in_branch[j];
-					take_branch_out_wire = take_branch;  
+					take_branch_out_wire[count_comp] = take_branch;  
+					br_result_out_wire[count_comp] = br_result_next[j];
 					result_out_wire[count_comp] = 0; 
 					completed_branch[j] = 1;
 					count_comp =  count_comp + 1;
@@ -745,10 +749,13 @@ module ex_stage(
 				if(start_alu[j] && !completed_alu[j] && (issue_ex_packet_in[issue_ex_packet_in_idx[j]].execution_unit != LOAD)) begin
 					//complete_dest_tag_wire[count_comp] = dest_tag_out_alu[j];
 					complete_dest_tag_wire[count_comp] = dest_tag_in_alu[j];
-					if(issue_ex_packet_in[issue_ex_packet_in_idx[j]].uncond_branch)
+					if(issue_ex_packet_in[issue_ex_packet_in_idx[j]].uncond_branch) begin
 						result_out_wire[count_comp] = issue_ex_packet_in[issue_ex_packet_in_idx[j]].NPC;
-					else
+						take_branch_out_wire[count_comp] = 1;  
+						br_result_out_wire[count_comp] = alu_result[j];
+					end else begin
 						result_out_wire[count_comp] = alu_result[j]; 
+					end
 					completed_alu[j] = 1;
 					count_comp =  count_comp + 1;
 				end	
@@ -758,6 +765,8 @@ module ex_stage(
 	always_comb begin
 		complete_dest_tag_next = complete_dest_tag_fifo;
 		result_out_next = result_out_fifo;
+		take_branch_out_next = take_branch_out_fifo;
+		br_result_out_next = br_result_out_fifo;
 		head_next = head;
 		tail_next = tail;
 		count_out = 0;
@@ -768,6 +777,8 @@ module ex_stage(
 				if(head_next[i] && !tmp_out) begin
 					complete_dest_tag[j] = complete_dest_tag_next[i];
 					ex_result_out[j] = result_out_next[i];
+					take_branch_out[j] = take_branch_out_next[i];
+					br_result[j] = br_result_out_next[i];
 					if(complete_dest_tag_next[i] != 0) begin
 						head_next[i] = 0; 	
 						if(i == `MAX_EX_UNITS-1)
@@ -777,6 +788,8 @@ module ex_stage(
 					end
 					complete_dest_tag_next[i] = 0;
 					result_out_next[i] = 0;
+					take_branch_out_next[i] = 0;
+					br_result_out_next[i] = 0;
 					tmp_out = 1;	
 					//count_out = count_out + 1;	
 				end
@@ -791,10 +804,14 @@ module ex_stage(
 					if(j == `MAX_EX_UNITS-1) begin
 						complete_dest_tag_next[0] = complete_dest_tag_wire[i];
 						result_out_next[0] = result_out_wire[i];
+						take_branch_out_next[0] = take_branch_out_wire[i];	
+						br_result_out_next[0] = br_result_out_wire[i];
 						tail_next[0] = 1; 	
 					end else begin
 						complete_dest_tag_next[j+1] = complete_dest_tag_wire[i];
 						result_out_next[j+1] = result_out_wire[i];
+						take_branch_out_next[j+1] = take_branch_out_wire[i];	
+						br_result_out_next[j+1] = br_result_out_wire[i];
 						tail_next[j+1] = 1; 	
 					end
 				end
@@ -813,8 +830,8 @@ module ex_stage(
 		if(reset) begin
 			complete_dest_tag_fifo <=`SD 0;
 			result_out_fifo <=`SD 0;
-			br_result <=`SD 0;
-			take_branch_out <= `SD 0;
+			take_branch_out_fifo <= `SD 0;
+			br_result_out_fifo <= `SD 0;
 			for(int m = 0; m<`MAX_EX_UNITS; m = m+1) begin
 				if(m == 0) begin
 					head[m] <= `SD 1;
@@ -830,10 +847,10 @@ module ex_stage(
 		end else begin
 			complete_dest_tag_fifo <=`SD complete_dest_tag_next;
 			result_out_fifo <=`SD result_out_next;
-			br_result <=`SD br_result_next;
+			take_branch_out_fifo <= `SD take_branch_out_next;
+			br_result_out_fifo <= `SD br_result_out_next;
 			head <= `SD head_next;
 			tail <= `SD tail_next;
-			take_branch_out <= `SD take_branch_out_wire;
 		end
 	end
 

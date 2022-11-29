@@ -4,8 +4,8 @@ module rob (
 	input clock,
 	input reset,
 	input [`N_WAY-1 : 0] [`CDB_BITS-1:0] complete_dest_tag,
-	input take_branch, //from ex stage
-	input [`EX_BRANCH_UNITS-1 : 0] [`XLEN-1:0] br_result,
+	input [`N_WAY-1 : 0] take_branch, //from ex stage
+	input [`N_WAY-1 : 0] [`XLEN-1:0] br_result,
 	input  ROB_PACKET_DISPATCH [`N_WAY-1:0] rob_packet_dis,
 	output logic [`N_WAY-1:0][`CDB_BITS-1:0] retire_tag, 
 	output logic [`N_WAY-1:0][`CDB_BITS-1:0] retire_told,
@@ -55,11 +55,24 @@ module rob (
 						if((rob_packet_wire[j].head) && rob_packet[j].completed ) begin
 							if (rob_packet[j].branch_inst && rob_packet[j].take_branch) begin
 								branch_haz = rob_packet[j].take_branch;
-								retire_branch= 1;
+								retire_branch= 0;
 								retire_branch_PC= rob_packet[j].PC;
 								retire_inst_is_branch[i] = rob_packet[j].branch_inst;
 								br_target_pc = rob_packet[j].br_result;
 								empty_rob_wire = `N_ROB; 
+								//for jal
+								if(rob_packet[j].tag_old != `ZERO_REG_PR) begin
+									retire_valid[i] = 1 ;		
+									retire_tag[i] = rob_packet[j].tag ;		
+									retire_told[i] = rob_packet[j].tag_old ;
+								end else begin
+									retire_valid[i] = 1 ;		
+									retire_told[i] = rob_packet[j].tag ;
+								end
+								retire_PC[i] = rob_packet[j].PC;
+								rob_packet_wire[j].tag = 0;
+								rob_packet_wire[j].tag_old = 0;
+								//for jal
 								for(int k=0; k<`N_ROB; k=k+1) begin
 									if(branch_haz) begin
 										rob_packet_wire[k].completed = 0;
@@ -78,7 +91,7 @@ module rob (
 								end
 							end
 							if(!branch_haz) begin
-								if(rob_packet[j].branch_inst) retire_branch = 1;
+								if(rob_packet[j].branch_inst) retire_branch = 0;
 								if(rob_packet[j].ld_st_bits == 2'b01) store_num_ret = store_num_ret + 1;
 								if(rob_packet[j].tag_old != `ZERO_REG_PR) begin
 									retire_valid[i] = 1 ;		
@@ -129,8 +142,8 @@ module rob (
 				if (rob_packet_wire[j].tag!=0 && (((rob_packet_wire[j].tag == complete_dest_tag[i]) && (complete_dest_tag[i]!=0) && (!branch_haz))||rob_packet_wire[j].halt)) begin
 					rob_packet_wire[j].completed = 1;
 					if(rob_packet_wire[j].branch_inst) begin
-						rob_packet_wire[j].take_branch = take_branch;
-						rob_packet_wire[j].br_result = br_result;
+						rob_packet_wire[j].take_branch = take_branch[i];
+						rob_packet_wire[j].br_result = br_result[i];
 					end
 				end
 			end

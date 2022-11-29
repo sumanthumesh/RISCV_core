@@ -44,8 +44,8 @@ module top_r10k (
 	ISSUE_EX_PACKET   [`N_WAY-1 : 0] issue_ex_packet_in;
 	logic   [`N_WAY-1:0] [`CDB_BITS-1:0]  ex_rs_dest_idx,ex_rs_dest_idx_reg; //from issue stage latched 
 	logic [$clog2(`N_WAY):0] issue_num,issue_num_reg;
-	logic take_branch_ex;
-	logic [`EX_BRANCH_UNITS-1 : 0] [`XLEN-1:0] br_result;
+	logic [`N_WAY-1 : 0] take_branch_ex;
+	logic [`N_WAY-1 : 0] [`XLEN-1:0] br_result;
 
 //////icache integration with pipeline
 	DISPATCH_PACKET_R10K [`N_WAY-1:0] dispatch_packet; //from dispatch stage to rob and rs

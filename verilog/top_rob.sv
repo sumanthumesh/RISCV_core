@@ -6,8 +6,8 @@ module top_rob (
 	input [`N_WAY-1 : 0] [`CDB_BITS-1:0] complete_dest_tag, //i/p from complete stage, not latched from the complete stage
 	input  DISPATCH_PACKET [`N_WAY-1:0] dispatch_packet, //from dispatch stage
 	input [`N_WAY-1:0] branch_inst, // BRANCH instruction identification
-	input take_branch, //from ex stage
-	input [`EX_BRANCH_UNITS-1 : 0] [`XLEN-1:0] br_result,
+	input [`N_WAY-1:0] take_branch, //from ex stage
+	input [`N_WAY-1 : 0] [`XLEN-1:0] br_result,
 	input [$clog2(`N_WAY):0] dispatch_num, //from dispatch stage
 	output ROB_PACKET [`N_ROB-1:0] rob_packet,//debug
 	output PR_PACKET [`N_WAY-1 : 0] pr_packet_out1, //to reservation station

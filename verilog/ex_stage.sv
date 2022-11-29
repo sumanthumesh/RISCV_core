@@ -268,7 +268,7 @@ module ex_stage(
 	output logic take_branch_out,
 	output logic [`EX_BRANCH_UNITS-1 : 0] [`XLEN-1:0] br_result,
 	output EX_MEM_PACKET [`N_WAY-1 : 0] ex_packet_out,
-	output logic [$clog2(`N_WAY):0] empty_storeq,
+	output logic [$clog2(`N_SQ):0] empty_storeq,
 	output logic [$clog2(`N_SQ):0] last_str_ex_idx,
 	output logic [`XLEN-1:0] dcache2mem_addr,
 	output logic [1:0] dcache2mem_command,
@@ -306,6 +306,7 @@ module ex_stage(
 	always_comb begin
 		start_alu = 0;
 		count_alu_a = 0; 
+		store_alu_idx = 0;
 		for(int i=0; i<`N_WAY; i=i+1) begin
 			tmp2=0;
 			if(((issue_ex_packet_in[i].execution_unit == ALU) || (issue_ex_packet_in[i].execution_unit == STORE) || (issue_ex_packet_in[i].execution_unit == LOAD)) && !tmp2 && issue_ex_packet_in[i].valid) begin
@@ -317,7 +318,7 @@ module ex_stage(
 					OPA_IS_ZERO: opa_mux_out[count_alu_a] = 0;
 				endcase
 				start_alu[count_alu_a] = 1; 
-			    dest_tag_in_alu[count_alu_a] = issue_ex_packet_in[i].dest_reg_idx; 
+			        dest_tag_in_alu[count_alu_a] = issue_ex_packet_in[i].dest_reg_idx; 
 				alu_func[count_alu_a] = issue_ex_packet_in[i].alu_func;
 				issue_ex_packet_in_idx[count_alu_a] = i;
 				if((issue_ex_packet_in[i].execution_unit == STORE) || (issue_ex_packet_in[i].execution_unit == LOAD) ) store_alu_idx[i] = count_alu_a;
@@ -430,7 +431,7 @@ module ex_stage(
 	STORE_PACKET_RET [`STOREQ_DCACHE_FIFO_SIZE-1:0] store2dcache_fifo,store2dcache_fifo_next; //from storeQ to Dcache
 	logic [`STOREQ_DCACHE_FIFO_SIZE-1:0] head_fifo,head_fifo_next;
 	logic [`STOREQ_DCACHE_FIFO_SIZE-1:0] tail_fifo,tail_fifo_next;
-	logic tmp_store1,tmp_store2;
+	logic tmp_store1,tmp_store2,tmp_ld;
 	LOAD_PACKET_RET [`N_RD_PORTS-1:0] load_packet_in_dcache;
 	STORE_PACKET_RET [`N_WR_PORTS-1:0] store_packet_in_dcache; //from fifo b/w lsq and cache
 	LOAD_PACKET_EX_STAGE [`N_RD_PORTS-1:0] load_packet_out_dcache;// to complete stage
@@ -448,6 +449,7 @@ module ex_stage(
 
 	always_comb begin
 		store_ex_packet_in= 0;
+		load_packet_in = 0;
 		for(int i=0; i<`N_WAY; i=i+1) begin
 			tmp_st = 0;
 			if(issue_ex_packet_in[i].execution_unit == STORE  && !tmp_st && issue_ex_packet_in[i].valid ) begin
@@ -464,6 +466,7 @@ module ex_stage(
 				load_packet_in[i].dest_tag= issue_ex_packet_in[i].dest_reg_idx;
 				load_packet_in[i].address = alu_result[store_alu_idx[i]];
 				load_packet_in[i].size= issue_ex_packet_in[i].inst.r.funct3;
+				load_packet_in[i].sign= issue_ex_packet_in[i].inst.r.funct3[2];
 				tmp_st = 1;
 			end
 
@@ -559,12 +562,15 @@ module ex_stage(
 
 	always_comb begin
 		load_packet_in_dcache[0] = 0;
+		tmp_ld = 0;
 		for(int i=0; i<`N_WAY; i=i+1) begin
-			if(!load_packet_out[i].valid) begin
+			if(!load_packet_out[i].valid && !tmp_ld) begin
 				load_packet_in_dcache[0].address = load_packet_in[i].address;
 				load_packet_in_dcache[0].dest_tag = issue_ex_packet_in[i].dest_reg_idx;
 				load_packet_in_dcache[0].valid = load_packet_in[i].valid;
 				load_packet_in_dcache[0].size = issue_ex_packet_in[i].inst.r.funct3;
+				load_packet_in_dcache[0].sign = issue_ex_packet_in[i].inst.r.funct3[2]; //0: sign && 1: unsigned
+				tmp_ld = 1;
 			end
 		end
 	end
@@ -736,7 +742,7 @@ module ex_stage(
 			end
 			for(int j=0; j<`EX_ALU_UNITS; j=j+1) begin
 				//if(done_alu[j] && !completed_alu[j]) begin
-				if(start_alu[j] && !completed_alu[j]) begin
+				if(start_alu[j] && !completed_alu[j] && (issue_ex_packet_in[issue_ex_packet_in_idx[j]].execution_unit != LOAD)) begin
 					//complete_dest_tag_wire[count_comp] = dest_tag_out_alu[j];
 					complete_dest_tag_wire[count_comp] = dest_tag_in_alu[j];
 					if(issue_ex_packet_in[issue_ex_packet_in_idx[j]].uncond_branch)

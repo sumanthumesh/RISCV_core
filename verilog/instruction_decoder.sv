@@ -169,7 +169,7 @@ module instruction_decoder(
 				src1[i] = input_inst[i].r.rs1;
 			else src1[i] = 0;
 
-			if(opb_select[i] == OPB_IS_RS2)
+			if((opb_select[i] == OPB_IS_RS2) || (ld_st_bits[i] == 2'b01))
 				src2[i] = input_inst[i].r.rs2;
 			else src2[i] = 0;
 

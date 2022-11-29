@@ -104,6 +104,7 @@ module decoder(
 						rd_mem[i]     = `TRUE;
 					end
 					`RV32_SB, `RV32_SH, `RV32_SW: begin
+						dest_reg_select[i]      = DEST_RD;
 						opb_select[i] = OPB_IS_S_IMM;
 						wr_mem[i]     = `TRUE;
 					end
@@ -458,6 +459,7 @@ module issue_stage(
 																ALU;
 						issue_packet[count].NPC = rs_packet_issue[i].NPC;
 						issue_packet[count].PC = rs_packet_issue[i].PC;
+						issue_packet[count].storeq_idx = rs_packet_issue[i].storeq_idx;							
 
 						count = count + 1;
 						

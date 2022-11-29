@@ -80,7 +80,7 @@ module top_r10k (
 	logic [`N_WAY-1:0][1:0] ld_st_bits;
 	logic [$clog2(`N_WAY):0] store_num_dis; //from dispatch,  make zero in rob for branch hazard
 		
-	logic [$clog2(`N_WAY):0] empty_storeq,empty_storeq_wire;
+	logic [$clog2(`N_SQ):0] empty_storeq,empty_storeq_wire;
 	logic [$clog2(`N_SQ):0] storeq_idx, storeq_idx_wire;
 	logic [`N_WAY-1:0][$clog2(`N_SQ):0] store_order_idx_in;
 	logic [$clog2(`N_WAY):0] store_num_ret; //from rob, make zero in rob for branch hazard
@@ -208,7 +208,7 @@ module top_r10k (
 					rs_packet_dispatch[i].storeq_idx = storeq_idx_wire;
 					empty_storeq_wire = empty_storeq_wire -1;
 					store_num_dis = store_num_dis + 1;
-					store_order_idx_in[i] = `N_SQ - empty_storeq_wire + 1;
+					store_order_idx_in[i] = `N_SQ - empty_storeq_wire;
 				end
 				if((rs_packet_dispatch[i].ld_st_bits == 2'b01) && (empty_storeq_wire == 0) ) begin
 					rs_packet_dispatch[i].valid = 0;

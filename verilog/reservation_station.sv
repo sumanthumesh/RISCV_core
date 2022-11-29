@@ -120,7 +120,7 @@ module reservation_station(
 			for(i_is=0; i_is<`N_RS; i_is=i_is+1) begin
 				if(rs_data[i_is].busy && !branch_haz) begin
 					if((rs_data_wire[i_is].source_tag_1_plus && rs_data_wire[i_is].source_tag_2_plus) && (!rs_data[i_is].issued) && (rs_data_wire[i_is].order_idx == i_o) && (count < issue_num)) begin
-						if(rs_data_wire[i_is].ld_st_bits != 10)begin
+						if(rs_data[i_is].ld_st_bits != 2'b10)begin
 							rs_packet_issue[count].source_tag_1 = rs_data[i_is].source_tag_1;
 							rs_packet_issue[count].source_tag_2 = rs_data[i_is].source_tag_2;
 							rs_packet_issue[count].dest_tag = rs_data[i_is].dest_tag;

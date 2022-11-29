@@ -106,13 +106,13 @@ module icache(
                 //$display("match:%b, i:%d, k:%d, addr:%h, faddr:%h, addr.v:%b, faddr.v:%b",addr_in_fifo,i,k,proc2icache_req[i].addr,fifo_data_next[k].addr,proc2icache_req[i].valid,fifo_data_next[k].valid);
             end
             if(~hit[i] && proc2icache_req[i].valid && ~addr_in_fifo) begin
-                $display("Add i:%d, ireq:%h, ival:%b, amatch %b", i, proc2icache_req[i].addr, proc2icache_req[i].valid, addr_in_fifo);
+                //$display("Add i:%d, ireq:%h, ival:%b, amatch %b", i, proc2icache_req[i].addr, proc2icache_req[i].valid, addr_in_fifo);
                 fifo_data_next[tail_next].addr = proc2icache_req[i].addr;
                 fifo_data_next[tail_next].valid = 1;
                 tail_next = tail_next + 1;
             end
-            else
-                $display("Cant add i:%d, ireq:%h, amatch %b", i, proc2icache_req[i].addr, addr_in_fifo);
+            //else
+                //$display("Cant add i:%d, ireq:%h, amatch %b", i, proc2icache_req[i].addr, addr_in_fifo);
         end
         //Handle pre-fetching
         for(int i=0;i<`N_IC_PREFETCH;i++) begin
@@ -123,13 +123,13 @@ module icache(
                 //$display("match:%b, i:%d, k:%d, addr:%h, faddr:%h, addr.v:%b, faddr.v:%b",addr_in_fifo,i,k,prefetch_req[i].addr,fifo_data_next[k].addr,prefetch_req[i].valid,fifo_data_next[k].valid);
             end
             if(~hit_prefetch[i] && prefetch_req[i].valid && ~addr_in_fifo) begin
-                $display("Pre Add i:%d, ireq:%h, ival:%b, amatch %b", i, prefetch_req[i].addr, prefetch_req[i].valid, addr_in_fifo);
+                //$display("Pre Add i:%d, ireq:%h, ival:%b, amatch %b", i, prefetch_req[i].addr, prefetch_req[i].valid, addr_in_fifo);
                 fifo_data_next[tail_next].addr = prefetch_req[i].addr;
                 fifo_data_next[tail_next].valid = 1;
                 tail_next = tail_next + 1;
             end
-            else
-                $display("Pre Cant add i:%d, ireq:%h, amatch %b", i, prefetch_req[i].addr, addr_in_fifo);
+            //else
+                //$display("Pre Cant add i:%d, ireq:%h, amatch %b", i, prefetch_req[i].addr, addr_in_fifo);
         end
         if(~fifo_empty) begin
             fifo_save_head = head;

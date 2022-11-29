@@ -131,6 +131,14 @@ module map_table(
 					end
 				end
 			end
+			if((dis_packet[n].src1 == 0) && dis_packet[n].valid) begin
+				pr_packet_out1[n].phy_reg = 1;
+				pr_packet_out1[n].status  = 1;
+			end
+			if((dis_packet[n].src2 == 0) && dis_packet[n].valid) begin
+				pr_packet_out2[n].phy_reg = 1;
+				pr_packet_out2[n].status  = 1;
+			end
 		end
 	end
 

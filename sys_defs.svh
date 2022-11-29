@@ -622,6 +622,7 @@ typedef struct packed {
 	logic [`CDB_BITS-1:0] dest_tag; 
 	logic valid;
 	MEM_SIZE size;
+	logic sign; //0: signed 1: unsigned
 } LOAD_PACKET_RET;
 
 typedef struct packed {
@@ -656,6 +657,7 @@ typedef struct packed {
 	logic [$clog2(`N_SQ):0] load_pos; 
 	logic [`CDB_BITS-1:0] dest_tag; 
 	MEM_SIZE size;
+	logic sign; //0: signed 1: unsigned
 	logic valid;
 } LOAD_PACKET_IN;
 typedef struct packed {

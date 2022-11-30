@@ -68,23 +68,41 @@ module instruction_buffer(
 	assign empty = (slots==`ICACHE_BUFF_SIZE);
 	assign pc_wire = next_pc;
 
-	logic trailing_zeros, detected_1_before;
+	logic trailing_zeros;
+	//logic [`N_WAY-1:0] detected_1_before;
+	logic [$clog2(`N_WAY):0] idx_pos;
 	//Check if Icache2buff_valid[`N_WAY-1:0] has any trailing zeros. Leading 0s are tolerated, but not trailing zeros
+	//always_comb begin
+	//	trailing_zeros = 0;
+	//	detected_1_before = 0;
+	//	for(int i=0;i<`N_WAY;i++) begin
+	//		if(Icache2buff_valid[i] == 1)
+	//			if(i>0) 
+	//			detected_1_before[i] =detected_1_before[i-1] ;
+	//			else detected_1_before[i] = 1;
+	//		else
+	//			detected_1_before[i] = 0;
+	//		if(i>0) begin
+	//		if(Icache2buff_valid[i] == 0 && detected_1_before[i-1] == 0) 
+	//			trailing_zeros = 1;
+	//		else
+	//			trailing_zeros = trailing_zeros;
+	//		end else begin
+	//			trailing_zeros = Icache2buff_valid[i] ;
+	//		end
+	//	end
+	//end
+
 	always_comb begin
+		idx_pos = `N_WAY;
 		trailing_zeros = 0;
-		detected_1_before = 0;
-		for(int i=0;i<`N_WAY;i++) begin
-			if(Icache2buff_valid[i] == 1)
-				detected_1_before = 1;
-			else
-				detected_1_before = 0;
-			if(Icache2buff_valid[i] == 0 && detected_1_before == 0)
-				trailing_zeros = 1;
-			else
-				trailing_zeros = trailing_zeros;
+		for (int i= `N_WAY-1 ; i>=0; i--) begin
+			if (Icache2buff_valid[i] == 0 ) idx_pos =  i;
+		end
+		for (int j= 0 ; j<`N_WAY; j++) begin
+			if(((j > idx_pos) && Icache2buff_valid[j])) trailing_zeros = 1;
 		end
 	end
-
 	// interface with Icache - combinational logic
     always_comb begin
 		//Execute always comb block only if there are no trailing zeros

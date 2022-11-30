@@ -234,7 +234,7 @@ module icache(
                 icache_data[i].valids <= `SD 0;
             end
         end
-        else if(enable) begin
+        else /*if(enable)*/ begin
             if(Imem2proc_tag == queue_expected_tag[q_head] && Imem2proc_tag != 0) begin
                 icache_data[line_to_evict].data   <= `SD Imem2proc_data;
                 icache_data[line_to_evict].tags   <= `SD queue_addr[q_head][`XLEN-1:`CACHE_LINE_BITS+3];
@@ -252,7 +252,7 @@ module icache(
                 Icache_addr_out[i]  <= 0;
             end
         end
-        else if(enable) begin
+        else /*if(enable)*/ begin
             for(int i=0;i<`N_WAY;i++) begin
                 //$display("hit[%h]: %b",i,hit[i]);
                 if(hit[i]) begin

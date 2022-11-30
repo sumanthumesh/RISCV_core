@@ -203,16 +203,18 @@ module icache(
             end
             rcvd_from_mem <= `SD 0;
         end
-        else if(enable) begin
-            if(req_sent && (proc2Imem_addr != proc2Imem_addr_d) && proc2Imem_addr != 32'hffffffff) begin
-                queue_addr[q_tail]         <= `SD fifo_data_next[req_ptr_d].addr;
-                queue_expected_tag[q_tail] <= `SD Imem2proc_response;
-                q_tail                     <= `SD q_tail + 1;
-            end
-            else begin
-                for(int i=0;i<`ICACHE_Q2_SIZE;i++) begin
-                    queue_addr[i]         <= `SD queue_addr[i];
-                    queue_expected_tag[i] <= `SD queue_expected_tag[i];
+        else begin
+            if(enable) begin
+                if(req_sent && (proc2Imem_addr != proc2Imem_addr_d) && proc2Imem_addr != 32'hffffffff) begin
+                    queue_addr[q_tail]         <= `SD fifo_data_next[req_ptr_d].addr;
+                    queue_expected_tag[q_tail] <= `SD Imem2proc_response;
+                    q_tail                     <= `SD q_tail + 1;
+                end
+                else begin
+                    for(int i=0;i<`ICACHE_Q2_SIZE;i++) begin
+                        queue_addr[i]         <= `SD queue_addr[i];
+                        queue_expected_tag[i] <= `SD queue_expected_tag[i];
+                    end
                 end
             end
             if(Imem2proc_tag == queue_expected_tag[q_head] && Imem2proc_tag != 0) begin

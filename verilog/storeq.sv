@@ -242,7 +242,7 @@ module storeq(
 				storeq_reg[m].head<= `SD 1;
 				else 
 				storeq_reg[m].head<= `SD 0;
-				if (m==`N_ROB-1) 
+				if (m==`N_SQ-1) 
 				storeq_reg[m].tail <= `SD 1;
 				else 
 				storeq_reg[m].tail <= `SD 0;

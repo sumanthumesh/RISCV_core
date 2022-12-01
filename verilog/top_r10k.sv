@@ -131,6 +131,7 @@ module top_r10k (
         logic [1:0] proc2Imem_command;
         logic [`XLEN-1:0] proc2Imem_addr;
 	logic enable_icache;
+	logic [$clog2(`N_WAY):0] count_st;
 	
 	//icache and dcache mux with memory
 	//i/p mux
@@ -184,6 +185,7 @@ module top_r10k (
 		storeq_idx_wire = storeq_idx;
 		empty_storeq_wire = empty_storeq;
 		store_num_dis = 0; 
+		count_st = 0;
 		for (int i=0; i<`N_WAY ; i=i+1) begin
 			if(dispatch_packet[i].valid) begin
 				rs_packet_dispatch[i].inst = dispatch_packet[i].inst;
@@ -208,7 +210,8 @@ module top_r10k (
 					rs_packet_dispatch[i].storeq_idx = storeq_idx_wire;
 					empty_storeq_wire = empty_storeq_wire -1;
 					store_num_dis = store_num_dis + 1;
-					store_order_idx_in[i] = `N_SQ - empty_storeq_wire;
+					store_order_idx_in[count_st] = `N_SQ - empty_storeq_wire;
+					count_st = count_st + 1;
 				end
 				if((rs_packet_dispatch[i].ld_st_bits == 2'b01) && (empty_storeq_wire == 0) ) begin
 					rs_packet_dispatch[i].valid = 0;

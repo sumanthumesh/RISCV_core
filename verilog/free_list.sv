@@ -53,7 +53,8 @@ module free_list(
 		end
 		for (int i=0; i<`N_WAY; i=i+1) begin
 			tmp1 = 0;
-			if(i< (dispatch_num-count)) begin
+			//if(i< (dispatch_num-count)) begin
+			if((i< dispatch_num) && (i>=count)) begin
 				for (int j=0; j<`N_WAY; j=j+1) begin
 					if(!tmp1 && !rob_told_used[j] && (rob_told[j]!=`ZERO_REG_PR)) begin
 						free_list_out[i] = rob_told[j];

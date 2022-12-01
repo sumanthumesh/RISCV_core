@@ -704,6 +704,7 @@ typedef struct packed {
 	logic victim_hit;
 	logic [`XLEN-1:0] store_data;
 	logic [$clog2(`N_SQ):0] store_pos;
+	logic sign;
 } MSHR_ROW;
 
 

@@ -6,6 +6,7 @@ module top_r10k (
         input [3:0]  mem2proc_response,
         input [63:0] mem2proc_data,
         input [3:0]  mem2proc_tag,
+	input flush,
 	//input [$clog2(`N_WAY):0] dispatch_num, //from dispatch stage to rob and rs
 	output  RS_PACKET_ISSUE [`N_WAY-1:0]    rs_packet_issue,
 	output  ISSUE_EX_PACKET [`N_WAY-1:0]  issue_packet,
@@ -29,7 +30,8 @@ module top_r10k (
 	output RETIRE_ROB_PACKET [`N_WAY-1:0] retire_packet,
 	output logic [1:0] mem_command,
 	output logic [63:0] mem_data, 
-	output logic [`XLEN-1:0] mem_addr
+	output logic [`XLEN-1:0] mem_addr,
+	output logic all_mshr_requests_processed_reg
 	);
 
 	RS_PACKET_DISPATCH [`N_WAY-1:0] rs_packet_dispatch;
@@ -132,6 +134,7 @@ module top_r10k (
         logic [`XLEN-1:0] proc2Imem_addr;
 	logic enable_icache;
 	logic [$clog2(`N_WAY):0] count_st;
+	logic flush_ex_stage;
 	
 	//icache and dcache mux with memory
 	//i/p mux
@@ -203,10 +206,14 @@ module top_r10k (
 				end
 				//for store position
 				if(dispatch_packet[i].ld_st_bits == 2'b01 && (empty_storeq_wire > 0)) begin
-					if(storeq_idx_wire < `N_SQ) 
-						storeq_idx_wire = storeq_idx_wire + 1;
-					else
-						storeq_idx_wire = 1;
+					if(dispatched[i]) begin
+						if(storeq_idx_wire < `N_SQ) 
+							storeq_idx_wire = storeq_idx_wire + 1;
+						else
+							storeq_idx_wire = 1;
+					end else begin
+						storeq_idx_wire = storeq_idx;
+					end
 					rs_packet_dispatch[i].storeq_idx = storeq_idx_wire;
 					empty_storeq_wire = empty_storeq_wire -1;
 					store_num_dis = store_num_dis + 1;
@@ -361,9 +368,15 @@ issue_stage		is0 (
 				issue_ex_packet_in[i] <= `SD 0;
 				ex_rs_dest_idx_reg[i] <= `SD 0;
 			end
+			flush_ex_stage <= `SD 0;
 		end else begin
-			issue_num_reg <= `SD issue_num;
-			storeq_idx <= `SD storeq_idx_wire;
+			if(!branch_haz) begin
+				issue_num_reg <= `SD issue_num;
+				storeq_idx <= `SD storeq_idx_wire;
+			end else begin
+				issue_num_reg <= `SD 0;
+				storeq_idx <= `SD 0;
+			end
 			for(int i=0; i<`N_WAY; i=i+1)begin
 				if(!branch_haz) begin
 					issue_ex_packet_in[i] <= `SD issue_packet[i];
@@ -373,6 +386,7 @@ issue_stage		is0 (
 					ex_rs_dest_idx_reg[i] <= `SD 0;
 				end
 			end
+			flush_ex_stage <= `SD flush;
 		end
 	end
 
@@ -397,7 +411,9 @@ ex_stage ex0 (
 	        .mem2dcache_response(mem2proc_response),
 	        .mem2dcache_data(mem2proc_data),
 	        .mem2dcache_tag(mem2proc_tag),
-	        .dcache2mem_data(dcache2mem_data)
+	    .dcache2mem_data(dcache2mem_data),
+		.flush(flush_ex_stage),
+		.all_mshr_requests_processed_reg(all_mshr_requests_processed_reg)
 );
 endmodule
 

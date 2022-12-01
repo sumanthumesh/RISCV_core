@@ -262,6 +262,7 @@ module ex_stage(
 	input [63:0] mem2dcache_data,
 	input [3:0] mem2dcache_response,
 	input [3:0] mem2dcache_tag,
+	input flush,
 	output logic [`N_WAY-1 : 0] [`CDB_BITS-1:0] complete_dest_tag,//to r10k
 	output logic [`N_WAY-1 : 0]  reg_wr_en_out,//to r10k
 	output logic [`N_WAY-1 : 0] [`XLEN-1:0] ex_result_out,
@@ -272,7 +273,8 @@ module ex_stage(
 	output logic [$clog2(`N_SQ):0] last_str_ex_idx,
 	output logic [`XLEN-1:0] dcache2mem_addr,
 	output logic [1:0] dcache2mem_command,
-	output logic [63:0] dcache2mem_data
+	output logic [63:0] dcache2mem_data,
+	output logic all_mshr_requests_processed_reg
 );
 	// Pass-throughs
 	always_comb begin
@@ -483,7 +485,7 @@ module ex_stage(
 				.store_ex_packet_in(store_ex_packet_in),
 				.store_num_ret(store_num_ret),
 				.load_packet_in(load_packet_in),
-				.store_packet_dcache(store_packet_out_dcache),
+				.store_packet_dcache(store_packet_in_dcache),
 				.store_ret_packet_out(store_ret_packet_out),
 				.empty_storeq(empty_storeq),
 				.last_str_ex_idx(last_str_ex_idx),
@@ -564,7 +566,7 @@ module ex_stage(
 		load_packet_in_dcache[0] = 0;
 		tmp_ld = 0;
 		for(int i=0; i<`N_WAY; i=i+1) begin
-			if(!load_packet_out[i].valid && !tmp_ld) begin
+			if(!load_packet_out[i].valid && !tmp_ld && load_packet_in[i].valid) begin
 				load_packet_in_dcache[0].address = load_packet_in[i].address;
 				load_packet_in_dcache[0].dest_tag = issue_ex_packet_in[i].dest_reg_idx;
 				load_packet_in_dcache[0].valid = load_packet_in[i].valid;
@@ -597,7 +599,9 @@ module ex_stage(
 		    .mem2dcache_response(mem2dcache_response),
 		    .mem2dcache_data(mem2dcache_data),
 		    .mem2dcache_tag(mem2dcache_tag),
-		    .dcache2mem_data(dcache2mem_data)
+		    .dcache2mem_data(dcache2mem_data),
+			.flush(flush),
+			.all_mshr_requests_processed_reg(all_mshr_requests_processed_reg)
 		);
 		
 		

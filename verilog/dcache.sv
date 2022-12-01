@@ -643,6 +643,7 @@
 module dcache(
     input clock,
     input reset,
+    input flush,
     input LOAD_PACKET_RET [`N_RD_PORTS-1:0] load_packet_in,
     output LOAD_PACKET_EX_STAGE [`N_RD_PORTS-1:0] load_packet_out,
     input STORE_PACKET_RET [`N_WR_PORTS-1:0] store_packet_in,
@@ -662,7 +663,8 @@ module dcache(
     output logic [63:0] dcache2mem_data,
     input  logic [3:0] mem2dcache_response,
 	input logic [63:0] mem2dcache_data,
-	input  logic [3:0] mem2dcache_tag
+	input  logic [3:0] mem2dcache_tag,
+    output logic all_mshr_requests_processed_reg
 );
 
 MSHR_ROW [`MSHR_SIZE-1:0] mshr;
@@ -677,6 +679,7 @@ MSHR_ROW [`MSHR_SIZE-1:0] mshr_next8;
 MSHR_ROW [`MSHR_SIZE-1:0] mshr_next9;
 MSHR_ROW [`MSHR_SIZE-1:0] mshr_next10;
 MSHR_ROW [`MSHR_SIZE-1:0] mshr_next11;
+MSHR_ROW [`MSHR_SIZE-1:0] mshr_next12;
 logic [$clog2(`MSHR_SIZE):0] mshr_idx;
 logic [$clog2(`MSHR_SIZE):0] mshr_idx_next;
 logic [$clog2(`N_RD_PORTS):0] load_packet_out_idx;
@@ -712,8 +715,10 @@ DCACHE_ROW [`CACHE_LINES-1:0] dcache_next;
 DCACHE_ROW [`CACHE_LINES-1:0] dcache_next2;
 DCACHE_ROW [`CACHE_LINES-1:0] dcache_next3;
 DCACHE_ROW [`CACHE_LINES-1:0] dcache_next4;
+DCACHE_ROW [`CACHE_LINES-1:0] dcache_next5;
 logic [`CACHE_LINE_BITS-1:0] line_idx;
 logic [`CACHE_LINE_BITS-1:0] line_idx1;
+logic [`CACHE_LINE_BITS:0] line_idx2;
 logic load_l1_hit_next;
 logic load_l1_hit;
 logic store_l1_hit_next;
@@ -724,6 +729,7 @@ logic [$clog2(`MSHR_SIZE):0] order_idx_next2;
 logic [$clog2(`MSHR_SIZE):0] order_idx_next3;
 logic [$clog2(`MSHR_SIZE):0] order_idx_next4;
 logic [$clog2(`MSHR_SIZE):0] order_idx_next5;
+logic [$clog2(`MSHR_SIZE):0] order_idx_next6;
 logic [$clog2(`MSHR_SIZE):0] load_mshr_invalidated_order_idx;
 logic [$clog2(`MSHR_SIZE):0] store_mshr_invalidated_order_idx;
 logic [$clog2(`MSHR_SIZE):0] load_mshr_invalidated_order_idx1;
@@ -734,7 +740,8 @@ logic [3:0] latched_mem2dcache_response;
 logic load_tmp;
 logic store_tmp;
 logic tmp1;
-
+logic tmp2;
+logic all_mshr_requests_processed;
 
 always_comb
 begin   
@@ -866,7 +873,7 @@ begin
                     end
                     dcache_next2[line_idx].tag = mshr_next2[j].address[`XLEN-1:`CACHE_LINE_BITS+3];
                     dcache_next2[line_idx].valid = 1;
-                    dcache_next2[line_idx].dirty = 0;
+                    dcache_next2[line_idx].dirty = 1;
                     store_packet_out_next[store_packet_out_idx].store_pos = mshr_next2[j].store_pos;
                     store_packet_out_next[store_packet_out_idx].valid = 1;
                     casez(mshr_next2[j].size)
@@ -944,24 +951,24 @@ begin
                         BYTE:
                         begin
                             casez(mshr_next2[j].address[2:0])
-                                3'd0: load_packet_out_next[load_packet_out_idx].data = {24'b0, mshr_next2[j].data[7:0]};
-                                3'd1: load_packet_out_next[load_packet_out_idx].data = {24'b0, mshr_next2[j].data[15:8]};
-                                3'd2: load_packet_out_next[load_packet_out_idx].data = {24'b0, mshr_next2[j].data[23:16]};
-                                3'd3: load_packet_out_next[load_packet_out_idx].data = {24'b0, mshr_next2[j].data[31:24]};
-                                3'd4: load_packet_out_next[load_packet_out_idx].data = {24'b0, mshr_next2[j].data[39:32]};
-                                3'd5: load_packet_out_next[load_packet_out_idx].data = {24'b0, mshr_next2[j].data[47:40]};
-                                3'd6: load_packet_out_next[load_packet_out_idx].data = {24'b0, mshr_next2[j].data[55:48]};
-                                3'd7: load_packet_out_next[load_packet_out_idx].data = {24'b0, mshr_next2[j].data[63:56]};
+                                3'd0: load_packet_out_next[load_packet_out_idx].data = !mshr_next2[j].sign ? {{24{mshr_next2[j].data[7]}}, mshr_next2[j].data[7:0]} : {24'b0, mshr_next2[j].data[7:0]};
+                                3'd1: load_packet_out_next[load_packet_out_idx].data = !mshr_next2[j].sign ? {{24{mshr_next2[j].data[15]}}, mshr_next2[j].data[15:8]} : {24'b0, mshr_next2[j].data[15:8]};
+                                3'd2: load_packet_out_next[load_packet_out_idx].data = !mshr_next2[j].sign ? {{24{mshr_next2[j].data[23]}}, mshr_next2[j].data[23:16]} : {24'b0, mshr_next2[j].data[23:16]};
+                                3'd3: load_packet_out_next[load_packet_out_idx].data = !mshr_next2[j].sign ? {{24{mshr_next2[j].data[31]}}, mshr_next2[j].data[31:24]} : {24'b0, mshr_next2[j].data[31:24]};
+                                3'd4: load_packet_out_next[load_packet_out_idx].data = !mshr_next2[j].sign ? {{24{mshr_next2[j].data[39]}}, mshr_next2[j].data[39:32]} : {24'b0, mshr_next2[j].data[39:32]};
+                                3'd5: load_packet_out_next[load_packet_out_idx].data = !mshr_next2[j].sign ? {{24{mshr_next2[j].data[47]}}, mshr_next2[j].data[47:40]} : {24'b0, mshr_next2[j].data[47:40]};
+                                3'd6: load_packet_out_next[load_packet_out_idx].data = !mshr_next2[j].sign ? {{24{mshr_next2[j].data[55]}}, mshr_next2[j].data[55:48]} : {24'b0, mshr_next2[j].data[55:48]};
+                                3'd7: load_packet_out_next[load_packet_out_idx].data = !mshr_next2[j].sign ? {{24{mshr_next2[j].data[63]}}, mshr_next2[j].data[63:56]} : {24'b0, mshr_next2[j].data[63:56]};
                                 default: load_packet_out_next[load_packet_out_idx].data = 0;
                             endcase
                         end
                         HALF:
                         begin
                             casez(mshr_next2[j].address[2:0])
-                                3'd0: load_packet_out_next[load_packet_out_idx].data = {16'b0, mshr_next2[j].data[15:0]};
-                                3'd2: load_packet_out_next[load_packet_out_idx].data = {16'b0, mshr_next2[j].data[31:16]};
-                                3'd4: load_packet_out_next[load_packet_out_idx].data = {16'b0, mshr_next2[j].data[47:32]};
-                                3'd6: load_packet_out_next[load_packet_out_idx].data = {16'b0, mshr_next2[j].data[63:48]};
+                                3'd0: load_packet_out_next[load_packet_out_idx].data = (!mshr_next2[j].sign) ? {{16{mshr_next2[j].data[15]}}, mshr_next2[j].data[15:0]}  : {16'b0, mshr_next2[j].data[15:0]};
+                                3'd2: load_packet_out_next[load_packet_out_idx].data = (!mshr_next2[j].sign) ? {{16{mshr_next2[j].data[31]}}, mshr_next2[j].data[31:16]} : {16'b0, mshr_next2[j].data[31:16]};
+                                3'd4: load_packet_out_next[load_packet_out_idx].data = (!mshr_next2[j].sign) ? {{16{mshr_next2[j].data[47]}}, mshr_next2[j].data[47:32]} : {16'b0, mshr_next2[j].data[47:32]};
+                                3'd6: load_packet_out_next[load_packet_out_idx].data = (!mshr_next2[j].sign) ? {{16{mshr_next2[j].data[63]}}, mshr_next2[j].data[63:48]} : {16'b0, mshr_next2[j].data[63:48]};
                                 default: load_packet_out_next[load_packet_out_idx].data = 0;
                             endcase
                         end
@@ -1121,7 +1128,7 @@ begin
         begin
             if(tmp1 && mshr_next5[j].valid && !mshr_next5[j].dispatched && !mshr_next5[j].victim_hit && mshr_next5[j].order_idx == i)
             begin
-                if(mshr_next5[i].load)
+                if(mshr_next5[j].load)
                 begin
                     mshr_idx_next = j;
                     mshr_next6[j].dispatched = 1;
@@ -1129,14 +1136,28 @@ begin
                     dcache2mem_command = BUS_LOAD;
                     tmp1 = 0;
                 end
-                else if(mshr_next5[i].store)
+                else if(mshr_next5[j].store)
                 begin
-                    mshr_idx_next = j;
-                    mshr_next6[j].dispatched = 1;
-                    dcache2mem_addr = {mshr_next5[j].address[`XLEN-1:3], 3'b0};
-                    dcache2mem_command = BUS_STORE;
-                    dcache2mem_data = mshr_next5[j].data;
-                    tmp1 = 0;
+                    if(mshr_next[j].size!=DOUBLE)
+                    begin
+                        mshr_idx_next = j;
+                        mshr_next6[j].dispatched = 1;
+                        // dcache2mem_addr = {mshr_next5[j].address[`XLEN-1:3], 3'b0};
+                        // dcache2mem_command = BUS_STORE;
+                        // dcache2mem_data = mshr_next5[j].data;
+                        dcache2mem_addr = {mshr_next5[j].address[`XLEN-1:3], 3'b0};
+                        dcache2mem_command = BUS_LOAD;
+                        tmp1 = 0;
+                    end
+                    else
+                    begin
+                        mshr_idx_next = j;
+                        mshr_next6[j].dispatched = 1;
+                        dcache2mem_addr = {mshr_next5[j].address[`XLEN-1:3], 3'b0};
+                        dcache2mem_command = BUS_STORE;
+                        dcache2mem_data = mshr_next5[j].data;
+                        tmp1 = 0;
+                    end
                 end
             end
         end
@@ -1253,24 +1274,24 @@ begin
                         BYTE:
                         begin
                             casez(mshr_next6[j].address[2:0])
-                                3'd0: load_packet_out_next1[load_packet_out_idx1].data = {24'b0, mshr_next6[j].data[7:0]};
-                                3'd1: load_packet_out_next1[load_packet_out_idx1].data = {24'b0, mshr_next6[j].data[15:8]};
-                                3'd2: load_packet_out_next1[load_packet_out_idx1].data = {24'b0, mshr_next6[j].data[23:16]};
-                                3'd3: load_packet_out_next1[load_packet_out_idx1].data = {24'b0, mshr_next6[j].data[31:24]};
-                                3'd4: load_packet_out_next1[load_packet_out_idx1].data = {24'b0, mshr_next6[j].data[39:32]};
-                                3'd5: load_packet_out_next1[load_packet_out_idx1].data = {24'b0, mshr_next6[j].data[47:40]};
-                                3'd6: load_packet_out_next1[load_packet_out_idx1].data = {24'b0, mshr_next6[j].data[55:48]};
-                                3'd7: load_packet_out_next1[load_packet_out_idx1].data = {24'b0, mshr_next6[j].data[63:56]};
+                                3'd0: load_packet_out_next1[load_packet_out_idx1].data = (!mshr_next6[j].sign) ? {{24{mshr_next6[j].data[7]}},  mshr_next6[j].data[7:0]}   : {24'b0, mshr_next6[j].data[7:0]};
+                                3'd1: load_packet_out_next1[load_packet_out_idx1].data = (!mshr_next6[j].sign) ? {{24{mshr_next6[j].data[15]}}, mshr_next6[j].data[15:8]}  : {24'b0, mshr_next6[j].data[15:8]};
+                                3'd2: load_packet_out_next1[load_packet_out_idx1].data = (!mshr_next6[j].sign) ? {{24{mshr_next6[j].data[23]}}, mshr_next6[j].data[23:16]} : {24'b0, mshr_next6[j].data[23:16]};
+                                3'd3: load_packet_out_next1[load_packet_out_idx1].data = (!mshr_next6[j].sign) ? {{24{mshr_next6[j].data[31]}}, mshr_next6[j].data[31:24]} : {24'b0, mshr_next6[j].data[31:24]};
+                                3'd4: load_packet_out_next1[load_packet_out_idx1].data = (!mshr_next6[j].sign) ? {{24{mshr_next6[j].data[39]}}, mshr_next6[j].data[39:32]} : {24'b0, mshr_next6[j].data[39:32]};
+                                3'd5: load_packet_out_next1[load_packet_out_idx1].data = (!mshr_next6[j].sign) ? {{24{mshr_next6[j].data[47]}}, mshr_next6[j].data[47:40]} : {24'b0, mshr_next6[j].data[47:40]};
+                                3'd6: load_packet_out_next1[load_packet_out_idx1].data = (!mshr_next6[j].sign) ? {{24{mshr_next6[j].data[55]}}, mshr_next6[j].data[55:48]} : {24'b0, mshr_next6[j].data[55:48]};
+                                3'd7: load_packet_out_next1[load_packet_out_idx1].data = (!mshr_next6[j].sign) ? {{24{mshr_next6[j].data[63]}}, mshr_next6[j].data[63:56]} : {24'b0, mshr_next6[j].data[63:56]};
                                 default: load_packet_out_next1[load_packet_out_idx1].data = 0;
                             endcase
                         end
                         HALF:
                         begin
                             casez(mshr_next6[j].address[2:0])
-                                3'd0: load_packet_out_next1[load_packet_out_idx1].data = {16'b0, mshr_next6[j].data[15:0]};
-                                3'd2: load_packet_out_next1[load_packet_out_idx1].data = {16'b0, mshr_next6[j].data[31:16]};
-                                3'd4: load_packet_out_next1[load_packet_out_idx1].data = {16'b0, mshr_next6[j].data[47:32]};
-                                3'd6: load_packet_out_next1[load_packet_out_idx1].data = {16'b0, mshr_next6[j].data[63:48]};
+                                3'd0: load_packet_out_next1[load_packet_out_idx1].data = (!mshr_next6[j].sign) ? {{16{mshr_next6[j].data[15]}}, mshr_next6[j].data[15:0]}  : {16'b0, mshr_next6[j].data[15:0]};
+                                3'd2: load_packet_out_next1[load_packet_out_idx1].data = (!mshr_next6[j].sign) ? {{16{mshr_next6[j].data[31]}}, mshr_next6[j].data[31:16]} : {16'b0, mshr_next6[j].data[31:16]};
+                                3'd4: load_packet_out_next1[load_packet_out_idx1].data = (!mshr_next6[j].sign) ? {{16{mshr_next6[j].data[47]}}, mshr_next6[j].data[47:32]} : {16'b0, mshr_next6[j].data[47:32]};
+                                3'd6: load_packet_out_next1[load_packet_out_idx1].data = (!mshr_next6[j].sign) ? {{16{mshr_next6[j].data[63]}}, mshr_next6[j].data[63:48]} : {16'b0, mshr_next6[j].data[63:48]};
                                 default: load_packet_out_next1[load_packet_out_idx1].data = 0;
                             endcase
                         end
@@ -1410,24 +1431,24 @@ begin
                         BYTE:
                         begin
                             casez(mshr_next8[j].address[2:0])
-                                3'd0: load_packet_out_next2[load_packet_out_idx2].data = {24'b0, mshr_next8[j].data[7:0]};
-                                3'd1: load_packet_out_next2[load_packet_out_idx2].data = {24'b0, mshr_next8[j].data[15:8]};
-                                3'd2: load_packet_out_next2[load_packet_out_idx2].data = {24'b0, mshr_next8[j].data[23:16]};
-                                3'd3: load_packet_out_next2[load_packet_out_idx2].data = {24'b0, mshr_next8[j].data[31:24]};
-                                3'd4: load_packet_out_next2[load_packet_out_idx2].data = {24'b0, mshr_next8[j].data[39:32]};
-                                3'd5: load_packet_out_next2[load_packet_out_idx2].data = {24'b0, mshr_next8[j].data[47:40]};
-                                3'd6: load_packet_out_next2[load_packet_out_idx2].data = {24'b0, mshr_next8[j].data[55:48]};
-                                3'd7: load_packet_out_next2[load_packet_out_idx2].data = {24'b0, mshr_next8[j].data[63:56]};
+                                3'd0: load_packet_out_next2[load_packet_out_idx2].data = (!mshr_next8[j].sign) ? {{24{mshr_next8[j].data[7]}},  mshr_next8[j].data[7:0]}   : {24'b0, mshr_next8[j].data[7:0]};
+                                3'd1: load_packet_out_next2[load_packet_out_idx2].data = (!mshr_next8[j].sign) ? {{24{mshr_next8[j].data[15]}}, mshr_next8[j].data[15:8]}  : {24'b0, mshr_next8[j].data[15:8]};
+                                3'd2: load_packet_out_next2[load_packet_out_idx2].data = (!mshr_next8[j].sign) ? {{24{mshr_next8[j].data[23]}}, mshr_next8[j].data[23:16]} : {24'b0, mshr_next8[j].data[23:16]};
+                                3'd3: load_packet_out_next2[load_packet_out_idx2].data = (!mshr_next8[j].sign) ? {{24{mshr_next8[j].data[31]}}, mshr_next8[j].data[31:24]} : {24'b0, mshr_next8[j].data[31:24]};
+                                3'd4: load_packet_out_next2[load_packet_out_idx2].data = (!mshr_next8[j].sign) ? {{24{mshr_next8[j].data[39]}}, mshr_next8[j].data[39:32]} : {24'b0, mshr_next8[j].data[39:32]};
+                                3'd5: load_packet_out_next2[load_packet_out_idx2].data = (!mshr_next8[j].sign) ? {{24{mshr_next8[j].data[47]}}, mshr_next8[j].data[47:40]} : {24'b0, mshr_next8[j].data[47:40]};
+                                3'd6: load_packet_out_next2[load_packet_out_idx2].data = (!mshr_next8[j].sign) ? {{24{mshr_next8[j].data[55]}}, mshr_next8[j].data[55:48]} : {24'b0, mshr_next8[j].data[55:48]};
+                                3'd7: load_packet_out_next2[load_packet_out_idx2].data = (!mshr_next8[j].sign) ? {{24{mshr_next8[j].data[63]}}, mshr_next8[j].data[63:56]} : {24'b0, mshr_next8[j].data[63:56]};
                                 default: load_packet_out_next2[load_packet_out_idx2].data = 0;
                             endcase
                         end
                         HALF:
                         begin
                             casez(mshr_next8[j].address[2:0])
-                                3'd0: load_packet_out_next2[load_packet_out_idx2].data = {16'b0, mshr_next8[j].data[15:0]};
-                                3'd2: load_packet_out_next2[load_packet_out_idx2].data = {16'b0, mshr_next8[j].data[31:16]};
-                                3'd4: load_packet_out_next2[load_packet_out_idx2].data = {16'b0, mshr_next8[j].data[47:32]};
-                                3'd6: load_packet_out_next2[load_packet_out_idx2].data = {16'b0, mshr_next8[j].data[63:48]};
+                                3'd0: load_packet_out_next2[load_packet_out_idx2].data = (!mshr_next8[j].sign) ? {{16{mshr_next8[j].data[15]}}, mshr_next8[j].data[15:0]}  : {16'b0, mshr_next8[j].data[15:0]};
+                                3'd2: load_packet_out_next2[load_packet_out_idx2].data = (!mshr_next8[j].sign) ? {{16{mshr_next8[j].data[31]}}, mshr_next8[j].data[31:16]} : {16'b0, mshr_next8[j].data[31:16]};
+                                3'd4: load_packet_out_next2[load_packet_out_idx2].data = (!mshr_next8[j].sign) ? {{16{mshr_next8[j].data[47]}}, mshr_next8[j].data[47:32]} : {16'b0, mshr_next8[j].data[47:32]};
+                                3'd6: load_packet_out_next2[load_packet_out_idx2].data = (!mshr_next8[j].sign) ? {{16{mshr_next8[j].data[63]}}, mshr_next8[j].data[63:48]} : {16'b0, mshr_next8[j].data[63:48]};
                                 default: load_packet_out_next2[load_packet_out_idx2].data = 0;
                             endcase
                         end
@@ -1576,24 +1597,24 @@ begin
             BYTE:
             begin
                 casez(load_packet_in[0].address[2:0])
-                    3'd0: load_packet_out_next3[load_packet_out_idx3].data = {24'b0, dcache_next2[load_packet_in[0].address[`CACHE_LINE_BITS+3-1:3]].data[7:0]};
-                    3'd1: load_packet_out_next3[load_packet_out_idx3].data = {24'b0, dcache_next2[load_packet_in[0].address[`CACHE_LINE_BITS+3-1:3]].data[15:8]};
-                    3'd2: load_packet_out_next3[load_packet_out_idx3].data = {24'b0, dcache_next2[load_packet_in[0].address[`CACHE_LINE_BITS+3-1:3]].data[23:16]};
-                    3'd3: load_packet_out_next3[load_packet_out_idx3].data = {24'b0, dcache_next2[load_packet_in[0].address[`CACHE_LINE_BITS+3-1:3]].data[31:24]};
-                    3'd4: load_packet_out_next3[load_packet_out_idx3].data = {24'b0, dcache_next2[load_packet_in[0].address[`CACHE_LINE_BITS+3-1:3]].data[39:32]};
-                    3'd5: load_packet_out_next3[load_packet_out_idx3].data = {24'b0, dcache_next2[load_packet_in[0].address[`CACHE_LINE_BITS+3-1:3]].data[47:40]};
-                    3'd6: load_packet_out_next3[load_packet_out_idx3].data = {24'b0, dcache_next2[load_packet_in[0].address[`CACHE_LINE_BITS+3-1:3]].data[55:48]};
-                    3'd7: load_packet_out_next3[load_packet_out_idx3].data = {24'b0, dcache_next2[load_packet_in[0].address[`CACHE_LINE_BITS+3-1:3]].data[63:56]};
+                    3'd0: load_packet_out_next3[load_packet_out_idx3].data = (!load_packet_in[0].sign) ? {{24{dcache_next2[load_packet_in[0].address[`CACHE_LINE_BITS+3-1:3]].data[7]}},  dcache_next2[load_packet_in[0].address[`CACHE_LINE_BITS+3-1:3]].data[7:0]}   : {24'b0, dcache_next2[load_packet_in[0].address[`CACHE_LINE_BITS+3-1:3]].data[7:0]};
+                    3'd1: load_packet_out_next3[load_packet_out_idx3].data = (!load_packet_in[0].sign) ? {{24{dcache_next2[load_packet_in[0].address[`CACHE_LINE_BITS+3-1:3]].data[15]}}, dcache_next2[load_packet_in[0].address[`CACHE_LINE_BITS+3-1:3]].data[15:8]}  : {24'b0, dcache_next2[load_packet_in[0].address[`CACHE_LINE_BITS+3-1:3]].data[15:8]};
+                    3'd2: load_packet_out_next3[load_packet_out_idx3].data = (!load_packet_in[0].sign) ? {{24{dcache_next2[load_packet_in[0].address[`CACHE_LINE_BITS+3-1:3]].data[23]}}, dcache_next2[load_packet_in[0].address[`CACHE_LINE_BITS+3-1:3]].data[23:16]} : {24'b0, dcache_next2[load_packet_in[0].address[`CACHE_LINE_BITS+3-1:3]].data[23:16]};
+                    3'd3: load_packet_out_next3[load_packet_out_idx3].data = (!load_packet_in[0].sign) ? {{24{dcache_next2[load_packet_in[0].address[`CACHE_LINE_BITS+3-1:3]].data[31]}}, dcache_next2[load_packet_in[0].address[`CACHE_LINE_BITS+3-1:3]].data[31:24]} : {24'b0, dcache_next2[load_packet_in[0].address[`CACHE_LINE_BITS+3-1:3]].data[31:24]};
+                    3'd4: load_packet_out_next3[load_packet_out_idx3].data = (!load_packet_in[0].sign) ? {{24{dcache_next2[load_packet_in[0].address[`CACHE_LINE_BITS+3-1:3]].data[39]}}, dcache_next2[load_packet_in[0].address[`CACHE_LINE_BITS+3-1:3]].data[39:32]} : {24'b0, dcache_next2[load_packet_in[0].address[`CACHE_LINE_BITS+3-1:3]].data[39:32]};
+                    3'd5: load_packet_out_next3[load_packet_out_idx3].data = (!load_packet_in[0].sign) ? {{24{dcache_next2[load_packet_in[0].address[`CACHE_LINE_BITS+3-1:3]].data[47]}}, dcache_next2[load_packet_in[0].address[`CACHE_LINE_BITS+3-1:3]].data[47:40]} : {24'b0, dcache_next2[load_packet_in[0].address[`CACHE_LINE_BITS+3-1:3]].data[47:40]};
+                    3'd6: load_packet_out_next3[load_packet_out_idx3].data = (!load_packet_in[0].sign) ? {{24{dcache_next2[load_packet_in[0].address[`CACHE_LINE_BITS+3-1:3]].data[55]}}, dcache_next2[load_packet_in[0].address[`CACHE_LINE_BITS+3-1:3]].data[55:48]} : {24'b0, dcache_next2[load_packet_in[0].address[`CACHE_LINE_BITS+3-1:3]].data[55:48]};
+                    3'd7: load_packet_out_next3[load_packet_out_idx3].data = (!load_packet_in[0].sign) ? {{24{dcache_next2[load_packet_in[0].address[`CACHE_LINE_BITS+3-1:3]].data[63]}}, dcache_next2[load_packet_in[0].address[`CACHE_LINE_BITS+3-1:3]].data[63:56]} : {24'b0, dcache_next2[load_packet_in[0].address[`CACHE_LINE_BITS+3-1:3]].data[63:56]};
                     default: load_packet_out_next3[load_packet_out_idx3].data = 0;
                 endcase
             end
             HALF:
             begin
                 casez(load_packet_in[0].address[2:0])
-                    3'd0: load_packet_out_next3[load_packet_out_idx3].data = {16'b0, dcache_next2[load_packet_in[0].address[`CACHE_LINE_BITS+3-1:3]].data[15:0]};
-                    3'd2: load_packet_out_next3[load_packet_out_idx3].data = {16'b0, dcache_next2[load_packet_in[0].address[`CACHE_LINE_BITS+3-1:3]].data[31:16]};
-                    3'd4: load_packet_out_next3[load_packet_out_idx3].data = {16'b0, dcache_next2[load_packet_in[0].address[`CACHE_LINE_BITS+3-1:3]].data[47:32]};
-                    3'd6: load_packet_out_next3[load_packet_out_idx3].data = {16'b0, dcache_next2[load_packet_in[0].address[`CACHE_LINE_BITS+3-1:3]].data[63:48]};
+                    3'd0: load_packet_out_next3[load_packet_out_idx3].data = (!load_packet_in[0].sign) ? {{16{dcache_next2[load_packet_in[0].address[`CACHE_LINE_BITS+3-1:3]].data[15]}}, dcache_next2[load_packet_in[0].address[`CACHE_LINE_BITS+3-1:3]].data[15:0]}  : {16'b0, dcache_next2[load_packet_in[0].address[`CACHE_LINE_BITS+3-1:3]].data[15:0]};
+                    3'd2: load_packet_out_next3[load_packet_out_idx3].data = (!load_packet_in[0].sign) ? {{16{dcache_next2[load_packet_in[0].address[`CACHE_LINE_BITS+3-1:3]].data[31]}}, dcache_next2[load_packet_in[0].address[`CACHE_LINE_BITS+3-1:3]].data[31:16]} : {16'b0, dcache_next2[load_packet_in[0].address[`CACHE_LINE_BITS+3-1:3]].data[31:16]};
+                    3'd4: load_packet_out_next3[load_packet_out_idx3].data = (!load_packet_in[0].sign) ? {{16{dcache_next2[load_packet_in[0].address[`CACHE_LINE_BITS+3-1:3]].data[47]}}, dcache_next2[load_packet_in[0].address[`CACHE_LINE_BITS+3-1:3]].data[47:32]} : {16'b0, dcache_next2[load_packet_in[0].address[`CACHE_LINE_BITS+3-1:3]].data[47:32]};
+                    3'd6: load_packet_out_next3[load_packet_out_idx3].data = (!load_packet_in[0].sign) ? {{16{dcache_next2[load_packet_in[0].address[`CACHE_LINE_BITS+3-1:3]].data[63]}}, dcache_next2[load_packet_in[0].address[`CACHE_LINE_BITS+3-1:3]].data[63:48]} : {16'b0, dcache_next2[load_packet_in[0].address[`CACHE_LINE_BITS+3-1:3]].data[63:48]};
                     default: load_packet_out_next3[load_packet_out_idx3].data = 0;
                 endcase
             end
@@ -1635,6 +1656,7 @@ begin
                 mshr_next11[i].l1_hit = 0;
                 mshr_next11[i].size = load_packet_in[0].size;
                 mshr_next11[i].store_data = 0;
+                mshr_next11[i].sign = load_packet_in[0].sign;
                 order_idx_next5 = order_idx_next5 + 1;
                 break;
             end
@@ -1677,6 +1699,64 @@ begin
     
 end
 
+always_comb
+begin
+    all_mshr_requests_processed = 1;
+    for(int i = 0; i < `CACHE_LINES; i++)
+    begin
+        if(mshr_next11[i].valid)
+        begin
+            all_mshr_requests_processed = 0;
+        end
+    end
+end
+
+always_comb
+begin
+    mshr_next12 = mshr_next11;
+    dcache_next5 = dcache_next4;
+    tmp2 = 1;
+    order_idx_next6 = order_idx_next5;
+    if(flush && all_mshr_requests_processed_reg)
+    begin
+        for(line_idx2 = 0; line_idx2 < `CACHE_LINES; line_idx2++)
+        begin
+            if(tmp2 && dcache_next4[line_idx2].valid && dcache_next4[line_idx2].dirty)
+            begin
+                dcache_next5[line_idx2].dirty = 0;
+                dcache_next5[line_idx2].valid = 0;
+                for(int i = 0; i < `MSHR_SIZE; i++)
+                begin
+                    if(tmp2 && !mshr_next11[i].valid)
+                    begin
+                        mshr_next12[i].load = 0;
+                        mshr_next12[i].store = 1;
+                        mshr_next12[i].dispatched = 1'b0;
+                        mshr_next12[i].valid = 1'b1;
+                        mshr_next12[i].ready = 0;
+                        mshr_next12[i].data = dcache_next4[line_idx2].data;
+                        mshr_next12[i].address = {dcache_next4[line_idx2].tag, line_idx2[`CACHE_LINE_BITS-1:0], 3'b0};
+                        mshr_next12[i].store_pos = 0;
+                        mshr_next12[i].expected_tag = 0;
+                        mshr_next12[i].expected_tag_assigned = 0;
+                        mshr_next12[i].dest_tag = 0;
+                        mshr_next12[i].order_idx = order_idx_next6;
+                        mshr_next12[i].victim_hit = 0;
+                        mshr_next12[i].l1_hit = 0;
+                        mshr_next12[i].size = DOUBLE;
+                        mshr_next12[i].store_data = 0;
+                        mshr_next12[i].sign = 0;
+                        order_idx_next6 = order_idx_next6 + 1;
+                        tmp2 = 0;
+                    end
+
+                end
+                
+            end
+        end
+    end
+end
+
 always_ff @ (posedge clock)
 begin
     if(reset)
@@ -1692,6 +1772,7 @@ begin
         order_idx <= `SD 1;
         mshr <= `SD 0;
         latched_mem2dcache_response <= `SD 0;
+        all_mshr_requests_processed_reg <= `SD 0;
     end
     else
     begin
@@ -1702,10 +1783,11 @@ begin
         victim_cache_partial_evict <= `SD victim_cache_partial_evict_next;
         load_l1_hit <= `SD load_l1_hit_next;
         store_l1_hit <= `SD store_l1_hit_next;
-        mshr <= `SD mshr_next11;
-        dcache <= `SD dcache_next4;
-        order_idx <= `SD order_idx_next5;
+        mshr <= `SD mshr_next12;
+        dcache <= `SD dcache_next5;
+        order_idx <= `SD order_idx_next6;
         latched_mem2dcache_response <= `SD mem2dcache_response;
+        all_mshr_requests_processed_reg <= `SD all_mshr_requests_processed;
     end
 end
 
@@ -1856,3 +1938,4 @@ end
 
 
 endmodule
+

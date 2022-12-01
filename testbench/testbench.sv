@@ -116,6 +116,8 @@ module testbench;
 	logic [1:0] mem_command;
 	logic [63:0] mem_data;
 	logic [`XLEN-1:0] mem_addr;
+	logic all_mshr_requests_processed_reg;
+	logic flush;
 
 	//assign imem_command = mode_mem ? dcache2mem_command : proc2Imem_command;
 	//assign imem_data = dcache2mem_data;
@@ -149,7 +151,9 @@ module testbench;
 		.br_target_pc(br_target_pc),
 		.mem_command(mem_command),
 		.mem_data(mem_data),
-		.mem_addr(mem_addr)
+		.mem_addr(mem_addr),
+		.flush(flush),
+		.all_mshr_requests_processed_reg(all_mshr_requests_processed_reg)
 	);
 
 //	program_dispatch pd0 (
@@ -246,25 +250,25 @@ module testbench;
 	endtask
 	
 	// Show contents of a range of Unified Memory, in both hex and decimal
-//	task show_mem_with_decimal;
-//		input [31:0] start_addr;
-//		input [31:0] end_addr;
-//		int showing_data;
-//		begin
-//			$display("@@@");
-//			showing_data=0;
-//			for(int k=start_addr;k<=end_addr; k=k+1)
-//				if (memory.unified_memory[k] != 0) begin
-//					$display("@@@ mem[%5d] = %x : %0d", k*8, memory.unified_memory[k], 
-//				                                            memory.unified_memory[k]);
-//					showing_data=1;
-//				end else if(showing_data!=0) begin
-//					$display("@@@");
-//					showing_data=0;
-//				end
-//			$display("@@@");
-//		end
-//	endtask  // task show_mem_with_decimal
+	task show_mem_with_decimal;
+		input [31:0] start_addr;
+		input [31:0] end_addr;
+		int showing_data;
+		begin
+			$display("@@@");
+			showing_data=0;
+			for(int k=start_addr;k<=end_addr; k=k+1)
+				if (memory.unified_memory[k] != 0) begin
+					$display("@@@ mem[%5d] = %x : %0d", k*8, memory.unified_memory[k], 
+				                                            memory.unified_memory[k]);
+					showing_data=1;
+				end else if(showing_data!=0) begin
+					$display("@@@");
+					showing_data=0;
+				end
+			$display("@@@");
+		end
+	endtask  // task show_mem_with_decimal
 	
 	initial begin
 		//$dumpvars;
@@ -275,6 +279,7 @@ module testbench;
 		ex_data = 0;
 		ex_addr= 0;
 		ex_command = 0;
+		flush = 0;
 		
 		// Pulse the reset signal
 		$display("@@\n@@\n@@  %t  Asserting System reset......", $realtime);
@@ -436,6 +441,7 @@ module testbench;
 			begin
 				//if(retire_packet[i].ret_valid && (retire_packet[i].illegal || retire_packet[i].halt || debug_counter > 5000)) begin
 				if((retire_packet[i].illegal || retire_packet[i].halt || debug_counter > 5000 || retire_branch)) begin
+					$display("@@@ Unified Memory contents hex on left, decimal on right: ");
 					// show_mem_with_decimal(0,`MEM_64BIT_LINES - 1); 
 					// 8Bytes per line, 16kB total
 					
@@ -457,7 +463,7 @@ module testbench;
 							retire_branch_PC);
 					end
 					if(!retire_branch) begin
-					$display("@@@ Unified Memory contents hex on left, decimal on right: ");
+						flush = 1'b1;
 					$display("@@  %t : System halted\n@@", $realtime);
 					$fdisplay(wb_fileno, "PC=%x, ---",
 							retire_packet[i].PC);

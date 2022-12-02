@@ -1932,7 +1932,7 @@ begin
     begin
         victim_cache <= `SD victim_cache_next;
         load_victim_cache_out <= `SD load_victim_cache_out_next;
-        store_victim_cache_out <= `SD 0;
+        store_victim_cache_out <= `SD store_victim_cache_out_next;
     end
 end
 

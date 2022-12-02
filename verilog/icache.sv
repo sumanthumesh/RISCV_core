@@ -234,13 +234,18 @@ module icache(
         if(reset) begin
             for(int i=0;i<`CACHE_LINES;i++) begin
                 icache_data[i].valids <= `SD 0;
+		icache_data[i].req_sent <= `SD 0;
             end
         end
         else /*if(enable)*/ begin
-            if(Imem2proc_tag == queue_expected_tag[q_head] && Imem2proc_tag != 0) begin
+	     if(req_sent == 1) begin
+		icache_data[proc2Imem_addr[`CACHE_LINE_BITS+2:3]].req_sent <= `SD 1;
+            end	
+            if(Imem2proc_tag == queue_expected_tag[q_head] && Imem2proc_tag != 0 && icache_data[line_to_evict].req_sent == 1) begin
                 icache_data[line_to_evict].data   <= `SD Imem2proc_data;
                 icache_data[line_to_evict].tags   <= `SD queue_addr[q_head][`XLEN-1:`CACHE_LINE_BITS+3];
                 icache_data[line_to_evict].valids <= `SD 1;
+				icache_data[line_to_evict].req_sent <= `SD 0;
             end
         end
     end

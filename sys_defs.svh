@@ -434,6 +434,7 @@ typedef struct packed {
 	logic [63:0]                     data;
     logic [12 - `CACHE_LINE_BITS:0]  tags;
     logic                            valids;
+	logic req_sent;
 } ICACHE_PACKET;
 
 typedef struct packed {

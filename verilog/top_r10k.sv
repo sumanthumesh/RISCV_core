@@ -211,12 +211,13 @@ module top_r10k (
 							storeq_idx_wire = storeq_idx_wire + 1;
 						else
 							storeq_idx_wire = 1;
+						empty_storeq_wire = empty_storeq_wire -1;
+						store_num_dis = store_num_dis + 1;
 					end else begin
 						storeq_idx_wire = storeq_idx;
+						empty_storeq_wire = empty_storeq;
 					end
 					rs_packet_dispatch[i].storeq_idx = storeq_idx_wire;
-					empty_storeq_wire = empty_storeq_wire -1;
-					store_num_dis = store_num_dis + 1;
 					store_order_idx_in[count_st] = `N_SQ - empty_storeq_wire;
 					count_st = count_st + 1;
 				end

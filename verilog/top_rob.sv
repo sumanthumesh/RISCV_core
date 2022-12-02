@@ -45,7 +45,7 @@ module top_rob (
 	DISPATCH_PACKET [`N_WAY-1:0] dis_packet; // to map table
 	logic [`N_WAY-1:0][`CDB_BITS-1:0] pr_old;
 	logic [`N_ROB-1:0][`CDB_BITS-1:0] free_list_haz; //input to freelist
-
+	logic tmp_halt;
 	
 	always_comb begin // to rob 
 		for (int i=0; i<`N_WAY ; i=i+1) begin
@@ -63,16 +63,21 @@ module top_rob (
 				
 		end
 	end
-
+	
 	always_comb begin // to arch map
+		tmp_halt = 0;
+		retire_packet = 0;
 		for (int i=0; i<`N_WAY ; i=i+1) begin
-			retire_packet[i].tag = retire_tag[i];
-			retire_packet[i].tag_old = retire_told[i];
-			retire_packet[i].ret_valid = retire_valid[i];
-			retire_packet[i].PC = retire_PC[i];
-			retire_packet[i].halt = retire_halt[i];
-			retire_packet[i].illegal = retire_illegal[i];
-			retire_packet[i].inst_is_branch = retire_inst_is_branch[i];
+			if(!tmp_halt) begin
+				retire_packet[i].tag = retire_tag[i];
+				retire_packet[i].tag_old = retire_told[i];
+				retire_packet[i].ret_valid = retire_valid[i];
+				retire_packet[i].PC = retire_PC[i];
+				retire_packet[i].halt = retire_halt[i];
+				retire_packet[i].illegal = retire_illegal[i];
+				retire_packet[i].inst_is_branch = retire_inst_is_branch[i];
+				if (retire_packet[i].illegal || retire_packet[i].halt ) tmp_halt =1;
+			end
 		end
 	end
 

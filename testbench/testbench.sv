@@ -98,6 +98,7 @@ module testbench;
 	logic found;
 
 	logic [`CDB_BITS-1:0] tag;
+	logic [`CDB_BITS-1:0] retire_packet_tag;
 	logic tmp;
 
 
@@ -422,7 +423,7 @@ module testbench;
 
 
 						end
-						else if(retire_packet[i].inst_is_branch)
+						else //if(retire_packet[i].inst_is_branch)
 						begin
 							$fdisplay(wb_fileno, "PC=%x, ---", retire_packet[i].PC);
 						end
@@ -457,20 +458,20 @@ module testbench;
 					// 		$display("@@@ System halted on unknown error code %x", 
 					// 			pipeline_error_status);
 					// endcase
-					if (retire_branch && !tmp && branch_haz) begin
-					tmp = 1;
-					$fdisplay(wb_fileno, "PC=%x, ---",
-							retire_branch_PC);
-					end
+					//if (retire_branch && !tmp && branch_haz) begin
+					//tmp = 1;
+					//$fdisplay(wb_fileno, "PC=%x, ---",
+					//		retire_branch_PC);
+					//end
 					if(!retire_branch) begin
 						flush = 1'b1;
 					$display("@@  %t : System halted\n@@", $realtime);
-					$fdisplay(wb_fileno, "PC=%x, ---",
-							retire_packet[i].PC);
-					if(retire_packet[i].illegal)
-						$display("@@@ System halted on illegal instruction");
-					else if(retire_packet[i].halt)
-						$display("@@@ System halted on WFI instruction");
+					//$fdisplay(wb_fileno, "PC=%x, ---",
+					//		retire_packet[i].PC);
+					//if(retire_packet[i].illegal)
+					//	$display("@@@ System halted on illegal instruction");
+					//else if(retire_packet[i].halt)
+					//	$display("@@@ System halted on WFI instruction");
 					
 					$display("@@@\n@@");
 					show_clk_count;

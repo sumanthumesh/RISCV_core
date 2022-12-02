@@ -50,7 +50,8 @@ module icache(
             proc2icache_req[i].addr     = proc2Icache_addr + 4 * i;
             proc2icache_req[i].tags     = proc2icache_req[i].addr[`XLEN-1:`CACHE_LINE_BITS+3];
             proc2icache_req[i].line_idx = proc2icache_req[i].addr[`CACHE_LINE_BITS+3-1:3];
-            proc2icache_req[i].valid    = (counter <= proc2Icache_count) && enable && proc2Icache_count != 0 ? 1'b1 : 1'b0;
+            //proc2icache_req[i].valid    = (counter <= proc2Icache_count) && enable && proc2Icache_count != 0 ? 1'b1 : 1'b0;
+            proc2icache_req[i].valid    = (counter <= proc2Icache_count) && proc2Icache_count != 0 ? 1'b1 : 1'b0;
             counter += 1;
         end
     //Check how many instructions actually need to be pre-fetched
@@ -58,7 +59,8 @@ module icache(
             prefetch_req[i].addr        = {proc2Icache_addr[`XLEN-1:3],3'b0} + 4 * proc2Icache_count + 8 * i + 8;
             prefetch_req[i].tags        = prefetch_req[i].addr[`XLEN-1:`CACHE_LINE_BITS+3];
             prefetch_req[i].line_idx    = prefetch_req[i].addr[`CACHE_LINE_BITS+3-1:3];
-            prefetch_req[i].valid       = enable ? 1 : 0;
+            //prefetch_req[i].valid       = enable ? 1 : 0;
+            prefetch_req[i].valid       = 1;
         end
         //Check if {tags,line_idx} matches address, set hit to 1 or 0
         for(int i=0;i<`N_WAY;i++) begin
@@ -228,24 +230,33 @@ module icache(
         end
     end
 
+    logic [12 - `CACHE_LINE_BITS:0] lhs, rhs;
+    assign lhs = proc2Imem_addr[16:`CACHE_LINE_BITS+3];
+    assign rhs = icache_data[proc2Imem_addr[`CACHE_LINE_BITS+2:3]].tags;
+
     assign line_to_evict = queue_addr[q_head][`CACHE_LINE_BITS+2:3];
     //If tag matches with head of queue evict cache line and store new
     always_ff@(posedge clock) begin
         if(reset) begin
             for(int i=0;i<`CACHE_LINES;i++) begin
                 icache_data[i].valids <= `SD 0;
-		icache_data[i].req_sent <= `SD 0;
+		        icache_data[i].req_sent <= `SD 0;
             end
         end
         else /*if(enable)*/ begin
-	     if(req_sent == 1) begin
-		icache_data[proc2Imem_addr[`CACHE_LINE_BITS+2:3]].req_sent <= `SD 1;
+	        if(req_sent == 1) begin
+		        if(lhs == rhs) begin
+                    icache_data[proc2Imem_addr[`CACHE_LINE_BITS+2:3]].req_sent <= `SD 1;
+                end
+                else if(~icache_data[proc2Imem_addr[`CACHE_LINE_BITS+2:3]].valids) begin
+                    icache_data[proc2Imem_addr[`CACHE_LINE_BITS+2:3]].req_sent <= `SD 1;
+                end
             end	
             if(Imem2proc_tag == queue_expected_tag[q_head] && Imem2proc_tag != 0 && icache_data[line_to_evict].req_sent == 1) begin
                 icache_data[line_to_evict].data   <= `SD Imem2proc_data;
                 icache_data[line_to_evict].tags   <= `SD queue_addr[q_head][`XLEN-1:`CACHE_LINE_BITS+3];
                 icache_data[line_to_evict].valids <= `SD 1;
-				icache_data[line_to_evict].req_sent <= `SD 0;
+		    	icache_data[line_to_evict].req_sent <= `SD 0;
             end
         end
     end

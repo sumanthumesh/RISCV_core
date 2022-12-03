@@ -776,13 +776,13 @@ begin
                 mshr_next[i].dispatched = 1'b0;
                 mshr_next[i].valid = 1'b1;
                 mshr_next[i].ready = 0;
-                mshr_next[i].data = store_victim_cache_out[i].data;
+                mshr_next[i].data = store_victim_cache_out[0].data;
                 mshr_next[i].address = {store_victim_cache_out[0].tag, store_victim_cache_out[0].line_idx, 3'b0};
                 mshr_next[i].expected_tag = 0;
                 mshr_next[i].expected_tag_assigned = 0;
                 mshr_next[i].dest_tag = 0;
                 mshr_next[i].order_idx = order_idx_next;
-                mshr_next[i].store_data = store_victim_cache_out[i].data;
+                mshr_next[i].store_data = store_victim_cache_out[0].data;
                 order_idx_next = order_idx_next+1;
                 break;
             end
@@ -810,13 +810,13 @@ begin
                 mshr_next[i].dispatched = 1'b0;
                 mshr_next[i].valid = 1'b1;
                 mshr_next[i].ready = 0;
-                mshr_next[i].data = load_victim_cache_out[i].data;
+                mshr_next[i].data = load_victim_cache_out[0].data;
                 mshr_next[i].address = {load_victim_cache_out[0].tag, load_victim_cache_out[0].line_idx, 3'b0};
                 mshr_next[i].expected_tag = 0;
                 mshr_next[i].expected_tag_assigned = 0;
                 mshr_next[i].dest_tag = 0;
                 mshr_next[i].order_idx = order_idx_next;
-                mshr_next[i].store_data = load_victim_cache_out[i].data;
+                mshr_next[i].store_data = load_victim_cache_out[0].data;
                 order_idx_next = order_idx_next+1;
                 break;
             end
@@ -1081,37 +1081,39 @@ begin
             mshr_next5[i].ready = 1;
             mshr_next5[i].victim_hit = 1;
             mshr_next5[i].data = victim_cache_hit_out[i];
-            case(mshr_next5[i].size)
-                BYTE:
-                begin
-                    casez(mshr_next5[i].address[2:0])
-                        3'd0: mshr_next5[i].data = {victim_cache_hit_out[i][63:8], mshr_next5[i].store_data[7:0]};
-                        3'd1: mshr_next5[i].data = {victim_cache_hit_out[i][63:16], mshr_next5[i].store_data[7:0], victim_cache_hit_out[i][7:0]};
-                        3'd2: mshr_next5[i].data = {victim_cache_hit_out[i][63:24], mshr_next5[i].store_data[7:0], victim_cache_hit_out[i][15:8]};
-                        3'd3: mshr_next5[i].data = {victim_cache_hit_out[i][63:32], mshr_next5[i].store_data[7:0], victim_cache_hit_out[i][23:16]};
-                        3'd4: mshr_next5[i].data = {victim_cache_hit_out[i][63:40], mshr_next5[i].store_data[7:0], victim_cache_hit_out[i][31:24]};
-                        3'd5: mshr_next5[i].data = {victim_cache_hit_out[i][63:48], mshr_next5[i].store_data[7:0], victim_cache_hit_out[i][39:32]};
-                        3'd6: mshr_next5[i].data = {victim_cache_hit_out[i][63:56], mshr_next5[i].store_data[7:0], victim_cache_hit_out[i][47:40]};
-                        3'd7: mshr_next5[i].data = {mshr_next5[i].store_data[7:0], victim_cache_hit_out[i][55:48]};
-                    endcase
-                end
-                HALF:
-                begin
-                    casez(mshr_next5[i].address[2:1])
-                        2'd0: mshr_next5[i].data = {victim_cache_hit_out[i][63:16], mshr_next5[i].store_data[15:0]};
-                        2'd1: mshr_next5[i].data = {victim_cache_hit_out[i][63:32], mshr_next5[i].store_data[15:0], victim_cache_hit_out[i][15:0]};
-                        2'd2: mshr_next5[i].data = {victim_cache_hit_out[i][63:48], mshr_next5[i].store_data[15:0], victim_cache_hit_out[i][31:16]};
-                        2'd3: mshr_next5[i].data = {mshr_next5[i].store_data[15:0], victim_cache_hit_out[i][47:32]};
-                    endcase
-                end
-                WORD:
-                begin
-                    casez(mshr_next5[i].address[2])
-                        1'd0: mshr_next5[i].data = {victim_cache_hit_out[i][63:32], mshr_next5[i].store_data[31:0]};
-                        1'd1: mshr_next5[i].data = {mshr_next5[i].store_data[31:0], victim_cache_hit_out[i][31:0]};
-                    endcase
-                end
-            endcase
+	    if (mshr_next5[i].store) begin
+           	 case(mshr_next5[i].size)
+           	     BYTE:
+           	     begin
+           	         casez(mshr_next5[i].address[2:0])
+           	             3'd0: mshr_next5[i].data = {victim_cache_hit_out[i][63:8], mshr_next5[i].store_data[7:0]};
+           	             3'd1: mshr_next5[i].data = {victim_cache_hit_out[i][63:16], mshr_next5[i].store_data[7:0], victim_cache_hit_out[i][7:0]};
+           	             3'd2: mshr_next5[i].data = {victim_cache_hit_out[i][63:24], mshr_next5[i].store_data[7:0], victim_cache_hit_out[i][15:8]};
+           	             3'd3: mshr_next5[i].data = {victim_cache_hit_out[i][63:32], mshr_next5[i].store_data[7:0], victim_cache_hit_out[i][23:16]};
+           	             3'd4: mshr_next5[i].data = {victim_cache_hit_out[i][63:40], mshr_next5[i].store_data[7:0], victim_cache_hit_out[i][31:24]};
+           	             3'd5: mshr_next5[i].data = {victim_cache_hit_out[i][63:48], mshr_next5[i].store_data[7:0], victim_cache_hit_out[i][39:32]};
+           	             3'd6: mshr_next5[i].data = {victim_cache_hit_out[i][63:56], mshr_next5[i].store_data[7:0], victim_cache_hit_out[i][47:40]};
+           	             3'd7: mshr_next5[i].data = {mshr_next5[i].store_data[7:0], victim_cache_hit_out[i][55:48]};
+           	         endcase
+           	     end
+           	     HALF:
+           	     begin
+           	         casez(mshr_next5[i].address[2:1])
+           	             2'd0: mshr_next5[i].data = {victim_cache_hit_out[i][63:16], mshr_next5[i].store_data[15:0]};
+           	             2'd1: mshr_next5[i].data = {victim_cache_hit_out[i][63:32], mshr_next5[i].store_data[15:0], victim_cache_hit_out[i][15:0]};
+           	             2'd2: mshr_next5[i].data = {victim_cache_hit_out[i][63:48], mshr_next5[i].store_data[15:0], victim_cache_hit_out[i][31:16]};
+           	             2'd3: mshr_next5[i].data = {mshr_next5[i].store_data[15:0], victim_cache_hit_out[i][47:32]};
+           	         endcase
+           	     end
+           	     WORD:
+           	     begin
+           	         casez(mshr_next5[i].address[2])
+           	             1'd0: mshr_next5[i].data = {victim_cache_hit_out[i][63:32], mshr_next5[i].store_data[31:0]};
+           	             1'd1: mshr_next5[i].data = {mshr_next5[i].store_data[31:0], victim_cache_hit_out[i][31:0]};
+           	         endcase
+           	     end
+           	 endcase
+            end
         end
     end
 end

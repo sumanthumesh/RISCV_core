@@ -452,6 +452,7 @@ typedef enum logic[1:0] {
 typedef struct packed {
     logic [`XLEN-1:0] addr;
     logic valid;
+	logic req_sent;
 } STORE_REQ;
 
 typedef struct packed {

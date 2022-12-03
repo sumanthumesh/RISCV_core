@@ -82,17 +82,33 @@ module icache(
 
     //FIFO variables
     logic [$clog2(`ICACHE_Q_SIZE)-1:0] head, tail, tail_next, fifo_save_head, current_req_idx, req_ptr, req_ptr_d;
-    logic queue_empty, wr_enable;
-    logic fifo_empty;
+    logic wr_enable;
+    logic fifo_empty,no_fifo_valid;
     STORE_REQ [`ICACHE_Q_SIZE-1:0] fifo_data, fifo_data_next;
     logic [`XLEN-1:0] current_req_addr;
     logic [3:0] current_req_tag;
     logic addr_in_fifo;
     logic rcvd_from_mem;
 
+
     //Empty/full signal
-    assign fifo_empty = req_ptr == tail_next;
+    always_comb begin
+        fifo_empty = 1;
+        no_fifo_valid = 1;
+        for(int i=0;i<`ICACHE_Q_SIZE;i++) begin
+            if(fifo_data[i].valid && (~fifo_data[i].req_sent)) begin
+                fifo_empty = 0;
+            end
+            if(fifo_data[i].valid) begin
+                no_fifo_valid = 0;
+            end 
+        end
+    end
+    //assign fifo_empty = req_ptr == tail_next;
     assign addr_to_mem = fifo_data_next[req_ptr].addr;
+
+    int fifo_count;
+    int fifo_count_next;
 
     //Writing to N_WAY FIFO
     always_comb begin
@@ -100,6 +116,7 @@ module icache(
             fifo_data_next[i] = fifo_data[i];
         end
         tail_next = tail;
+        fifo_count_next = fifo_count;
         for(int i=0;i<`N_WAY;i++) begin
             addr_in_fifo = 0;
             for(int k=0;k<`ICACHE_Q_SIZE;k++) begin
@@ -112,6 +129,7 @@ module icache(
                 fifo_data_next[tail_next].addr = proc2icache_req[i].addr;
                 fifo_data_next[tail_next].valid = 1;
                 tail_next = tail_next + 1;
+                fifo_count_next = fifo_count_next + 1;
             end
             //else
                 //$display("Cant add i:%d, ireq:%h, amatch %b", i, proc2icache_req[i].addr, addr_in_fifo);
@@ -129,6 +147,7 @@ module icache(
                 fifo_data_next[tail_next].addr = prefetch_req[i].addr;
                 fifo_data_next[tail_next].valid = 1;
                 tail_next = tail_next + 1;
+                fifo_count_next = fifo_count_next + 1;
             end
             //else
                 //$display("Pre Cant add i:%d, ireq:%h, amatch %b", i, prefetch_req[i].addr, addr_in_fifo);
@@ -137,6 +156,8 @@ module icache(
             fifo_save_head = head;
         end
     end
+
+    logic [`ICACHE_Q2_SIZE-1:0][3:0] queue_expected_tag, queue_expected_tag_next;
 
     //Send requests to memory whose address is taken from head of FIFO
     always_ff@(posedge clock) begin
@@ -149,11 +170,19 @@ module icache(
             req_sent          <= `SD 0;
             wr_enable         <= `SD 0;
             req_ptr           <= `SD 0;
+            fifo_count        <= `SD 0;
         end
         else if(enable) begin
             for(int i=0;i<`ICACHE_Q_SIZE;i++) begin
                 fifo_data[i].addr <= `SD fifo_data_next[i].addr;
+                //if((queue_expected_tag[i] == Imem2proc_tag) && fifo_data[i].valid && rcvd_from_mem) begin
                 fifo_data[i].valid <= `SD rcvd_from_mem && i[$clog2(`ICACHE_Q_SIZE)-1:0] == head ? 0 : fifo_data_next[i].valid;
+                fifo_data[i].req_sent <= `SD rcvd_from_mem && i[$clog2(`ICACHE_Q_SIZE)-1:0] == head ? 0 : fifo_data[i].req_sent;
+                //fifo_data[i].valid <= `SD 0;
+                //fifo_data[i].req_sent <= `SD 0;
+                //end else begin
+                //fifo_data[i].valid <= `SD fifo_data_next[i].valid;    
+                //end
             end     
             req_sent_d       <= `SD req_sent;
             current_req_addr <= `SD fifo_data_next[req_ptr].addr;
@@ -164,6 +193,7 @@ module icache(
                 proc2Imem_addr    <= `SD {fifo_data_next[req_ptr].addr[`XLEN-1:3],3'b0};
                 req_sent          <= `SD 1;
                 wr_enable         <= `SD 1;
+                fifo_data[req_ptr].req_sent <= `SD 1;
                 req_ptr           <= `SD req_ptr + 1;
             end
             else begin
@@ -172,13 +202,16 @@ module icache(
                 proc2Imem_addr    <= `SD proc2Imem_addr;
                 req_sent          <= `SD 0;
                 wr_enable         <= `SD 0;
+                fifo_data[req_ptr].req_sent <= `SD fifo_data[req_ptr].req_sent;
                 req_ptr           <= `SD req_ptr;
             end
-            if(rcvd_from_mem) begin
+            if(rcvd_from_mem && (~no_fifo_valid)) begin
                 head <= `SD head + 1;
+                fifo_count <= `SD fifo_count_next - 1;
             end
             else begin
                 head <= `SD head;
+                fifo_count       <= `SD fifo_count_next;
             end
             tail             <= `SD tail_next;
             proc2Imem_addr_d <= `SD proc2Imem_addr;
@@ -188,11 +221,13 @@ module icache(
 
     //Queue to keep track of already sent requests
     logic [`ICACHE_Q2_SIZE-1:0][`XLEN-1:0] queue_addr, queue_addr_next;
-    logic [`ICACHE_Q2_SIZE-1:0][3:0] queue_expected_tag, queue_expected_tag_next;
     logic [$clog2(`ICACHE_Q_SIZE)-1:0] queue_idx, queue_idx_next;
+    logic queue_empty;
     logic [$clog2(`ICACHE_Q2_SIZE)-1:0] q_head, q_tail, q_tail_next;
+    assign queue_empty = q_head == q_tail;
     
     logic [`CACHE_LINE_BITS-1:0] line_to_evict;
+    int queue_count;
 
     //Add instruction already sent to queue at tail. Check if tag matches for head
     always_ff@(posedge clock) begin
@@ -204,6 +239,7 @@ module icache(
                 queue_expected_tag[i] <= `SD 0;
             end
             rcvd_from_mem <= `SD 0;
+            queue_count <= `SD 0;
         end
         else begin
             if(enable) begin
@@ -219,14 +255,20 @@ module icache(
                     end
                 end
             end
-            if(Imem2proc_tag == queue_expected_tag[q_head] && Imem2proc_tag != 0) begin
+            if(Imem2proc_tag == queue_expected_tag[q_head] && Imem2proc_tag != 0 && ~queue_empty) begin
+                queue_count   <= `SD queue_count;
+                queue_addr[q_head] <= `SD 32'hffff_ffff;
+                queue_expected_tag[q_head] <= `SD 0;
+                //$display("Event occured t=%0t",$time);
                 q_head        <= `SD q_head + 1;
                 rcvd_from_mem <= `SD 1;
             end
             else begin
                 q_head        <= `SD q_head;
                 rcvd_from_mem <= `SD 0;
+                queue_count                <= `SD queue_count + 1;
             end
+
         end
     end
 
@@ -245,12 +287,13 @@ module icache(
         end
         else /*if(enable)*/ begin
 	        if(req_sent == 1) begin
-		        if(lhs == rhs) begin
-                    icache_data[proc2Imem_addr[`CACHE_LINE_BITS+2:3]].req_sent <= `SD 1;
-                end
-                else if(~icache_data[proc2Imem_addr[`CACHE_LINE_BITS+2:3]].valids) begin
-                    icache_data[proc2Imem_addr[`CACHE_LINE_BITS+2:3]].req_sent <= `SD 1;
-                end
+		        // if(lhs == rhs) begin
+                //     icache_data[proc2Imem_addr[`CACHE_LINE_BITS+2:3]].req_sent <= `SD 1;
+                // end
+                // else if(~icache_data[proc2Imem_addr[`CACHE_LINE_BITS+2:3]].valids) begin
+                //     icache_data[proc2Imem_addr[`CACHE_LINE_BITS+2:3]].req_sent <= `SD 1;
+                // end
+                icache_data[proc2Imem_addr[`CACHE_LINE_BITS+2:3]].req_sent <= `SD 1;
             end	
             if(Imem2proc_tag == queue_expected_tag[q_head] && Imem2proc_tag != 0 && icache_data[line_to_evict].req_sent == 1) begin
                 icache_data[line_to_evict].data   <= `SD Imem2proc_data;
@@ -289,4 +332,5 @@ module icache(
     end
     
 endmodule
+
 

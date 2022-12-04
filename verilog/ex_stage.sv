@@ -293,6 +293,7 @@ module ex_stage(
 	end
 
 	logic [`EX_ALU_UNITS-1 : 0] [`XLEN-1:0] opa_mux_out, opb_mux_out;
+	 MSHR_ROW [`N_WR_PORTS-1:0] store_victim_mshr_in;
 	logic [`EX_BRANCH_UNITS-1 : 0] [`XLEN-1:0] opa_mux_out_br, opb_mux_out_br;
 	ALU_FUNC [`EX_ALU_UNITS-1:0] alu_func;
 	logic [`EX_ALU_UNITS-1:0][$clog2(`N_WAY):0] issue_ex_packet_in_idx;
@@ -600,6 +601,7 @@ module ex_stage(
 		    .mem2dcache_data(mem2dcache_data),
 		    .mem2dcache_tag(mem2dcache_tag),
 		    .dcache2mem_data(dcache2mem_data),
+		    .store_victim_mshr_in(store_victim_mshr_in),
 			.flush(flush),
 			.all_mshr_requests_processed_reg(all_mshr_requests_processed_reg)
 		);
@@ -614,6 +616,7 @@ module ex_stage(
 		    .victim_cache_hit_out(victim_cache_hit_out),
 		    .load_victim_cache_in(load_victim_cache_in),
 		    .store_victim_cache_in(store_victim_cache_in),
+		    .store_victim_mshr_in(store_victim_mshr_in),
 		    .load_victim_cache_out(load_victim_cache_out),
 		    .store_victim_cache_out(store_victim_cache_out),
 		    .victim_cache_full_evict(victim_cache_full_evict),

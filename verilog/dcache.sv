@@ -208,6 +208,7 @@ begin
         dcache_next[store_victim_cache_out[0].line_idx].data = store_victim_cache_out[0].data;
         dcache_next[store_victim_cache_out[0].line_idx].tag = store_victim_cache_out[0].tag;
         dcache_next[store_victim_cache_out[0].line_idx].valid = 1;
+	dcache_next[store_victim_cache_out[0].line_idx].dirty = store_victim_cache_out[0].dirty;
     end
 
 
@@ -247,6 +248,7 @@ begin
     else if(victim_cache_partial_evict && load_victim_cache_out[0].valid)
     begin
         dcache_next[load_victim_cache_out[0].line_idx].data = load_victim_cache_out[0].data;
+        dcache_next[load_victim_cache_out[0].line_idx].dirty = load_victim_cache_out[0].dirty;
         dcache_next[load_victim_cache_out[0].line_idx].tag = load_victim_cache_out[0].tag;
         dcache_next[load_victim_cache_out[0].line_idx].valid = 1;
     end
@@ -776,6 +778,7 @@ begin
 
                     store_l1_hit_next = 1;
                     mshr_next9[j].valid = 0;
+		    dcache_next3[mshr_next8[j].address[`CACHE_LINE_BITS+3-1:3]].dirty = 1;
                     casez(mshr_next8[j].size)
                         BYTE:
                         begin
@@ -927,6 +930,7 @@ begin
     dcache_next3[store_packet_in[0].address[`CACHE_LINE_BITS+3-1:3]].tag == store_packet_in[0].address[`XLEN-1:`CACHE_LINE_BITS+3] &&
     store_packet_out_idx3 < 1)
     begin
+        dcache_next4[store_packet_in[0].address[`CACHE_LINE_BITS+3-1:3]].dirty = 1;
         casez(store_packet_in[0].size)
             BYTE:
             begin

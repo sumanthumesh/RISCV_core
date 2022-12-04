@@ -890,12 +890,32 @@ module ex_stage(
 				end
 			end
 		end else begin
-			complete_dest_tag_fifo <=`SD complete_dest_tag_next;
-			result_out_fifo <=`SD result_out_next;
-			take_branch_out_fifo <= `SD take_branch_out_next;
-			br_result_out_fifo <= `SD br_result_out_next;
-			head <= `SD head_next;
-			tail <= `SD tail_next;
+			if(!branch_haz) begin
+				complete_dest_tag_fifo <=`SD complete_dest_tag_next;
+				result_out_fifo <=`SD result_out_next;
+				take_branch_out_fifo <= `SD take_branch_out_next;
+				br_result_out_fifo <= `SD br_result_out_next;
+				head <= `SD head_next;
+				tail <= `SD tail_next;
+			end else begin
+				complete_dest_tag_fifo <=`SD 0;
+				result_out_fifo <=`SD 0;
+				take_branch_out_fifo <= `SD 0;
+				br_result_out_fifo <= `SD 0;
+				for(int m = 0; m<`MAX_EX_UNITS; m = m+1) begin
+					if(m == 0) begin
+						head[m] <= `SD 1;
+						tail[m] <= `SD 0;
+					end else if(m == `MAX_EX_UNITS-1) begin
+						tail[m] <= `SD 1;
+						head[m] <= `SD 0;
+					end else begin
+						head[m] <= `SD 0;	
+						tail[m] <= `SD 0;	
+					end
+				end
+
+			end
 		end
 	end
 

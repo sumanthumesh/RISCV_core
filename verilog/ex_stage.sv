@@ -518,6 +518,7 @@ module ex_stage(
 		for(int i=0; i< `STOREQ_DCACHE_FIFO_SIZE; i=i+1) begin
 			if(head_fifo_next[i] && store2dcache_fifo_next[i].valid && !tmp_store2) begin
 				store_packet_in_dcache = store2dcache_fifo_next[i];
+				store_packet_in_dcache[0].valid = 1;
 				if(i == `STOREQ_DCACHE_FIFO_SIZE-1) begin
 					head_fifo_next[0] = 1;
 				end else begin

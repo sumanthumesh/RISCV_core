@@ -7,7 +7,8 @@ module storeq(
 	input STORE_PACKET [`N_WAY-1:0] store_ex_packet_in, //from execute
 	input [$clog2(`N_WAY):0] store_num_ret, //from rob, make zero in rob for branch hazard
 	input LOAD_PACKET_IN [`N_WAY-1:0] load_packet_in,
-	input STORE_PACKET_EX_STAGE [`N_WR_PORTS-1 : 0] store_packet_dcache,
+	//input STORE_PACKET_EX_STAGE [`N_WR_PORTS-1 : 0] store_packet_dcache,
+	input STORE_PACKET_RET [`N_WR_PORTS-1 : 0] store_packet_dcache,
 	output STORE_PACKET_RET [`N_WAY-1:0] store_ret_packet_out, //from storeQ to Dcache
 	output logic [$clog2(`N_SQ):0] empty_storeq,
 	output logic [$clog2(`N_SQ):0] last_str_ex_idx,

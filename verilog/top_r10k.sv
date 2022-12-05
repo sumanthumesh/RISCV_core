@@ -124,6 +124,7 @@ module top_r10k (
 	logic enable_icache;
 	logic [$clog2(`N_WAY):0] count_st;
 	logic flush_ex_stage;
+	logic tmp_valid;
 	
 	//icache and dcache mux with memory
 	//i/p mux
@@ -179,8 +180,9 @@ module top_r10k (
 		store_num_dis = 0; 
 		count_st = 0;
 		rs_packet_dispatch = 0;
+		tmp_valid = 0;
 		for (int i=0; i<`N_WAY ; i=i+1) begin
-			if(dispatch_packet[i].valid && (free_list_out[i] != 0)) begin
+			if(dispatch_packet[i].valid && (free_list_out[i] != 0) && !tmp_valid) begin
 				rs_packet_dispatch[i].inst = dispatch_packet[i].inst;
 				rs_packet_dispatch[i].source_tag_1 = pr_packet_out1[i].phy_reg ;
 				rs_packet_dispatch[i].source_tag_1_plus = pr_packet_out1[i].status ;
@@ -214,6 +216,7 @@ module top_r10k (
 				if((rs_packet_dispatch[i].ld_st_bits == 2'b01) && (empty_storeq_wire == 0) ) begin
 					rs_packet_dispatch[i].valid = 0;
 					rs_packet_dispatch[i].busy = 0; 
+					tmp_valid = 1;
 				end else begin
 					if(rs_packet_dispatch[i].order_idx <= `N_RS ) begin
 						rs_packet_dispatch[i].valid = 1;
@@ -221,6 +224,7 @@ module top_r10k (
 					end else begin
 						rs_packet_dispatch[i].valid = 0;
 						rs_packet_dispatch[i].busy = 0; 
+						tmp_valid = 1;
 					end
 				end
 			end

@@ -36,7 +36,6 @@ module top_r10k (
 
 	RS_PACKET_DISPATCH [`N_WAY-1:0] rs_packet_dispatch;
 	DISPATCH_PACKET[`N_WAY-1:0] dispatch_packet_rob; //generated internally to rob 
-	DISPATCH_PACKET[`N_WAY-1:0] dispatch_packet_rob2; //generated internally to rob 
 	PR_PACKET [`N_WAY-1 : 0] pr_packet_out1; //to reservation station
 	PR_PACKET [`N_WAY-1 : 0] pr_packet_out2; //to reservation station
 	//logic [`N_WAY-1 : 0] [`CDB_BITS-1 : 0] cdb_tag; // to reservation station
@@ -106,17 +105,6 @@ module top_r10k (
     logic [`XLEN-1:0] proc2Icache_addr; 
     logic [`N_WAY-1:0][`XLEN-1:0] Icache_data_out; 
     logic [`N_WAY-1:0] Icache_valid_out;    
-    //ICACHE_PACKET [`CACHE_LINES-1:0] icache_data;
-    //STORE_REQ [`N_WAY-1:0] saved_reqs;
-    //STORE_REQ [`N_WAY-1:0] saved_reqs_d; 
-    //logic disp_queue_empty; 
-    //logic data_out_valid;
-    //logic queue_wr_en;
-    //DISP_REQ queue_data_in;
-    //DISP_REQ queue_data_out;
-    //DISP_REQ delayed_fetch;
-    //logic [63:0] data_to_place_in_cache;
-    //logic queue_data_out_valid;
 	logic [`N_WAY-1:0][`XLEN-1:0] out_PC;
 	logic [`N_WAY-1:0][`XLEN-1:0] out_NPC;
 	INST [`N_WAY-1:0] out_inst;
@@ -190,8 +178,9 @@ module top_r10k (
 		empty_storeq_wire = empty_storeq;
 		store_num_dis = 0; 
 		count_st = 0;
+		rs_packet_dispatch = 0;
 		for (int i=0; i<`N_WAY ; i=i+1) begin
-			if(dispatch_packet[i].valid) begin
+			if(dispatch_packet[i].valid && (free_list_out[i] != 0)) begin
 				rs_packet_dispatch[i].inst = dispatch_packet[i].inst;
 				rs_packet_dispatch[i].source_tag_1 = pr_packet_out1[i].phy_reg ;
 				rs_packet_dispatch[i].source_tag_1_plus = pr_packet_out1[i].status ;
@@ -207,17 +196,17 @@ module top_r10k (
 				end
 				//for store position
 				if(dispatch_packet[i].ld_st_bits == 2'b01 && (empty_storeq_wire > 0)) begin
-					if(dispatched[i]) begin
+					//if(dispatched[i]) begin
 						if(storeq_idx_wire < `N_SQ) 
 							storeq_idx_wire = storeq_idx_wire + 1;
 						else
 							storeq_idx_wire = 1;
 						empty_storeq_wire = empty_storeq_wire -1;
 						store_num_dis = store_num_dis + 1;
-					end else begin
-						storeq_idx_wire = storeq_idx;
-						empty_storeq_wire = empty_storeq;
-					end
+					//end else begin
+					//	storeq_idx_wire = storeq_idx;
+					//	empty_storeq_wire = empty_storeq;
+					//end
 					rs_packet_dispatch[i].storeq_idx = storeq_idx_wire;
 					store_order_idx_in[count_st] = `N_SQ - empty_storeq_wire;
 					count_st = count_st + 1;
@@ -240,6 +229,7 @@ module top_r10k (
 	end
 
 	always_comb begin
+		dispatch_num = 0 ;
 		for (int k=0; k<`N_WAY ; k=k+1) begin
 			dispatch_packet_rob[k].PC = dispatch_packet[k].PC;
 			dispatch_packet_rob[k].illegal = dispatch_packet[k].illegal;
@@ -248,22 +238,9 @@ module top_r10k (
 			dispatch_packet_rob[k].src2 = dispatch_packet[k].src2;
 			dispatch_packet_rob[k].dest = dispatch_packet[k].dest;
 			dispatch_packet_rob[k].ld_st_bits=dispatch_packet[k].ld_st_bits;
-			dispatch_packet_rob[k].valid = dispatch_packet[k].valid;
-		end
-	end
-
-	always_comb begin
-		dispatch_num = 0 ;
-		for (int k=0; k<`N_WAY ; k=k+1) begin
-			dispatch_packet_rob2[k].PC = dispatch_packet[k].PC;
-			dispatch_packet_rob2[k].illegal = dispatch_packet[k].illegal;
-			dispatch_packet_rob2[k].halt = dispatch_packet[k].halt;
-			dispatch_packet_rob2[k].src1 = dispatch_packet[k].src1;
-			dispatch_packet_rob2[k].src2 = dispatch_packet[k].src2;
-			dispatch_packet_rob2[k].dest = dispatch_packet[k].dest;
-			dispatch_packet_rob2[k].ld_st_bits=dispatch_packet[k].ld_st_bits;
-			dispatch_packet_rob2[k].valid = rs_packet_dispatch[k].valid && dispatch_packet[k].valid;
-			if (dispatch_packet_rob2[k].valid) dispatch_num = dispatch_num + 1;
+			//dispatch_packet_rob[k].valid = rs_packet_dispatch[k].valid && dispatch_packet[k].valid;
+			dispatch_packet_rob[k].valid = rs_packet_dispatch[k].valid;
+			if (dispatch_packet[k].valid) dispatch_num = dispatch_num + 1;
 		end
 	end
 
@@ -327,7 +304,6 @@ instruction_decoder instruction_decoder(
                 .reset(reset), 
 		.complete_dest_tag(complete_dest_tag),
 		.dispatch_packet(dispatch_packet_rob), 
-		.dispatch_packet2(dispatch_packet_rob2),
 		.branch_inst(branch_inst),
 		.take_branch(take_branch_ex),
 		.br_result(br_result),

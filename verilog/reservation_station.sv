@@ -177,7 +177,8 @@ module reservation_station(
 		for (i_d1=0; i_d1 < `N_WAY ; i_d1=i_d1+1) begin
 			tmp = 1;
 		//	tmp1 = 1;
-			if (rs_packet_dispatch[i_d1].valid && dispatched_rob[i_d1]) begin
+			//if (rs_packet_dispatch[i_d1].valid && dispatched_rob[i_d1]) begin
+			if (rs_packet_dispatch[i_d1].valid) begin
 				for (i_d2=0; i_d2<`N_RS; i_d2=i_d2+1) begin
 					if(!rs_data_next[i_d2].busy && tmp) begin
 						rs_data_next[i_d2].busy = rs_packet_dispatch[i_d1].busy;

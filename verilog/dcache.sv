@@ -105,6 +105,8 @@ logic all_mshr_requests_processed;
 
 always_comb
 begin   
+    //if(store_packet_in[0].address == 32'hfc0)
+    //    $display("%t", $time);
     order_idx_next = order_idx;
     mshr_next = mshr;
     dcache_next = dcache;
@@ -136,8 +138,8 @@ begin
     for (int i=0; i<`MSHR_SIZE; i++) begin
     	if(victim_cache_full_evict && mshr_next[i].valid && store_victim_cache_out[0].valid && store_victim_cache_out[0].dirty && (store_victim_cache_out[0].line_idx == mshr_next[i].address[`CACHE_LINE_BITS+2:3]) && (store_victim_cache_out[0].tag==mshr_next[i].address[`XLEN-1:`CACHE_LINE_BITS+3]) && mshr_next[i].victim_hit && !tmp_check ) begin
 		tmp_check=1;
-    	    dcache_next[store_victim_cache_out[0].line_idx].tag = store_victim_cache_out[0].tag;
-    	    dcache_next[store_victim_cache_out[0].line_idx].valid = 1;
+    	    //dcache_next[store_victim_cache_out[0].line_idx].tag = store_victim_cache_out[0].tag;
+    	    //dcache_next[store_victim_cache_out[0].line_idx].valid = 1;
 		if (mshr_next[i].store) begin
            	 case(mshr_next[i].size)
            	     BYTE:

@@ -28,6 +28,8 @@ module testbench;
 //	logic        reset;
 	logic [31:0] clock_count;
 	logic [31:0] instr_count;
+	logic [31:0] final_clock_count;
+	logic [31:0] final_instr_count;
 	int          wb_fileno;
 	
 //	logic [1:0]  proc2mem_command;
@@ -100,6 +102,9 @@ module testbench;
 	logic [`CDB_BITS-1:0] tag;
 	logic [`CDB_BITS-1:0] retire_packet_tag;
 	logic tmp;
+
+	logic retire_packet_halt;
+	logic retire_packet_illegal;
 
 
 ////memory connectionsw
@@ -207,11 +212,11 @@ module testbench;
 		real cpi;
 		
 		begin
-			cpi = (clock_count + 1.0) / instr_count;
+			cpi = (final_clock_count + 1.0) / final_instr_count;
 			$display("@@  %0d cycles / %0d instrs = %f CPI\n@@",
-			          clock_count+1, instr_count, cpi);
+			          final_clock_count+1, final_instr_count, cpi);
 			$display("@@  %4.2f ns total time to execute\n@@\n",
-			          clock_count*`VERILOG_CLOCK_PERIOD);
+			          final_clock_count*`VERILOG_CLOCK_PERIOD);
 		end
 	endtask  // task show_clk_count
 
@@ -306,6 +311,27 @@ module testbench;
 	end
 
 
+	always_comb
+	begin
+		for(int i = 0; i < `N_WAY; i++)
+		begin
+			if(retire_packet[i].illegal) 
+			begin
+				retire_packet_illegal = 1;
+				retire_packet_halt = 0;
+			end
+			else if(retire_packet[i].halt)
+			begin
+				retire_packet_halt = 1;
+				retire_packet_illegal = 0;
+			end
+		end
+		
+
+	end
+
+
+
 	// Count the number of posedges and number of instructions completed
 	// till simulation ends
 	always @(posedge clock) begin
@@ -383,7 +409,6 @@ module testbench;
 							else
 							begin
 								tag = retire_packet[i].tag;
-								$display("PC=%x, tag=%d", retire_packet[i].PC, tag);
 								while(!found)
 								begin
 									for(int j = 0; j < `N_ROB; j++)
@@ -441,7 +466,7 @@ module testbench;
 			for(int i = 0; i < `N_WAY; i++)
 			begin
 				//if(retire_packet[i].ret_valid && (retire_packet[i].illegal || retire_packet[i].halt || debug_counter > 5000)) begin
-				if((retire_packet[i].illegal || retire_packet[i].halt || debug_counter > 5000000|| retire_branch)) begin
+				if(retire_packet[i].ret_valid && (retire_packet[i].illegal || retire_packet[i].halt || debug_counter > 50000000 || retire_branch)) begin
 					$display("@@@ Unified Memory contents hex on left, decimal on right: ");
 					// show_mem_with_decimal(0,`MEM_64BIT_LINES - 1); 
 					// 8Bytes per line, 16kB total
@@ -464,20 +489,28 @@ module testbench;
 					//		retire_branch_PC);
 					//end
 					if(!retire_branch) begin
+					begin
 						flush = 1'b1;
-					$display("@@  %t : System halted\n@@", $realtime);
+						final_clock_count = clock_count;
+						final_instr_count = instr_count;
+					end
 					//$fdisplay(wb_fileno, "PC=%x, ---",
 					//		retire_packet[i].PC);
-					//if(retire_packet[i].illegal)
-					//	$display("@@@ System halted on illegal instruction");
-					//else if(retire_packet[i].halt)
-					//	$display("@@@ System halted on WFI instruction");
+					
+						
+					print_close(); // close the pipe_print output file
+					$fclose(wb_fileno);
+					#10000;
+					show_mem_with_decimal(0,`MEM_64BIT_LINES - 1); 
+					$display("@@  %t : System halted\n@@", $realtime);
+					if(retire_packet_illegal)
+						$display("@@@ System halted on illegal instruction");
+					else if(retire_packet_halt)
+						$display("@@@ System halted on WFI instruction");
 					
 					$display("@@@\n@@");
 					show_clk_count;
-					print_close(); // close the pipe_print output file
-					$fclose(wb_fileno);
-					#100 $finish;
+					$finish;
 					end
 
 				end

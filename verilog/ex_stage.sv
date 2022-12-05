@@ -283,16 +283,12 @@ module ex_stage(
 			ex_packet_out[i].rs2_value = issue_ex_packet_in[i].rs2_value;
 			ex_packet_out[i].rd_mem = issue_ex_packet_in[i].rd_mem;
 			ex_packet_out[i].wr_mem = issue_ex_packet_in[i].wr_mem;
-			ex_packet_out[i].dest_reg_idx = issue_ex_packet_in[i].dest_reg_idx;
-			ex_packet_out[i].halt = issue_ex_packet_in[i].halt;
-			ex_packet_out[i].illegal = issue_ex_packet_in[i].illegal;
-			ex_packet_out[i].csr_op = issue_ex_packet_in[i].csr_op;
-			ex_packet_out[i].valid = issue_ex_packet_in[i].valid;
 			ex_packet_out[i].mem_size = issue_ex_packet_in[i].inst.r.funct3;
 		end
 	end
 
 	logic [`EX_ALU_UNITS-1 : 0] [`XLEN-1:0] opa_mux_out, opb_mux_out;
+	logic flush_victim;
 	 MSHR_ROW [`N_WR_PORTS-1:0] store_victim_mshr_in;
 	logic [`EX_BRANCH_UNITS-1 : 0] [`XLEN-1:0] opa_mux_out_br, opb_mux_out_br;
 	ALU_FUNC [`EX_ALU_UNITS-1:0] alu_func;
@@ -593,7 +589,7 @@ module ex_stage(
 		    .victim_cache_hit_valid_in(victim_cache_hit_valid_in),
 		    .victim_cache_hit_valid_out(victim_cache_hit_valid_out),
 		    .victim_cache_hit_out(victim_cache_hit_out),
-		    .victim_cache_full_evict_next(victim_cache_full_evict),
+		    .victim_cache_full_evict_next2(victim_cache_full_evict),
 		    .victim_cache_partial_evict_next(victim_cache_partial_evict),
 		    .dcache2mem_addr(dcache2mem_addr),
 		    .dcache2mem_command(dcache2mem_command),
@@ -603,7 +599,8 @@ module ex_stage(
 		    .dcache2mem_data(dcache2mem_data),
 		    .store_victim_mshr_in(store_victim_mshr_in),
 			.flush(flush),
-			.all_mshr_requests_processed_reg(all_mshr_requests_processed_reg)
+			.all_mshr_requests_processed_reg(all_mshr_requests_processed_reg),
+			.flush_victim(flush_victim)
 		);
 		
 		
@@ -620,7 +617,8 @@ module ex_stage(
 		    .load_victim_cache_out(load_victim_cache_out),
 		    .store_victim_cache_out(store_victim_cache_out),
 		    .victim_cache_full_evict(victim_cache_full_evict),
-		    .victim_cache_partial_evict(victim_cache_partial_evict)
+		    .victim_cache_partial_evict(victim_cache_partial_evict),
+			.flush_victim(flush_victim)
 		);
 	
 	//

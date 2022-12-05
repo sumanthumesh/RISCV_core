@@ -14,7 +14,7 @@ module dcache(
     output logic [`MSHR_SIZE-1:0] victim_cache_hit_valid_in,
     input logic [`MSHR_SIZE-1:0] victim_cache_hit_valid_out,
     input logic [`MSHR_SIZE-1:0][63:0] victim_cache_hit_out,
-    output logic victim_cache_full_evict_next,
+    output logic victim_cache_full_evict_next2,
     output logic victim_cache_partial_evict_next,
     output logic [`XLEN-1:0] dcache2mem_addr,
     output logic [1:0] dcache2mem_command,
@@ -23,7 +23,8 @@ module dcache(
 	input logic [63:0] mem2dcache_data,
 	input  logic [3:0] mem2dcache_tag,
     output logic all_mshr_requests_processed_reg,
-	output MSHR_ROW [`N_WR_PORTS-1:0] store_victim_mshr_in
+	output MSHR_ROW [`N_WR_PORTS-1:0] store_victim_mshr_in,
+    output logic flush_victim
 );
 
 MSHR_ROW [`MSHR_SIZE-1:0] mshr;
@@ -102,6 +103,7 @@ logic store_tmp;
 logic tmp1,tmp2,tmp3,tmp4,tmp5,tmp6,tmp7,tmp8,tmp9,tmp10;
 logic all_mshr_requests_processed;
     logic tmp_check;
+logic victim_cache_full_evict_next;
 
 always_comb
 begin   
@@ -117,12 +119,12 @@ begin
 
     if(mshr[mshr_idx].valid && mshr[mshr_idx].dispatched && !mshr[mshr_idx].expected_tag_assigned)
     begin
-        if(mshr[mshr_idx].load)
+        if(mshr[mshr_idx].load||(mshr[mshr_idx].store && mshr[mshr_idx].size!=DOUBLE))
         begin
             mshr_next[mshr_idx].expected_tag = latched_mem2dcache_response;
             mshr_next[mshr_idx].expected_tag_assigned = 1;
         end
-        else if(mshr[mshr_idx].store && latched_mem2dcache_response)
+        else if(mshr[mshr_idx].store && mshr[mshr_idx].size==DOUBLE && latched_mem2dcache_response)
         begin
             mshr_next[mshr_idx].ready = 1;
         end
@@ -279,11 +281,10 @@ begin
     begin
         for(int j = 0; j < `MSHR_SIZE; j++)
         begin
-            if(store_tmp && mshr_next[j].valid && mshr_next[j].dispatched && mshr_next[j].ready && mshr_next[j].store && mshr_next[j].order_idx == i)
+            if(store_tmp && mshr_next[j].valid && mshr_next[j].dispatched && mshr_next[j].store && mshr_next[j].order_idx == i)
             begin
-                //if(mshr_next[j].expected_tag_assigned && mshr_next[j].expected_tag == latched_mem2dcache_tag)
-                //if(j==mshr_idx && latched_mem2dcache_response != 0)
-                //begin
+                if(mshr_next[j].size!=DOUBLE && !mshr_next[j].ready && mshr_next[j].expected_tag_assigned && mshr_next[j].expected_tag == mem2dcache_tag)
+                begin
                     mshr_next2[j].ready = 1;
                     mshr_next2[j].data = mem2dcache_data;
                     line_idx = mshr_next2[j].address[`CACHE_LINE_BITS+3-1:3];
@@ -291,59 +292,67 @@ begin
                     store_packet_out_next[store_packet_out_idx].store_pos = mshr_next2[j].store_pos;
                     store_packet_out_next[store_packet_out_idx].valid = 1;
                     store_packet_out_idx = store_packet_out_idx + 1;
-                    if(mshr_next2[j].size!=DOUBLE)
+
+                    if(dcache_next[line_idx].valid)
                     begin
-                        if(dcache_next[line_idx].valid)
-                        begin
-                            store_victim_cache_in1[store_victim_cache_in_idx].valid = dcache_next[line_idx].valid;
-                            store_victim_cache_in1[store_victim_cache_in_idx].tag = dcache_next[line_idx].tag;
-                            store_victim_cache_in1[store_victim_cache_in_idx].data = dcache_next[line_idx].data;
-                            store_victim_cache_in1[store_victim_cache_in_idx].dirty = dcache_next[line_idx].dirty;
-                            store_victim_cache_in1[store_victim_cache_in_idx].line_idx = line_idx;
-                            store_victim_cache_in_idx = store_victim_cache_in_idx + 1;
-                            victim_cache_full_evict_next = 1;
-                        end
-                        dcache_next2[line_idx].tag = mshr_next2[j].address[`XLEN-1:`CACHE_LINE_BITS+3];
-                        dcache_next2[line_idx].valid = 1;
-                        dcache_next2[line_idx].dirty = 1;
-                        
-                        casez(mshr_next2[j].size)
-                            BYTE:
-                            begin
-                                casez(mshr_next2[j].address[2:0])
-                                    3'd0: dcache_next2[line_idx].data[7:0] = mshr_next2[j].store_data[7:0];
-                                    3'd1: dcache_next2[line_idx].data[15:8] = mshr_next2[j].store_data[7:0];
-                                    3'd2: dcache_next2[line_idx].data[23:16] = mshr_next2[j].store_data[7:0];
-                                    3'd3: dcache_next2[line_idx].data[31:24] = mshr_next2[j].store_data[7:0];
-                                    3'd4: dcache_next2[line_idx].data[39:32] = mshr_next2[j].store_data[7:0];
-                                    3'd5: dcache_next2[line_idx].data[47:40] = mshr_next2[j].store_data[7:0];
-                                    3'd6: dcache_next2[line_idx].data[55:48] = mshr_next2[j].store_data[7:0];
-                                    3'd7: dcache_next2[line_idx].data[63:56] = mshr_next2[j].store_data[7:0];
-                                endcase
-                            end
-                            HALF:
-                            begin
-                                casez(mshr_next2[j].address[2:1])
-                                    2'd0: dcache_next2[line_idx].data[15:0] = mshr_next2[j].store_data[15:0];
-                                    2'd1: dcache_next2[line_idx].data[31:16] = mshr_next2[j].store_data[15:0];
-                                    2'd2: dcache_next2[line_idx].data[47:32] = mshr_next2[j].store_data[15:0];
-                                    2'd3: dcache_next2[line_idx].data[63:48] = mshr_next2[j].store_data[15:0];
-                                endcase
-                            end
-                            WORD:
-                            begin
-                                casez(mshr_next2[j].address[2])
-                                    1'd0: dcache_next2[line_idx].data[31:0] = mshr_next2[j].store_data[31:0];
-                                    1'd1: dcache_next2[line_idx].data[63:32] = mshr_next2[j].store_data[31:0];
-                                endcase
-                            end
-                        endcase
+                        store_victim_cache_in1[store_victim_cache_in_idx].valid = dcache_next[line_idx].valid;
+                        store_victim_cache_in1[store_victim_cache_in_idx].tag = dcache_next[line_idx].tag;
+                        store_victim_cache_in1[store_victim_cache_in_idx].data = dcache_next[line_idx].data;
+                        store_victim_cache_in1[store_victim_cache_in_idx].dirty = dcache_next[line_idx].dirty;
+                        store_victim_cache_in1[store_victim_cache_in_idx].line_idx = line_idx;
+                        store_victim_cache_in_idx = store_victim_cache_in_idx + 1;
+                        victim_cache_full_evict_next = 1;
                     end
+                    dcache_next2[line_idx].tag = mshr_next2[j].address[`XLEN-1:`CACHE_LINE_BITS+3];
+                    dcache_next2[line_idx].valid = 1;
+                    dcache_next2[line_idx].dirty = 1;
                     
+                    casez(mshr_next2[j].size)
+                        BYTE:
+                        begin
+                            casez(mshr_next2[j].address[2:0])
+                                3'd0: dcache_next2[line_idx].data = {mshr_next2[j].data[63:8], mshr_next2[j].store_data[7:0]};
+                                3'd1: dcache_next2[line_idx].data = {mshr_next2[j].data[63:16], mshr_next2[j].store_data[7:0], mshr_next2[j].data[7:0]};
+                                3'd2: dcache_next2[line_idx].data = {mshr_next2[j].data[63:24], mshr_next2[j].store_data[7:0], mshr_next2[j].data[15:0]};
+                                3'd3: dcache_next2[line_idx].data = {mshr_next2[j].data[63:32], mshr_next2[j].store_data[7:0], mshr_next2[j].data[23:0]};
+                                3'd4: dcache_next2[line_idx].data = {mshr_next2[j].data[63:40], mshr_next2[j].store_data[7:0], mshr_next2[j].data[31:0]};
+                                3'd5: dcache_next2[line_idx].data = {mshr_next2[j].data[63:48], mshr_next2[j].store_data[7:0], mshr_next2[j].data[39:0]};
+                                3'd6: dcache_next2[line_idx].data = {mshr_next2[j].data[63:56], mshr_next2[j].store_data[7:0], mshr_next2[j].data[47:0]};
+                                3'd7: dcache_next2[line_idx].data = {mshr_next2[j].store_data[7:0], mshr_next2[j].data[55:0]};
+                            endcase
+                        end
+                        HALF:
+                        begin
+                            casez(mshr_next2[j].address[2:1])
+                                2'd0: dcache_next2[line_idx].data = {mshr_next2[j].data[63:16], mshr_next2[j].store_data[15:0]};
+                                2'd1: dcache_next2[line_idx].data = {mshr_next2[j].data[63:32], mshr_next2[j].store_data[15:0], mshr_next2[j].data[15:0]};
+                                2'd2: dcache_next2[line_idx].data = {mshr_next2[j].data[63:48], mshr_next2[j].store_data[15:0], mshr_next2[j].data[31:0]};
+                                2'd3: dcache_next2[line_idx].data = {mshr_next2[j].store_data[15:0], mshr_next2[j].data[47:0]};
+                            endcase
+                        end
+                        WORD:
+                        begin
+                            casez(mshr_next2[j].address[2])
+                                1'd0: dcache_next2[line_idx].data = {mshr_next2[j].data[63:32], mshr_next2[j].store_data[31:0]};
+                                1'd1: dcache_next2[line_idx].data = {mshr_next2[j].store_data[31:0], mshr_next2[j].data[31:0]};
+                            endcase
+                        end
+                    endcase
                     mshr_next2[j].valid = 0;
                     order_idx_next2 = order_idx_next2 - 1;
                     store_mshr_invalidated_order_idx = i;
-                //end
+                end
+                else if(mshr_next[j].size==DOUBLE && mshr_next[j].ready)
+                begin
+                    store_tmp = 0;
+                    store_packet_out_next[store_packet_out_idx].store_pos = mshr_next2[j].store_pos;
+                    store_packet_out_next[store_packet_out_idx].valid = 1;
+                    store_packet_out_idx = store_packet_out_idx + 1;
+                    mshr_next2[j].valid = 0;
+                    order_idx_next2 = order_idx_next2 - 1;
+                    store_mshr_invalidated_order_idx = i;
+                end
+                
             end
         end
     end
@@ -930,7 +939,7 @@ begin
     if(store_packet_in[0].valid &&
     dcache_next3[store_packet_in[0].address[`CACHE_LINE_BITS+3-1:3]].valid &&
     dcache_next3[store_packet_in[0].address[`CACHE_LINE_BITS+3-1:3]].tag == store_packet_in[0].address[`XLEN-1:`CACHE_LINE_BITS+3] &&
-    store_packet_out_idx3 < 1)
+    store_packet_out_idx3 < 1 && !flush)
     begin
         dcache_next4[store_packet_in[0].address[`CACHE_LINE_BITS+3-1:3]].dirty = 1;
         casez(store_packet_in[0].size)
@@ -970,9 +979,9 @@ begin
         store_packet_out_idx3 = store_packet_out_idx3 + 1;
         
     end
-    else 
+    else if(!flush)
     begin
-                	tmp9 =0;
+        tmp9 =0;
         for(int i = 0; i < `MSHR_SIZE; i++)
         begin
             if(!mshr_next10[i].valid &&
@@ -1004,7 +1013,7 @@ begin
     if(load_packet_in[0].valid &&
     dcache_next4[load_packet_in[0].address[`CACHE_LINE_BITS+3-1:3]].valid &&
     dcache_next4[load_packet_in[0].address[`CACHE_LINE_BITS+3-1:3]].tag == load_packet_in[0].address[`XLEN-1:`CACHE_LINE_BITS+3] &&
-    load_packet_out_idx3 < 1)
+    load_packet_out_idx3 < 1 && !flush)
     begin
         casez(load_packet_in[0].size)
             BYTE:
@@ -1046,9 +1055,9 @@ begin
         load_packet_out_idx3 = load_packet_out_idx3 + 1;
         
     end
-    else 
+    else if(!flush) 
     begin
-                	tmp10 =0;
+        tmp10 =0;
         for(int i = 0; i < `MSHR_SIZE; i++)
         begin
             if(!mshr_next11[i].valid &&
@@ -1131,6 +1140,8 @@ begin
     dcache_next5 = dcache_next4;
     tmp2 = 1;
     order_idx_next6 = order_idx_next5;
+    flush_victim = 0;
+    victim_cache_full_evict_next2 = victim_cache_full_evict_next;
     if(flush && all_mshr_requests_processed_reg)
     begin
         for(line_idx2 = 0; line_idx2 < `CACHE_LINES; line_idx2++)
@@ -1163,10 +1174,13 @@ begin
                         order_idx_next6 = order_idx_next6 + 1;
                         tmp2 = 0;
                     end
-
                 end
-                
             end
+        end
+        if(tmp2)
+        begin
+            flush_victim = 1;
+            victim_cache_full_evict_next2 = 1;
         end
     end
 end
@@ -1195,7 +1209,7 @@ begin
         load_packet_out <= `SD load_packet_out_next4;
         store_packet_out <= `SD store_packet_out_next4;
         mshr_idx <= `SD mshr_idx_next;
-        victim_cache_full_evict <= `SD victim_cache_full_evict_next;
+        victim_cache_full_evict <= `SD victim_cache_full_evict_next2;
         victim_cache_partial_evict <= `SD victim_cache_partial_evict_next;
         load_l1_hit <= `SD load_l1_hit_next;
         store_l1_hit <= `SD store_l1_hit_next;
@@ -1217,6 +1231,7 @@ endmodule
 
 
 module victim_cache(
+    input flush_victim,
     input clock, 
     input reset,
     input MSHR_ROW [`N_WR_PORTS-1:0] store_victim_mshr_in,
@@ -1234,9 +1249,12 @@ module victim_cache(
 
 VICTIM_CACHE_ROW [3:0] victim_cache;
 VICTIM_CACHE_ROW [3:0] victim_cache_next;
+VICTIM_CACHE_ROW [3:0] victim_cache_next2;
 VICTIM_CACHE_ROW load_victim_cache_out_next;
 VICTIM_CACHE_ROW store_victim_cache_out_next;
-
+VICTIM_CACHE_ROW store_victim_cache_out_next2;
+logic tmp2;
+logic [`CACHE_LINE_BITS-1:0] line_idx2;
 always_comb
 begin
     victim_cache_next = victim_cache;
@@ -1373,6 +1391,26 @@ begin
     end
 end
 
+always_comb
+begin
+    tmp2 = 1;
+    victim_cache_next2 = victim_cache_next;
+    store_victim_cache_out_next2 = store_victim_cache_out_next;
+    if(flush_victim)
+    begin
+        for(line_idx2 = 0; line_idx2 < 4; line_idx2++)
+        begin
+            if(tmp2 && victim_cache_next[line_idx2].valid && victim_cache_next[line_idx2].dirty)
+            begin
+                victim_cache_next2[line_idx2].dirty = 0;
+                victim_cache_next2[line_idx2].valid = 0;
+                store_victim_cache_out_next2 = victim_cache_next[line_idx2];
+                tmp2 = 0;
+            end
+        end
+    end
+end
+
 
 
 always_ff @ (posedge clock)
@@ -1385,9 +1423,9 @@ begin
     end
     else
     begin
-        victim_cache <= `SD victim_cache_next;
+        victim_cache <= `SD victim_cache_next2;
         load_victim_cache_out <= `SD load_victim_cache_out_next;
-        store_victim_cache_out <= `SD store_victim_cache_out_next;
+        store_victim_cache_out <= `SD store_victim_cache_out_next2;
     end
 end
 

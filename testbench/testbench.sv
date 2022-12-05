@@ -441,7 +441,7 @@ module testbench;
 			for(int i = 0; i < `N_WAY; i++)
 			begin
 				//if(retire_packet[i].ret_valid && (retire_packet[i].illegal || retire_packet[i].halt || debug_counter > 5000)) begin
-				if((retire_packet[i].illegal || retire_packet[i].halt || debug_counter > 5000 || retire_branch)) begin
+				if((retire_packet[i].illegal || retire_packet[i].halt || debug_counter > 5000000|| retire_branch)) begin
 					$display("@@@ Unified Memory contents hex on left, decimal on right: ");
 					// show_mem_with_decimal(0,`MEM_64BIT_LINES - 1); 
 					// 8Bytes per line, 16kB total

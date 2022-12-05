@@ -36,6 +36,7 @@ module top_r10k (
 
 	RS_PACKET_DISPATCH [`N_WAY-1:0] rs_packet_dispatch;
 	DISPATCH_PACKET[`N_WAY-1:0] dispatch_packet_rob; //generated internally to rob 
+	DISPATCH_PACKET[`N_WAY-1:0] dispatch_packet_rob2; //generated internally to rob 
 	PR_PACKET [`N_WAY-1 : 0] pr_packet_out1; //to reservation station
 	PR_PACKET [`N_WAY-1 : 0] pr_packet_out2; //to reservation station
 	//logic [`N_WAY-1 : 0] [`CDB_BITS-1 : 0] cdb_tag; // to reservation station
@@ -239,7 +240,6 @@ module top_r10k (
 	end
 
 	always_comb begin
-		dispatch_num = 0 ;
 		for (int k=0; k<`N_WAY ; k=k+1) begin
 			dispatch_packet_rob[k].PC = dispatch_packet[k].PC;
 			dispatch_packet_rob[k].illegal = dispatch_packet[k].illegal;
@@ -248,8 +248,22 @@ module top_r10k (
 			dispatch_packet_rob[k].src2 = dispatch_packet[k].src2;
 			dispatch_packet_rob[k].dest = dispatch_packet[k].dest;
 			dispatch_packet_rob[k].ld_st_bits=dispatch_packet[k].ld_st_bits;
-			dispatch_packet_rob[k].valid = rs_packet_dispatch[k].valid && dispatch_packet[k].valid;
-			if (dispatch_packet_rob[k].valid) dispatch_num = dispatch_num + 1;
+			dispatch_packet_rob[k].valid = dispatch_packet[k].valid;
+		end
+	end
+
+	always_comb begin
+		dispatch_num = 0 ;
+		for (int k=0; k<`N_WAY ; k=k+1) begin
+			dispatch_packet_rob2[k].PC = dispatch_packet[k].PC;
+			dispatch_packet_rob2[k].illegal = dispatch_packet[k].illegal;
+			dispatch_packet_rob2[k].halt = dispatch_packet[k].halt;
+			dispatch_packet_rob2[k].src1 = dispatch_packet[k].src1;
+			dispatch_packet_rob2[k].src2 = dispatch_packet[k].src2;
+			dispatch_packet_rob2[k].dest = dispatch_packet[k].dest;
+			dispatch_packet_rob2[k].ld_st_bits=dispatch_packet[k].ld_st_bits;
+			dispatch_packet_rob2[k].valid = rs_packet_dispatch[k].valid && dispatch_packet[k].valid;
+			if (dispatch_packet_rob2[k].valid) dispatch_num = dispatch_num + 1;
 		end
 	end
 
@@ -313,6 +327,7 @@ instruction_decoder instruction_decoder(
                 .reset(reset), 
 		.complete_dest_tag(complete_dest_tag),
 		.dispatch_packet(dispatch_packet_rob), 
+		.dispatch_packet2(dispatch_packet_rob2),
 		.branch_inst(branch_inst),
 		.take_branch(take_branch_ex),
 		.br_result(br_result),

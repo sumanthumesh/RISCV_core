@@ -7,6 +7,7 @@ module rob (
 	input [`N_WAY-1 : 0] take_branch, //from ex stage
 	input [`N_WAY-1 : 0] [`XLEN-1:0] br_result,
 	input  ROB_PACKET_DISPATCH [`N_WAY-1:0] rob_packet_dis,
+	input  ROB_PACKET_DISPATCH [`N_WAY-1:0] rob_packet_dis2,
 	output logic [`N_WAY-1:0][`CDB_BITS-1:0] retire_tag, 
 	output logic [`N_WAY-1:0][`CDB_BITS-1:0] retire_told,
 	output logic [`N_WAY-1:0][`XLEN-1:0] retire_PC,
@@ -24,11 +25,11 @@ module rob (
 	output logic [$clog2(`N_WAY):0] store_num_ret, //from rob, make zero in rob for branch hazard
 	output logic [`N_WAY-1:0] retire_inst_is_branch
 );
-	ROB_PACKET [`N_ROB-1:0] rob_packet_next;
+	ROB_PACKET [`N_ROB-1:0] rob_packet_next, rob_packet_next2;
 	ROB_PACKET [`N_ROB-1:0] rob_packet_wire;
 	//ROB_PACKET [`N_ROB-1:0] rob_packet;
-	logic [$clog2(`N_ROB):0] empty_rob_reg, empty_rob_wire, empty_rob_next;
-	logic tmp, tmp1;
+	logic [$clog2(`N_ROB):0] empty_rob_reg, empty_rob_wire, empty_rob_next, empty_rob_next2;
+	logic tmp, tmp1, tmp2;
 
 	assign empty_rob = (empty_rob_wire <=`N_WAY ) ?  empty_rob_wire : `N_WAY;
  
@@ -164,30 +165,52 @@ module rob (
 						empty_rob_next =empty_rob_next - 1;
 						tmp1 = 1;
 						dispatched[k] = 1; 
-						if(y == `N_ROB-1) begin
-							rob_packet_next[0].tag = rob_packet_dis[k].tag; //compare unique tag in instruction buffer to get the number of inst dispatched each cycle
-							rob_packet_next[0].tag_old = rob_packet_dis[k].tag_old; 
-							rob_packet_next[0].branch_inst = rob_packet_dis[k].branch_inst; 
-							rob_packet_next[0].completed = 0; 
-							rob_packet_next[0].take_branch = 0; 
-							rob_packet_next[0].br_result = 0; 
+						if(y == `N_ROB-1)
 							rob_packet_next[0].tail = 1;
-							rob_packet_next[0].PC = rob_packet_dis[k].PC;
-							rob_packet_next[0].halt = rob_packet_dis[k].halt;
-							rob_packet_next[0].illegal = rob_packet_dis[k].illegal;
-							rob_packet_next[0].ld_st_bits = rob_packet_dis[k].ld_st_bits;
-						end else begin
-							rob_packet_next[y+1].tag = rob_packet_dis[k].tag; 
-							rob_packet_next[y+1].tag_old = rob_packet_dis[k].tag_old; 
-							rob_packet_next[y+1].branch_inst = rob_packet_dis[k].branch_inst; 
-							rob_packet_next[y+1].completed = 0;
-							rob_packet_next[y+1].take_branch = 0; 
-							rob_packet_next[y+1].br_result = 0; 
+						else
 							rob_packet_next[y+1].tail = 1;
-							rob_packet_next[y+1].PC = rob_packet_dis[k].PC;
-							rob_packet_next[y+1].halt = rob_packet_dis[k].halt;
-							rob_packet_next[y+1].illegal = rob_packet_dis[k].illegal;
-							rob_packet_next[y+1].ld_st_bits = rob_packet_dis[k].ld_st_bits;
+					end
+				end
+			end
+		end
+	end
+
+	always_comb
+	begin
+		rob_packet_next2 = rob_packet_wire;
+		empty_rob_next2 =  empty_rob_wire;
+		for(int k = 0; k < `N_WAY; k++)	begin
+			if(rob_packet_dis2[k].valid) begin
+				tmp2 = 0;
+				for(int y = 0; y < `N_ROB; y++) begin
+					if(rob_packet_next2[y].tail && !tmp2) begin
+						rob_packet_next2[y].tail = 0;
+						empty_rob_next2 = empty_rob_next2 - 1;
+						tmp2 = 1;
+						if(y == `N_ROB-1) begin
+							rob_packet_next2[0].tag = rob_packet_dis2[k].tag; //compare unique tag in instruction buffer to get the number of inst dispatched each cycle
+							rob_packet_next2[0].tag_old = rob_packet_dis2[k].tag_old; 
+							rob_packet_next2[0].branch_inst = rob_packet_dis2[k].branch_inst; 
+							rob_packet_next2[0].completed = 0; 
+							rob_packet_next2[0].take_branch = 0; 
+							rob_packet_next2[0].br_result = 0; 
+							rob_packet_next2[0].tail = 1;
+							rob_packet_next2[0].PC = rob_packet_dis2[k].PC;
+							rob_packet_next2[0].halt = rob_packet_dis2[k].halt;
+							rob_packet_next2[0].illegal = rob_packet_dis2[k].illegal;
+							rob_packet_next2[0].ld_st_bits = rob_packet_dis2[k].ld_st_bits;
+						end else begin
+							rob_packet_next2[y+1].tag = rob_packet_dis2[k].tag; 
+							rob_packet_next2[y+1].tag_old = rob_packet_dis2[k].tag_old; 
+							rob_packet_next2[y+1].branch_inst = rob_packet_dis2[k].branch_inst; 
+							rob_packet_next2[y+1].completed = 0;
+							rob_packet_next2[y+1].take_branch = 0; 
+							rob_packet_next2[y+1].br_result = 0; 
+							rob_packet_next2[y+1].tail = 1;
+							rob_packet_next2[y+1].PC = rob_packet_dis2[k].PC;
+							rob_packet_next2[y+1].halt = rob_packet_dis2[k].halt;
+							rob_packet_next2[y+1].illegal = rob_packet_dis2[k].illegal;
+							rob_packet_next2[y+1].ld_st_bits = rob_packet_dis2[k].ld_st_bits;
 						end
 					end
 				end
@@ -219,8 +242,8 @@ module rob (
 			end
 			empty_rob_reg <= `SD `N_ROB;
 		end else begin
-			rob_packet <= `SD rob_packet_next;
-			empty_rob_reg <= `SD empty_rob_next;
+			rob_packet <= `SD rob_packet_next2;
+			empty_rob_reg <= `SD empty_rob_next2;
 		end
 	end
 endmodule

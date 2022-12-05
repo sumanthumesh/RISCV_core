@@ -5,6 +5,7 @@ module top_rob (
 	input reset,
 	input [`N_WAY-1 : 0] [`CDB_BITS-1:0] complete_dest_tag, //i/p from complete stage, not latched from the complete stage
 	input  DISPATCH_PACKET [`N_WAY-1:0] dispatch_packet, //from dispatch stage
+	input  DISPATCH_PACKET [`N_WAY-1:0] dispatch_packet2, //from dispatch stage
 	input [`N_WAY-1:0] branch_inst, // BRANCH instruction identification
 	input [`N_WAY-1:0] take_branch, //from ex stage
 	input [`N_WAY-1 : 0] [`XLEN-1:0] br_result,
@@ -30,6 +31,7 @@ module top_rob (
 );
 
 	ROB_PACKET_DISPATCH [`N_WAY-1:0] rob_packet_dis;//generated from dis packet and free list output
+	ROB_PACKET_DISPATCH [`N_WAY-1:0] rob_packet_dis2;//generated from dis packet and free list output
 	logic [`N_WAY-1:0][`CDB_BITS-1:0] retire_tag; 
 	logic [`N_WAY-1:0][`CDB_BITS-1:0] retire_told;
 	logic [`N_WAY-1:0][`XLEN-1:0] retire_PC;
@@ -63,6 +65,23 @@ module top_rob (
 				
 		end
 	end
+
+	always_comb
+	begin
+		for (int i=0; i<`N_WAY ; i=i+1) begin
+			rob_packet_dis2[i].tag = free_list_out[i];
+			rob_packet_dis2[i].tag_old = pr_old[i];
+			rob_packet_dis2[i].branch_inst = branch_inst[i];
+			rob_packet_dis2[i].PC = dispatch_packet2[i].PC;
+			rob_packet_dis2[i].halt = dispatch_packet2[i].halt;
+			rob_packet_dis2[i].illegal = dispatch_packet2[i].illegal;
+			rob_packet_dis2[i].ld_st_bits= dispatch_packet2[i].ld_st_bits;
+			if(free_list_out[i] == 0)
+				rob_packet_dis2[i].valid = 0;
+			else
+				rob_packet_dis2[i].valid = dispatch_packet2[i].valid;
+		end
+	end
 	
 	always_comb begin // to arch map
 		tmp_halt = 0;
@@ -83,10 +102,10 @@ module top_rob (
 
 	always_comb begin // to map table 
 		for (int i=0; i<`N_WAY ; i=i+1) begin
-			dis_packet[i].src1 = dispatch_packet[i].src1;
-			dis_packet[i].src2 = dispatch_packet[i].src2 ;
-			dis_packet[i].dest = dispatch_packet[i].dest ;
-			dis_packet[i].valid= dispatch_packet[i].valid && dispatched[i]   ;
+			dis_packet[i].src1 = dispatch_packet2[i].src1;
+			dis_packet[i].src2 = dispatch_packet2[i].src2 ;
+			dis_packet[i].dest = dispatch_packet2[i].dest ;
+			dis_packet[i].valid= dispatch_packet2[i].valid && dispatched[i]   ;
 				
 		end
 	end
@@ -98,6 +117,7 @@ module top_rob (
 		.take_branch(take_branch),
 		.br_result(br_result),
 		.rob_packet_dis(rob_packet_dis), //generated internally
+		.rob_packet_dis2(rob_packet_dis2),
 		.retire_tag(retire_tag),
 		.retire_told(retire_told),
 		.retire_valid(retire_valid),
@@ -120,7 +140,7 @@ map_table map_table0 (
 
                   .clock(clock), 
                   .reset(reset),
-		  .dis_packet(dispatch_packet),
+		  .dis_packet(dispatch_packet2),
 		  .branch_haz(branch_haz),
 		  .arch_reg(arch_reg_next),
 		  .pr_freelist(free_list_out),

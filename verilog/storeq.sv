@@ -215,7 +215,7 @@ module storeq(
 	end
 
 	always_comb begin
-		last_str_ex_idx=0;
+	//	last_str_ex_idx=0;
 		tmp_last = 0;
 		for (int k=1; k<=`N_SQ; k=k+1) begin
 			if(!tmp_last) begin

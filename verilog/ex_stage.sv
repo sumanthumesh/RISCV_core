@@ -541,19 +541,19 @@ module ex_stage(
 				else tail_fifo[m] <= `SD 0;
 			end
 		end else begin
-			if(!branch_haz) begin
+			//if(!branch_haz) begin
 				store2dcache_fifo <= `SD store2dcache_fifo_next;
 				head_fifo <= `SD head_fifo_next;
 				tail_fifo <= `SD tail_fifo_next;
-			end else begin	
-				store2dcache_fifo <= `SD 0;
-				for(int m=0; m<`STOREQ_DCACHE_FIFO_SIZE; m=m+1) begin
-					if(m==0) head_fifo[m] <= `SD 1;	
-					else head_fifo[m] <= `SD 0;
-					if(m==`STOREQ_DCACHE_FIFO_SIZE-1 ) tail_fifo[m] <= `SD 1;	
-					else tail_fifo[m] <= `SD 0;
-				end
-			end
+			//end else begin	
+			//	store2dcache_fifo <= `SD 0;
+			//	for(int m=0; m<`STOREQ_DCACHE_FIFO_SIZE; m=m+1) begin
+			//		if(m==0) head_fifo[m] <= `SD 1;	
+			//		else head_fifo[m] <= `SD 0;
+			//		if(m==`STOREQ_DCACHE_FIFO_SIZE-1 ) tail_fifo[m] <= `SD 1;	
+			//		else tail_fifo[m] <= `SD 0;
+			//	end
+			//end
 		end
 	end
 	//

@@ -1314,7 +1314,9 @@ begin
                 end
                 else if(victim_cache[i].valid &&
                 store_victim_cache_in[0].valid &&
-                store_victim_cache_in[0].line_idx == victim_cache[i].line_idx && store_victim_mshr_in[0].valid && store_victim_mshr_in[0].store && (victim_cache[i].tag==store_victim_mshr_in[0].address[`XLEN-1:`CACHE_LINE_BITS+3]) )
+                store_victim_cache_in[0].line_idx == victim_cache[i].line_idx && 
+                victim_cache[i].tag == store_victim_mshr_in[0].address[`XLEN-1:`CACHE_LINE_BITS+3] &&
+                store_victim_mshr_in[0].valid && store_victim_mshr_in[0].store)
                 begin
 			store_victim_cache_out_next.dirty = 1;
 			store_victim_cache_out_next.valid= 1;

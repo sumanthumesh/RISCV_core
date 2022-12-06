@@ -27,7 +27,7 @@ module storeq(
 	logic [$clog2(`N_SQ):0] tmp_order_pos;
 	logic tmp_last;
 	logic [$clog2(`N_SQ):0] last_str_ex_idx_next;
-	
+	logic branch_haz_reg;
 
 	//assign empty_storeq= (empty_storeq_wire <=`N_WAY ) ?  empty_storeq_wire : `N_WAY;
 	assign empty_storeq= empty_storeq_wire ;
@@ -232,6 +232,7 @@ module storeq(
 
 	always_ff @(posedge clock) begin
 		if(reset) begin
+			branch_haz_reg <= `SD 0;
 			for (int m=0; m<`N_SQ; m=m+1) begin
 				storeq_reg[m].valid <= `SD 0;
 				storeq_reg[m].ex<= `SD 0;
@@ -252,7 +253,8 @@ module storeq(
 			last_str_ex_idx <= `SD 0;
 			empty_storeq_reg <= `SD `N_SQ;
 		end else begin
-			if (!branch_haz) begin
+			branch_haz_reg <= `SD branch_haz;
+			if (!branch_haz_reg) begin
 				storeq_reg <= `SD storeq_next;
 				empty_storeq_reg <= `SD empty_storeq_next;
 				last_str_ex_idx <= `SD last_str_ex_idx_next;

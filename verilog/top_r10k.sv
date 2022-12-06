@@ -49,33 +49,6 @@ module top_r10k (
 	logic [`N_WAY-1 : 0] take_branch_ex;
 	logic [`N_WAY-1 : 0] [`XLEN-1:0] br_result;
 
-//////icache integration with pipeline
-	DISPATCH_PACKET_R10K [`N_WAY-1:0] dispatch_packet; //from dispatch stage to rob and rs
-	logic [`N_WAY-1:0] branch_inst; // BRANCH instruction identification
-
- 	logic [`N_WAY-1:0][`XLEN-1:0] Icache_data_out; 
- 	logic [`N_WAY-1:0][`XLEN-1:0] Icache_addr_out; 
-        logic [`N_WAY-1:0] Icache_valid_out;    
-        logic [$clog2(`N_WAY):0] Icache_hit_count;  
-	logic [`XLEN-1:0] buff2Icache_addr; //Address or PC to fetch instructions from
-	logic [$clog2(`N_WAY):0] buff2Icache_count; //Num of instructions that buff wants
-	logic [`N_WAY-1:0][`XLEN-1:0] buff2proc_addr;
-	logic [`N_WAY-1:0][`XLEN-1:0] buff2proc_data;
-	logic [`N_WAY-1:0] buff2proc_valid;
-        logic [`XLEN-1:0] proc2Icache_addr; 
-        logic [`N_WAY-1:0][`XLEN-1:0] Icache_data_out; 
-        logic [`N_WAY-1:0] Icache_valid_out;    
-    	logic [`N_WAY-1:0][`XLEN-1:0] out_PC;
-	logic [`N_WAY-1:0][`XLEN-1:0] out_NPC;
-	INST [`N_WAY-1:0] out_inst;
-	logic [`N_WAY-1:0][`XLEN_BITS-1:0] src1;
-	logic [`N_WAY-1:0][`XLEN_BITS-1:0] src2;
-	logic [`N_WAY-1:0][`XLEN_BITS-1:0] dest;
-	logic [`N_WAY-1:0] is_branch;
-	logic [`N_WAY-1:0] halt;
-	logic [`N_WAY-1:0] out_valid;
-	logic [`N_WAY-1:0] illegal;
-
 
 ///////storeq and loadq
 //

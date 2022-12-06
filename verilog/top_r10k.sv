@@ -196,61 +196,35 @@ module top_r10k (
 				if(dispatch_packet[i].ld_st_bits == 2'b10) begin //for load postion
 					rs_packet_dispatch[i].storeq_idx = storeq_idx_wire;
 				end
-				//for store position
-				if(dispatch_packet[i].ld_st_bits == 2'b01 && (empty_storeq_wire > 0)) begin
-					//if(dispatched[i]) begin
-						if(storeq_idx_wire < `N_SQ) 
-							storeq_idx_wire = storeq_idx_wire + 1;
-						else
-							storeq_idx_wire = 1;
-						empty_storeq_wire = empty_storeq_wire -1;
-						store_num_dis = store_num_dis + 1;
-					//end else begin
-					//	storeq_idx_wire = storeq_idx;
-					//	empty_storeq_wire = empty_storeq;
-					//end
-					rs_packet_dispatch[i].storeq_idx = storeq_idx_wire;
-					store_order_idx_in[count_st] = `N_SQ - empty_storeq_wire;
-					count_st = count_st + 1;
-				end
-				if((rs_packet_dispatch[i].ld_st_bits == 2'b01) && (empty_storeq_wire == 0) ) begin
+				if(rs_packet_dispatch[i].order_idx <= `N_RS ) begin
+					//for store position
+					if(dispatch_packet[i].ld_st_bits == 2'b01) begin
+						if(empty_storeq_wire > 0) begin
+							if(storeq_idx_wire < `N_SQ) 
+								storeq_idx_wire = storeq_idx_wire + 1;
+							else
+								storeq_idx_wire = 1;
+							empty_storeq_wire = empty_storeq_wire -1;
+							store_num_dis = store_num_dis + 1;
+							rs_packet_dispatch[i].storeq_idx = storeq_idx_wire;
+							store_order_idx_in[count_st] = `N_SQ - empty_storeq_wire;
+							count_st = count_st + 1;
+							rs_packet_dispatch[i].valid = 1;
+							rs_packet_dispatch[i].busy = 1; 
+						end else begin 
+							rs_packet_dispatch[i].valid = 0;
+							rs_packet_dispatch[i].busy = 0; 
+							tmp_valid = 1;
+						end
+					end else begin
+						rs_packet_dispatch[i].valid = 1;
+						rs_packet_dispatch[i].busy = 1; 
+					end
+				end else begin
 					rs_packet_dispatch[i].valid = 0;
 					rs_packet_dispatch[i].busy = 0; 
 					tmp_valid = 1;
-				end else begin
-					if(rs_packet_dispatch[i].order_idx <= `N_RS ) begin
-						rs_packet_dispatch[i].valid = 1;
-						rs_packet_dispatch[i].busy = 1; 
-					end else begin
-						rs_packet_dispatch[i].valid = 0;
-						rs_packet_dispatch[i].busy = 0; 
-						tmp_valid = 1;
-					end
 				end
-			//	if(rs_packet_dispatch[i].order_idx <= `N_RS ) begin
-			//		//for store position
-			//		if(dispatch_packet[i].ld_st_bits == 2'b01 && (empty_storeq_wire > 0)) begin
-			//				if(storeq_idx_wire < `N_SQ) 
-			//					storeq_idx_wire = storeq_idx_wire + 1;
-			//				else
-			//					storeq_idx_wire = 1;
-			//				empty_storeq_wire = empty_storeq_wire -1;
-			//				store_num_dis = store_num_dis + 1;
-			//			rs_packet_dispatch[i].storeq_idx = storeq_idx_wire;
-			//			store_order_idx_in[count_st] = `N_SQ - empty_storeq_wire;
-			//			count_st = count_st + 1;
-			//			rs_packet_dispatch[i].valid = 1;
-			//			rs_packet_dispatch[i].busy = 1; 
-			//		end else begin
-			//		rs_packet_dispatch[i].valid = 0;
-			//		rs_packet_dispatch[i].busy = 0; 
-			//		tmp_valid = 1;
-			//		end
-			//	end else begin
-			//		rs_packet_dispatch[i].valid = 0;
-			//		rs_packet_dispatch[i].busy = 0; 
-			//		tmp_valid = 1;
-			//	end
 			end
 				
 		end

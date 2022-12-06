@@ -113,7 +113,7 @@ SIMFILES =	verilog/top_r10k.sv	\
 		verilog/ex_stage.sv	\
 		verilog/free_list.sv	\
 		verilog/reservation_station.sv	\
-		verilog/rob.sv \
+		verilog/rob_syn.sv \
 		verilog/regfile.sv \
 		verilog/icache.sv	\
 		verilog/dcache.sv	\

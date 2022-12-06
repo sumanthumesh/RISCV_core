@@ -708,14 +708,14 @@ module ex_stage(
 	logic [`MAX_EX_UNITS-1 : 0] take_branch_out_wire,take_branch_out_next,take_branch_out_fifo;
 	logic [`MAX_EX_UNITS-1 : 0] [`XLEN-1:0] br_result_out_wire,br_result_out_next,br_result_out_fifo;
 	logic tmp3,tmp_out, tmp_ld_buf;
-	LOAD_BUFFER [7:0] load_buf, load_buf_next;
+	LOAD_BUFFER [15:0] load_buf, load_buf_next;
 	logic [`CDB_BITS-1 : 0] complete_dest_tag_ld_dcache;
 
 	always_comb begin
 		load_buf_next = load_buf;
 		tmp_ld_buf = 0;
 		if(load_packet_in_dcache[0].valid) begin
-			for(int i=0; i<8; i++)begin
+			for(int i=0; i<16; i++)begin
 				if(!load_buf[i].valid && !tmp_ld_buf) begin
 					load_buf_next[i].dest_tag = load_packet_in_dcache[0].dest_tag;
 					load_buf_next[i].valid = 1;
@@ -753,7 +753,7 @@ module ex_stage(
 		//for(int i=0; i<`N_WAY; i=i+1) begin
 			for(int j=0; j<`N_RD_PORTS; j=j+1) begin
 				if(load_packet_out_dcache[j].valid) begin
-					for(int i=0; i<8; i++)begin
+					for(int i=0; i<16; i++)begin
 						if((load_buf[i].dest_tag == load_packet_out_dcache[j].dest_tag) && load_buf[i].valid)begin
 							complete_dest_tag_wire[count_comp] = load_packet_out_dcache[j].dest_tag;
 							complete_dest_tag_ld_dcache = load_packet_out_dcache[j].dest_tag;

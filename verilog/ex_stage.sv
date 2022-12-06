@@ -482,7 +482,7 @@ module ex_stage(
 				.store_ex_packet_in(store_ex_packet_in),
 				.store_num_ret(store_num_ret),
 				.load_packet_in(load_packet_in),
-				.store_packet_dcache(store_packet_in_dcache),
+				.store_packet_dcache(store_packet_out_dcache),
 				.store_ret_packet_out(store_ret_packet_out),
 				.empty_storeq(empty_storeq),
 				.last_str_ex_idx(last_str_ex_idx),
@@ -541,19 +541,9 @@ module ex_stage(
 				else tail_fifo[m] <= `SD 0;
 			end
 		end else begin
-			//if(!branch_haz) begin
 				store2dcache_fifo <= `SD store2dcache_fifo_next;
 				head_fifo <= `SD head_fifo_next;
 				tail_fifo <= `SD tail_fifo_next;
-			//end else begin	
-			//	store2dcache_fifo <= `SD 0;
-			//	for(int m=0; m<`STOREQ_DCACHE_FIFO_SIZE; m=m+1) begin
-			//		if(m==0) head_fifo[m] <= `SD 1;	
-			//		else head_fifo[m] <= `SD 0;
-			//		if(m==`STOREQ_DCACHE_FIFO_SIZE-1 ) tail_fifo[m] <= `SD 1;	
-			//		else tail_fifo[m] <= `SD 0;
-			//	end
-			//end
 		end
 	end
 	//
@@ -711,7 +701,7 @@ module ex_stage(
 	LOAD_BUFFER [31:0] load_buf, load_buf_next;
 	logic [`CDB_BITS-1 : 0] complete_dest_tag_ld_dcache;
 
-	always_comb begin
+	always_comb begin //load clearing in dcache due to branch haz
 		load_buf_next = load_buf;
 		tmp_ld_buf = 0;
 		if(load_packet_in_dcache[0].valid) begin

@@ -101,12 +101,12 @@ module top_r10k (
 	
 	//icache and dcache mux with memory
 	//i/p mux
-	always_comb begin
+	//always_comb begin
 		assign mode_mem = (dcache2mem_command != BUS_NONE) ? 1 : 0;
 		assign mem_command = mode_mem ? dcache2mem_command : proc2Imem_command;
 		assign mem_data = dcache2mem_data;
 		assign mem_addr = mode_mem ? dcache2mem_addr : proc2Imem_addr;
-	end
+	//end
 	assign enable_icache = !mode_mem;
 	
 	always_comb begin

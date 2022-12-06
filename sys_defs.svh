@@ -319,7 +319,7 @@ typedef struct packed {
 `define N_WAY_3
 `define CDB_BITS 7
 `define N_ROB 64
-`define N_SQ 8
+`define N_SQ 16
 `define FIFO_BITS 6
 `define XLEN_BITS 5
 `define N_RS 16

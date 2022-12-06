@@ -1328,11 +1328,11 @@ begin
            	         casez(store_victim_mshr_in[0].address[2:0])
            	             3'd0: store_victim_cache_out_next.data = {victim_cache[i].data[63:8], store_victim_mshr_in[0].store_data[7:0]};
            	             3'd1: store_victim_cache_out_next.data = {victim_cache[i].data[63:16], store_victim_mshr_in[0].store_data[7:0], victim_cache[i].data[7:0]};
-           	             3'd2: store_victim_cache_out_next.data = {victim_cache[i].data[63:24], store_victim_mshr_in[0].store_data[7:0], victim_cache[i].data[15:8]};
-           	             3'd3: store_victim_cache_out_next.data = {victim_cache[i].data[63:32], store_victim_mshr_in[0].store_data[7:0], victim_cache[i].data[23:16]};
-           	             3'd4: store_victim_cache_out_next.data = {victim_cache[i].data[63:40], store_victim_mshr_in[0].store_data[7:0], victim_cache[i].data[31:24]};
-           	             3'd5: store_victim_cache_out_next.data = {victim_cache[i].data[63:48], store_victim_mshr_in[0].store_data[7:0], victim_cache[i].data[39:32]};
-           	             3'd6: store_victim_cache_out_next.data = {victim_cache[i].data[63:56], store_victim_mshr_in[0].store_data[7:0], victim_cache[i].data[47:40]};
+           	             3'd2: store_victim_cache_out_next.data = {victim_cache[i].data[63:24], store_victim_mshr_in[0].store_data[7:0], victim_cache[i].data[15:0]};
+           	             3'd3: store_victim_cache_out_next.data = {victim_cache[i].data[63:32], store_victim_mshr_in[0].store_data[7:0], victim_cache[i].data[23:0]};
+           	             3'd4: store_victim_cache_out_next.data = {victim_cache[i].data[63:40], store_victim_mshr_in[0].store_data[7:0], victim_cache[i].data[31:0]};
+           	             3'd5: store_victim_cache_out_next.data = {victim_cache[i].data[63:48], store_victim_mshr_in[0].store_data[7:0], victim_cache[i].data[39:0]};
+           	             3'd6: store_victim_cache_out_next.data = {victim_cache[i].data[63:56], store_victim_mshr_in[0].store_data[7:0], victim_cache[i].data[47:0]};
            	             3'd7: store_victim_cache_out_next.data = {store_victim_mshr_in[0].store_data[7:0], victim_cache[i].data[55:48]};
            	         endcase
            	     end
@@ -1341,7 +1341,7 @@ begin
            	         casez(store_victim_mshr_in[0].address[2:1])
            	             2'd0: store_victim_cache_out_next.data = {victim_cache[i].data[63:16], store_victim_mshr_in[0].store_data[15:0]};
            	             2'd1: store_victim_cache_out_next.data = {victim_cache[i].data[63:32], store_victim_mshr_in[0].store_data[15:0], victim_cache[i].data[15:0]};
-           	             2'd2: store_victim_cache_out_next.data = {victim_cache[i].data[63:48], store_victim_mshr_in[0].store_data[15:0], victim_cache[i].data[31:16]};
+           	             2'd2: store_victim_cache_out_next.data = {victim_cache[i].data[63:48], store_victim_mshr_in[0].store_data[15:0], victim_cache[i].data[31:0]};
            	             2'd3: store_victim_cache_out_next.data = {store_victim_mshr_in[0].store_data[15:0], victim_cache[i].data[47:32]};
            	         endcase
            	     end

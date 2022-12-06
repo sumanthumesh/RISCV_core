@@ -26,6 +26,7 @@ module storeq(
 	logic [`N_WAY-1:0] [$clog2(`N_SQ):0] order_pos;
 	logic [$clog2(`N_SQ):0] tmp_order_pos;
 	logic tmp_last;
+	logic [$clog2(`N_SQ):0] last_str_ex_idx_next;
 	
 
 	//assign empty_storeq= (empty_storeq_wire <=`N_WAY ) ?  empty_storeq_wire : `N_WAY;
@@ -215,13 +216,13 @@ module storeq(
 	end
 
 	always_comb begin
-	//	last_str_ex_idx=0;
+		last_str_ex_idx_next = last_str_ex_idx;
 		tmp_last = 0;
 		for (int k=1; k<=`N_SQ; k=k+1) begin
 			if(!tmp_last) begin
 				for (int j=0; j<`N_SQ; j=j+1) begin
 					if(storeq_reg[j].order_idx == k) begin
-						if(storeq_reg[j].ex) last_str_ex_idx = j+1;
+						if(storeq_reg[j].ex) last_str_ex_idx_next = j+1;
 						else tmp_last = 1;
 					end
 				end
@@ -248,11 +249,13 @@ module storeq(
 				else 
 				storeq_reg[m].tail <= `SD 0;
 			end
+			last_str_ex_idx <= `SD 0;
 			empty_storeq_reg <= `SD `N_SQ;
 		end else begin
 			if (!branch_haz) begin
 				storeq_reg <= `SD storeq_next;
 				empty_storeq_reg <= `SD empty_storeq_next;
+				last_str_ex_idx <= `SD last_str_ex_idx_next;
 			end else begin
 				for (int m=0; m<`N_SQ; m=m+1) begin
 					storeq_reg[m].valid <= `SD 0;
@@ -271,6 +274,7 @@ module storeq(
 					else 
 					storeq_reg[m].tail <= `SD 0;
 				end
+				last_str_ex_idx <= `SD 0;
 				empty_storeq_reg <= `SD `N_SQ;
 			end
 		end

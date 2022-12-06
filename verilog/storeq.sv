@@ -38,7 +38,7 @@ module storeq(
 		storeq_wire_ret = storeq_reg;
 		empty_storeq_wire = empty_storeq_reg;
 		store_ret_packet_out = 0;
-		if(store_packet_dcache[0].valid) begin 
+		if(store_packet_dcache[0].valid && storeq_wire_ret[store_packet_dcache[0].store_pos-1].ex) begin 
 			storeq_wire_ret[store_packet_dcache[0].store_pos-1].retired = 1;
 			storeq_wire_ret[store_packet_dcache[0].store_pos-1].address = 0;
 			storeq_wire_ret[store_packet_dcache[0].store_pos-1].value = 0;

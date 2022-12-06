@@ -124,7 +124,7 @@ module icache(
                                       proc2icache_req[i].valid && fifo_data_next[k].valid ? 1 : addr_in_fifo;
                 //$display("match:%b, i:%d, k:%d, addr:%h, faddr:%h, addr.v:%b, faddr.v:%b",addr_in_fifo,i,k,proc2icache_req[i].addr,fifo_data_next[k].addr,proc2icache_req[i].valid,fifo_data_next[k].valid);
             end
-            if(~hit[i] && proc2icache_req[i].valid && ~addr_in_fifo) begin
+            if(~hit[i] && proc2icache_req[i].valid && ~addr_in_fifo && ~fifo_data_next[tail_next].valid) begin
                 //$display("Add i:%d, ireq:%h, ival:%b, amatch %b", i, proc2icache_req[i].addr, proc2icache_req[i].valid, addr_in_fifo);
                 fifo_data_next[tail_next].addr = proc2icache_req[i].addr;
                 fifo_data_next[tail_next].valid = 1;
@@ -142,7 +142,7 @@ module icache(
                                       prefetch_req[i].valid && fifo_data_next[k].valid ? 1 : addr_in_fifo;
                 //$display("match:%b, i:%d, k:%d, addr:%h, faddr:%h, addr.v:%b, faddr.v:%b",addr_in_fifo,i,k,prefetch_req[i].addr,fifo_data_next[k].addr,prefetch_req[i].valid,fifo_data_next[k].valid);
             end
-            if(~hit_prefetch[i] && prefetch_req[i].valid && ~addr_in_fifo) begin
+            if(~hit_prefetch[i] && prefetch_req[i].valid && ~addr_in_fifo && ~fifo_data_next[tail_next].valid) begin
                 //$display("Pre Add i:%d, ireq:%h, ival:%b, amatch %b", i, prefetch_req[i].addr, prefetch_req[i].valid, addr_in_fifo);
                 fifo_data_next[tail_next].addr = prefetch_req[i].addr;
                 fifo_data_next[tail_next].valid = 1;
@@ -192,6 +192,7 @@ module icache(
                 head <= `SD head;
                 fifo_count       <= `SD fifo_count_next;
             end
+            tail             <= `SD tail_next;
             if(enable) begin     
                 req_sent_d       <= `SD req_sent;
                 current_req_addr <= `SD fifo_data_next[req_ptr].addr;
@@ -215,7 +216,6 @@ module icache(
                     req_ptr           <= `SD req_ptr;
                 end
                 
-                tail             <= `SD tail_next;
                 proc2Imem_addr_d <= `SD proc2Imem_addr;
                 req_ptr_d        <= req_ptr;
             end

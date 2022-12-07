@@ -25,7 +25,7 @@ for file in test_progs/*.s; do
 	readarray -d / -t fileArr <<< "$file"
 	test_name=$(echo "${fileArr[1]}" | sed 's/\n//')
 	echo -e "\e[1;32mComparing writeback.out with ./ground_truths/writeback_${test_name}.out \e[0;37m"
-	DIFF=$(diff writeback.out ./writeback_golden/writeback_${test_name}.out)
+	DIFF=$(diff writeback.out ./ground_truths/writeback_${test_name}.out)
 	#echo $DIFF >> output_compare.txt
 	if [[ $DIFF -eq "" ]]
 	then

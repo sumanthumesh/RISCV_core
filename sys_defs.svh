@@ -320,6 +320,7 @@ typedef struct packed {
 `define CDB_BITS 7
 `define N_ROB 64
 `define N_SQ 16
+`define N_SC 8
 `define FIFO_BITS 6
 `define XLEN_BITS 5
 `define N_RS 16
@@ -672,6 +673,7 @@ typedef struct packed {
 typedef struct packed {
 	logic [$clog2(`N_SQ):0] store_pos;
 	logic valid;
+	logic [`XLEN-1:0] address; 
 } STORE_PACKET_EX_STAGE;
 
 typedef struct packed {

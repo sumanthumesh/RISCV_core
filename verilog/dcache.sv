@@ -291,6 +291,7 @@ begin
                     line_idx = mshr_next2[j].address[`CACHE_LINE_BITS+3-1:3];
                     store_tmp = 0;
                     store_packet_out_next[store_packet_out_idx].store_pos = mshr_next2[j].store_pos;
+                    store_packet_out_next[store_packet_out_idx].address = mshr_next2[j].address;
                     store_packet_out_next[store_packet_out_idx].valid = 1;
                     store_packet_out_idx = store_packet_out_idx + 1;
 
@@ -347,6 +348,7 @@ begin
                 begin
                     store_tmp = 0;
                     store_packet_out_next[store_packet_out_idx].store_pos = mshr_next2[j].store_pos;
+                    store_packet_out_next[store_packet_out_idx].address= mshr_next2[j].address;
                     store_packet_out_next[store_packet_out_idx].valid = 1;
                     store_packet_out_idx = store_packet_out_idx + 1;
                     mshr_next2[j].valid = 0;
@@ -651,6 +653,7 @@ begin
 
                     mshr_next7[j].valid = 0;
                     store_packet_out_next1[store_packet_out_idx1].store_pos = mshr_next6[j].store_pos;
+                    store_packet_out_next1[store_packet_out_idx1].address= mshr_next6[j].address;
                     store_packet_out_next1[store_packet_out_idx1].valid = 1;
                     store_packet_out_idx1 = store_packet_out_idx1 + 1;
                     store_mshr_invalidated_order_idx1 = i;
@@ -826,6 +829,7 @@ begin
                     endcase
                     
                     store_packet_out_next2[store_packet_out_idx2].store_pos = mshr_next8[j].store_pos;
+                    store_packet_out_next2[store_packet_out_idx2].address= mshr_next8[j].address;
                     store_packet_out_next2[store_packet_out_idx2].valid = 1;
                     store_packet_out_idx2 = store_packet_out_idx2 + 1;
                     order_idx_next4 = order_idx_next4 - 1;
@@ -979,6 +983,7 @@ begin
         endcase
 
         store_packet_out_next3[store_packet_out_idx3].store_pos = store_packet_in[0].store_pos;
+        store_packet_out_next3[store_packet_out_idx3].address= store_packet_in[0].address;
         store_packet_out_next3[store_packet_out_idx3].valid = 1;
         store_packet_out_idx3 = store_packet_out_idx3 + 1;
         

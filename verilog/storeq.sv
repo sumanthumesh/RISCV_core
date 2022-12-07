@@ -16,6 +16,7 @@ module storeq(
 );
 
 	STORE_PACKET_REG [`N_SQ-1:0] storeq_reg;
+	STORE_PACKET_REG [`N_SC-1:0] storeq_copy;
 	STORE_PACKET_REG [`N_SQ-1:0] storeq_wire_ret;
 	STORE_PACKET_REG [`N_SQ-1:0] storeq_wire_ex;
 	STORE_PACKET_REG [`N_SQ-1:0] storeq_next;
@@ -28,6 +29,7 @@ module storeq(
 	logic tmp_last;
 	logic [$clog2(`N_SQ):0] last_str_ex_idx_next;
 	logic branch_haz_reg;
+	logic [2:0] copy_idx;
 
 	//assign empty_storeq= (empty_storeq_wire <=`N_WAY ) ?  empty_storeq_wire : `N_WAY;
 	assign empty_storeq= empty_storeq_wire ;
@@ -38,8 +40,8 @@ module storeq(
 		storeq_wire_ret = storeq_reg;
 		empty_storeq_wire = empty_storeq_reg;
 		store_ret_packet_out = 0;
-		if(store_packet_dcache[0].valid && storeq_wire_ret[store_packet_dcache[0].store_pos-1].ex) begin 
-			storeq_wire_ret[store_packet_dcache[0].store_pos-1].retired = 1;
+		if(store_packet_dcache[0].valid && storeq_wire_ret[store_packet_dcache[0].store_pos-1].ex && (storeq_wire_ret[store_packet_dcache[0].store_pos-1].address == store_packet_dcache[0].address)) begin 
+			storeq_wire_ret[store_packet_dcache[0].store_pos-1].retired = 0;
 			storeq_wire_ret[store_packet_dcache[0].store_pos-1].address = 0;
 			storeq_wire_ret[store_packet_dcache[0].store_pos-1].value = 0;
 			storeq_wire_ret[store_packet_dcache[0].store_pos-1].ex = 0;
@@ -65,6 +67,7 @@ module storeq(
 							store_ret_packet_out[i].store_pos= j+1; 
 							storeq_wire_ret[j].head = 0;
 							storeq_wire_ret[j].valid= 0;
+							storeq_wire_ret[j].retired = 1;
 							//storeq_wire_ret[j].ex= 0;
 							//storeq_wire_ret[j].address = 0;
 							//storeq_wire_ret[j].value= 0;
@@ -138,9 +141,74 @@ module storeq(
 
 //load logic
 //
-	logic [`XLEN-1:0] tmp_value; 
+	//copy load logic to solve retired store packets clearing due to haz
+	logic [`XLEN-1:0] tmp_copy_value; 
+	LOAD_PACKET_OUT [`N_WAY-1:0] load_packet_copy_out; 
+	logic check_store_copy;
 	always_comb begin
-		load_packet_out = 0;
+		load_packet_copy_out = 0;
+		tmp_copy_value=0;
+		for(int i=0; i<`N_WAY; i=i+1) begin
+			if(check_store_copy && load_packet_in[i].valid) begin
+				for(int j=0; j<`N_SC; j=j+1) begin
+					case(storeq_copy[j].size)
+						BYTE:	begin 
+							  if((load_packet_in[i].size == BYTE) && (load_packet_in[i].address == storeq_copy[j].address)) begin
+								load_packet_copy_out[i].valid = 1;
+								load_packet_copy_out[i].value = load_packet_in[i].sign ? storeq_copy[j].value :
+														    {{(`XLEN-8){storeq_copy[j].value[7]}},storeq_copy[j].value[7:0]};
+								load_packet_copy_out[i].dest_tag = load_packet_in[i].dest_tag;
+							  end
+							end
+						HALF:	begin 
+							  if((load_packet_in[i].size == HALF) && (load_packet_in[i].address == storeq_copy[j].address)) begin
+								load_packet_copy_out[i].valid = 1;
+								load_packet_copy_out[i].value = load_packet_in[i].sign ? storeq_copy[j].value :
+														    {{(`XLEN-16){storeq_copy[j].value[15]}},storeq_copy[j].value[15:0]};
+								load_packet_copy_out[i].dest_tag = load_packet_in[i].dest_tag;
+							  end 
+							  else if((load_packet_in[i].size == BYTE) && (load_packet_in[i].address[`XLEN-1:1] == storeq_copy[j].address[`XLEN-1:1])) begin
+								load_packet_copy_out[i].valid = 1;
+								tmp_copy_value = load_packet_in[i].address[0] ? storeq_copy[j].value[15:8] : storeq_copy[j].value[7:0];
+								load_packet_copy_out[i].value = load_packet_in[i].sign ? tmp_copy_value :
+														    {{(`XLEN-8){tmp_copy_value[7]}},tmp_copy_value[7:0]};
+								load_packet_copy_out[i].dest_tag = load_packet_in[i].dest_tag;
+							  end
+							end
+						WORD:	begin 
+							  if((load_packet_in[i].size == WORD) && (load_packet_in[i].address == storeq_copy[j].address)) begin
+								load_packet_copy_out[i].valid = 1;
+								load_packet_copy_out[i].value = storeq_copy[j].value;
+								load_packet_copy_out[i].dest_tag = load_packet_in[i].dest_tag;
+							  end 
+							  else if((load_packet_in[i].size == HALF) && (load_packet_in[i].address[`XLEN-1:2] == storeq_copy[j].address[`XLEN-1:2])) begin
+								load_packet_copy_out[i].valid = 1;
+								tmp_copy_value = load_packet_in[i].address[1] ? storeq_copy[j].value[31:16] : storeq_copy[j].value[15:0];
+								load_packet_copy_out[i].value = load_packet_in[i].sign ? tmp_copy_value :
+														    {{(`XLEN-16){tmp_copy_value[15]}},tmp_copy_value[15:0]};
+								load_packet_copy_out[i].dest_tag = load_packet_in[i].dest_tag;
+							  end
+							  else if((load_packet_in[i].size == BYTE) && (load_packet_in[i].address[`XLEN-1:2] == storeq_copy[j].address[`XLEN-1:2])) begin
+								load_packet_copy_out[i].valid = 1;
+								tmp_copy_value                = (load_packet_in[i].address[1:0] == 2'b11) ? storeq_copy[j].value[31:24] : 
+											   (load_packet_in[i].address[1:0] == 2'b10) ? storeq_copy[j].value[23:16] :
+											   (load_packet_in[i].address[1:0] == 2'b01) ? storeq_copy[j].value[15:8]  : storeq_copy[j].value[7:0];
+								load_packet_copy_out[i].value = load_packet_in[i].sign ? tmp_copy_value :
+														    {{(`XLEN-8){tmp_copy_value[7]}},tmp_copy_value[7:0]};
+								load_packet_copy_out[i].dest_tag = load_packet_in[i].dest_tag;
+							  end
+							end
+					endcase
+				end
+			end
+		end
+	end
+
+	//main load logic
+	logic [`XLEN-1:0] tmp_value; 
+	LOAD_PACKET_OUT [`N_WAY-1:0] load_packet_main; 
+	always_comb begin
+		load_packet_main = 0;
 		tmp_value=0;
 		for(int i=0; i<`N_WAY; i=i+1) begin
 	    		for(int j=0; j<`N_SQ; j=j+1) begin
@@ -158,53 +226,53 @@ module storeq(
 								BYTE:	begin 
 									  if((load_packet_in[i].size == BYTE) && (load_packet_in[i].address == storeq_reg[j].address)) begin
 										tmp_order_pos = storeq_reg[j].order_idx;
-										load_packet_out[i].valid = 1;
-										load_packet_out[i].value = load_packet_in[i].sign ? storeq_reg[j].value :
+										load_packet_main[i].valid = 1;
+										load_packet_main[i].value = load_packet_in[i].sign ? storeq_reg[j].value :
 																    {{(`XLEN-8){storeq_reg[j].value[7]}},storeq_reg[j].value[7:0]};
-										load_packet_out[i].dest_tag = load_packet_in[i].dest_tag;
+										load_packet_main[i].dest_tag = load_packet_in[i].dest_tag;
 									  end
 									end
 								HALF:	begin 
 									  if((load_packet_in[i].size == HALF) && (load_packet_in[i].address == storeq_reg[j].address)) begin
 										tmp_order_pos = storeq_reg[j].order_idx;
-										load_packet_out[i].valid = 1;
-										load_packet_out[i].value = load_packet_in[i].sign ? storeq_reg[j].value :
+										load_packet_main[i].valid = 1;
+										load_packet_main[i].value = load_packet_in[i].sign ? storeq_reg[j].value :
 																    {{(`XLEN-16){storeq_reg[j].value[15]}},storeq_reg[j].value[15:0]};
-										load_packet_out[i].dest_tag = load_packet_in[i].dest_tag;
+										load_packet_main[i].dest_tag = load_packet_in[i].dest_tag;
 									  end 
 									  else if((load_packet_in[i].size == BYTE) && (load_packet_in[i].address[`XLEN-1:1] == storeq_reg[j].address[`XLEN-1:1])) begin
 										tmp_order_pos = storeq_reg[j].order_idx;
-										load_packet_out[i].valid = 1;
+										load_packet_main[i].valid = 1;
 										tmp_value = load_packet_in[i].address[0] ? storeq_reg[j].value[15:8] : storeq_reg[j].value[7:0];
-										load_packet_out[i].value = load_packet_in[i].sign ? tmp_value :
+										load_packet_main[i].value = load_packet_in[i].sign ? tmp_value :
 																    {{(`XLEN-8){tmp_value[7]}},tmp_value[7:0]};
-										load_packet_out[i].dest_tag = load_packet_in[i].dest_tag;
+										load_packet_main[i].dest_tag = load_packet_in[i].dest_tag;
 									  end
 									end
 								WORD:	begin 
 									  if((load_packet_in[i].size == WORD) && (load_packet_in[i].address == storeq_reg[j].address)) begin
 										tmp_order_pos = storeq_reg[j].order_idx;
-										load_packet_out[i].valid = 1;
-										load_packet_out[i].value = storeq_reg[j].value;
-										load_packet_out[i].dest_tag = load_packet_in[i].dest_tag;
+										load_packet_main[i].valid = 1;
+										load_packet_main[i].value = storeq_reg[j].value;
+										load_packet_main[i].dest_tag = load_packet_in[i].dest_tag;
 									  end 
 									  else if((load_packet_in[i].size == HALF) && (load_packet_in[i].address[`XLEN-1:2] == storeq_reg[j].address[`XLEN-1:2])) begin
 										tmp_order_pos = storeq_reg[j].order_idx;
-										load_packet_out[i].valid = 1;
+										load_packet_main[i].valid = 1;
 										tmp_value = load_packet_in[i].address[1] ? storeq_reg[j].value[31:16] : storeq_reg[j].value[15:0];
-										load_packet_out[i].value = load_packet_in[i].sign ? tmp_value :
+										load_packet_main[i].value = load_packet_in[i].sign ? tmp_value :
 																    {{(`XLEN-16){tmp_value[15]}},tmp_value[15:0]};
-										load_packet_out[i].dest_tag = load_packet_in[i].dest_tag;
+										load_packet_main[i].dest_tag = load_packet_in[i].dest_tag;
 									  end
 									  else if((load_packet_in[i].size == BYTE) && (load_packet_in[i].address[`XLEN-1:2] == storeq_reg[j].address[`XLEN-1:2])) begin
 										tmp_order_pos = storeq_reg[j].order_idx;
-										load_packet_out[i].valid = 1;
+										load_packet_main[i].valid = 1;
 										tmp_value                = (load_packet_in[i].address[1:0] == 2'b11) ? storeq_reg[j].value[31:24] : 
 													   (load_packet_in[i].address[1:0] == 2'b10) ? storeq_reg[j].value[23:16] :
 													   (load_packet_in[i].address[1:0] == 2'b01) ? storeq_reg[j].value[15:8]  : storeq_reg[j].value[7:0];
-										load_packet_out[i].value = load_packet_in[i].sign ? tmp_value :
+										load_packet_main[i].value = load_packet_in[i].sign ? tmp_value :
 																    {{(`XLEN-8){tmp_value[7]}},tmp_value[7:0]};
-										load_packet_out[i].dest_tag = load_packet_in[i].dest_tag;
+										load_packet_main[i].dest_tag = load_packet_in[i].dest_tag;
 									  end
 									end
 							endcase
@@ -212,6 +280,14 @@ module storeq(
 					end
 				end
 			end
+		end
+	end
+
+//mux b/w 2 load_packet_out's
+	always_comb begin
+		load_packet_out = 0;
+		for(int i=0; i<`N_WAY; i=i+1) begin
+			load_packet_out[i] = (load_packet_copy_out[i].valid && !load_packet_main[i].valid) ? load_packet_copy_out[i] : load_packet_main[i];
 		end
 	end
 
@@ -241,6 +317,7 @@ module storeq(
 				storeq_reg[m].order_idx<= `SD 0;
 				storeq_reg[m].retired <= `SD 0;
 				storeq_reg[m].size <= `SD 0;
+				copy_idx <= `SD 0;
 				if (m==0) 
 				storeq_reg[m].head<= `SD 1;
 				else 
@@ -252,6 +329,7 @@ module storeq(
 			end
 			last_str_ex_idx <= `SD 0;
 			empty_storeq_reg <= `SD `N_SQ;
+			check_store_copy <= `SD 0;
 		end else begin
 			branch_haz_reg <= `SD branch_haz;
 			if (!branch_haz_reg) begin
@@ -259,7 +337,14 @@ module storeq(
 				empty_storeq_reg <= `SD empty_storeq_next;
 				last_str_ex_idx <= `SD last_str_ex_idx_next;
 			end else begin
+				copy_idx <= `SD 0;
+				check_store_copy <= `SD 0;
 				for (int m=0; m<`N_SQ; m=m+1) begin
+					if(storeq_reg[m].retired) begin
+						check_store_copy <= `SD 1;
+						storeq_copy[copy_idx] <= `SD storeq_reg[m];
+						copy_idx <= `SD copy_idx+1;
+					end
 					storeq_reg[m].valid <= `SD 0;
 					storeq_reg[m].ex<= `SD 0;
 					storeq_reg[m].address <= `SD 0;

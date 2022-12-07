@@ -44,8 +44,8 @@ module storeq(
 			storeq_wire_ret[store_packet_dcache[0].store_pos-1].retired = 0;
 			storeq_wire_ret[store_packet_dcache[0].store_pos-1].address = 0;
 			storeq_wire_ret[store_packet_dcache[0].store_pos-1].value = 0;
-			storeq_wire_ret[store_packet_dcache[0].store_pos-1].ex = 0;
-			storeq_wire_ret[store_packet_dcache[0].store_pos-1].order_idx = 0;
+			//storeq_wire_ret[store_packet_dcache[0].store_pos-1].ex = 0;
+			//storeq_wire_ret[store_packet_dcache[0].store_pos-1].order_idx = 0;
 			storeq_wire_ret[store_packet_dcache[0].store_pos-1].size = 0;
 			empty_storeq_wire = empty_storeq_wire + 1;
 			for(int k = 0; k<`N_SQ; k=k+1) begin
@@ -127,11 +127,13 @@ module storeq(
 							//storeq_next[0].order_idx = order_idx_in[i] - store_num_ret;
 							storeq_next[0].order_idx = order_idx_in[i];
 							storeq_next[0].retired = 0;
+			                                storeq_next[0].ex = 0;
 						end else begin
 							storeq_next[j+1].tail = 1;
 							//storeq_next[j+1].order_idx = order_idx_in[i] - store_num_ret;
 							storeq_next[j+1].order_idx = order_idx_in[i];
 							storeq_next[j+1].retired = 0;
+			                                storeq_next[j+1].ex = 0;
 						end
 					end
 				end
@@ -309,6 +311,7 @@ module storeq(
 	always_ff @(posedge clock) begin
 		if(reset) begin
 			branch_haz_reg <= `SD 0;
+			storeq_copy <= `SD 0;
 			for (int m=0; m<`N_SQ; m=m+1) begin
 				storeq_reg[m].valid <= `SD 0;
 				storeq_reg[m].ex<= `SD 0;
@@ -332,6 +335,14 @@ module storeq(
 			check_store_copy <= `SD 0;
 		end else begin
 			branch_haz_reg <= `SD branch_haz;
+			//acknowledge ment from dcache to storeq copy
+			for(int j=0; j<`N_SC; j++) begin
+				//if(store_packet_dcache[0].valid && (storeq_copy[j].address == store_packet_dcache[0].address) && (storeq_copy[j].store_pos == store_packet_dcache[0].store_pos)) begin 
+				if(store_packet_dcache[0].valid && (storeq_copy[j].address == store_packet_dcache[0].address)) begin 
+					storeq_copy[j]=0;	
+				end
+			end
+
 			if (!branch_haz_reg) begin
 				storeq_reg <= `SD storeq_next;
 				empty_storeq_reg <= `SD empty_storeq_next;

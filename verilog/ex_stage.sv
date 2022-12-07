@@ -708,12 +708,14 @@ module ex_stage(
 			for(int i=0; i<32; i++)begin
 				if(!load_buf[i].valid && !tmp_ld_buf) begin
 					load_buf_next[i].dest_tag = load_packet_in_dcache[0].dest_tag;
+					load_buf_next[i].address = load_packet_in_dcache[0].address;
 					load_buf_next[i].valid = 1;
 					tmp_ld_buf = 1;
 				end
 				if(load_buf[i].valid && (load_buf[i].dest_tag==complete_dest_tag_ld_dcache)) begin
 					load_buf_next[i].dest_tag = 0;
 					load_buf_next[i].valid = 0;
+					load_buf_next[i].address = 0;
 				end
 			end
 		end 
@@ -744,7 +746,7 @@ module ex_stage(
 			for(int j=0; j<`N_RD_PORTS; j=j+1) begin
 				if(load_packet_out_dcache[j].valid) begin
 					for(int i=0; i<32; i++)begin
-						if((load_buf[i].dest_tag == load_packet_out_dcache[j].dest_tag) && load_buf[i].valid)begin
+						if((load_buf[i].dest_tag == load_packet_out_dcache[j].dest_tag) && load_buf[i].valid && (load_buf[i].address == load_packet_out_dcache[j].address ))begin
 							complete_dest_tag_wire[count_comp] = load_packet_out_dcache[j].dest_tag;
 							complete_dest_tag_ld_dcache = load_packet_out_dcache[j].dest_tag;
 							result_out_wire[count_comp] = load_packet_out_dcache[j].data;

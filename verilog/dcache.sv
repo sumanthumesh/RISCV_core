@@ -424,6 +424,7 @@ begin
                         default: load_packet_out_next[load_packet_out_idx].data = 0;
                     endcase
                     load_packet_out_next[load_packet_out_idx].dest_tag = mshr_next2[j].dest_tag;
+                    load_packet_out_next[load_packet_out_idx].address= mshr_next2[j].address;
                     load_packet_out_next[load_packet_out_idx].valid = 1;
                     load_packet_out_idx = load_packet_out_idx + 1;
                     mshr_next2[j].valid = 0;
@@ -719,6 +720,7 @@ begin
                         default: load_packet_out_next1[load_packet_out_idx1].data = 0;
                     endcase
                     load_packet_out_next1[load_packet_out_idx1].dest_tag = mshr_next7[j].dest_tag;
+                    load_packet_out_next1[load_packet_out_idx1].address= mshr_next7[j].address;
                     load_packet_out_next1[load_packet_out_idx1].valid = 1;
                     load_packet_out_idx1 = load_packet_out_idx1 + 1;
                     load_mshr_invalidated_order_idx1 = i;
@@ -884,6 +886,7 @@ begin
                         default: load_packet_out_next2[load_packet_out_idx2].data = 0;
                     endcase
                     load_packet_out_next2[load_packet_out_idx2].dest_tag = mshr_next9[j].dest_tag;
+                    load_packet_out_next2[load_packet_out_idx2].address= mshr_next9[j].address;
                     load_packet_out_next2[load_packet_out_idx2].valid = 1;
                     load_packet_out_idx2 = load_packet_out_idx2 + 1;
                     order_idx_next4 = order_idx_next4 - 1;
@@ -1056,6 +1059,7 @@ begin
             default: load_packet_out_next3[load_packet_out_idx3].data = 0;
         endcase
         load_packet_out_next3[load_packet_out_idx3].dest_tag = load_packet_in[0].dest_tag;
+        load_packet_out_next3[load_packet_out_idx3].address = load_packet_in[0].address;
         load_packet_out_next3[load_packet_out_idx3].valid = 1;
         load_packet_out_idx3 = load_packet_out_idx3 + 1;
         

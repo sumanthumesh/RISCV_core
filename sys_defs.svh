@@ -666,6 +666,7 @@ typedef struct packed {
 	logic [`XLEN-1:0] data; 
 	logic [`CDB_BITS-1:0] dest_tag; 
 	logic valid;
+	logic [`XLEN-1:0] address; 
 } LOAD_PACKET_EX_STAGE;
 
 typedef struct packed {
@@ -712,6 +713,7 @@ typedef struct packed {
 typedef struct packed {
 	logic [`CDB_BITS-1:0] dest_tag;
 	logic valid;
+	logic [`XLEN-1:0] address; 
 } LOAD_BUFFER;
 
 

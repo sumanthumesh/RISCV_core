@@ -120,7 +120,7 @@ begin
 
     if(mshr[mshr_idx].valid && mshr[mshr_idx].dispatched && !mshr[mshr_idx].expected_tag_assigned)
     begin
-        if(mshr[mshr_idx].load||(mshr[mshr_idx].store && mshr[mshr_idx].size!=DOUBLE))
+        if((mshr[mshr_idx].load||(mshr[mshr_idx].store && mshr[mshr_idx].size!=DOUBLE)) && latched_mem2dcache_response)
         begin
             mshr_next[mshr_idx].expected_tag = latched_mem2dcache_response;
             mshr_next[mshr_idx].expected_tag_assigned = 1;

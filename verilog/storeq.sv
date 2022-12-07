@@ -212,6 +212,7 @@ module storeq(
 	always_comb begin
 		load_packet_main = 0;
 		tmp_value=0;
+		order_pos= 0;
 		for(int i=0; i<`N_WAY; i=i+1) begin
 	    		for(int j=0; j<`N_SQ; j=j+1) begin
 				if (j == load_packet_in[i].load_pos-1 && load_packet_in[i].valid) order_pos[i]=storeq_reg[j].order_idx;
@@ -223,11 +224,11 @@ module storeq(
 				for(int j=0; j<`N_SQ; j=j+1) begin
 					//if ((load_packet_in[i].address == storeq_reg[j].address) && (storeq_reg[j].order_idx < order_pos))begin
 					if (storeq_reg[j].order_idx <= order_pos[i])begin
-						if(storeq_reg[j].order_idx > tmp_order_pos) begin
+						//if(storeq_reg[j].order_idx >= tmp_order_pos) begin
 							case(storeq_reg[j].size)
 								BYTE:	begin 
 									  if((load_packet_in[i].size == BYTE) && (load_packet_in[i].address == storeq_reg[j].address)) begin
-										tmp_order_pos = storeq_reg[j].order_idx;
+										tmp_order_pos = (storeq_reg[j].order_idx >= tmp_order_pos)? storeq_reg[j].order_idx : tmp_order_pos;
 										load_packet_main[i].valid = 1;
 										load_packet_main[i].value = load_packet_in[i].sign ? storeq_reg[j].value :
 																    {{(`XLEN-8){storeq_reg[j].value[7]}},storeq_reg[j].value[7:0]};
@@ -236,14 +237,14 @@ module storeq(
 									end
 								HALF:	begin 
 									  if((load_packet_in[i].size == HALF) && (load_packet_in[i].address == storeq_reg[j].address)) begin
-										tmp_order_pos = storeq_reg[j].order_idx;
+										tmp_order_pos = (storeq_reg[j].order_idx >= tmp_order_pos)? storeq_reg[j].order_idx : tmp_order_pos;
 										load_packet_main[i].valid = 1;
 										load_packet_main[i].value = load_packet_in[i].sign ? storeq_reg[j].value :
 																    {{(`XLEN-16){storeq_reg[j].value[15]}},storeq_reg[j].value[15:0]};
 										load_packet_main[i].dest_tag = load_packet_in[i].dest_tag;
 									  end 
 									  else if((load_packet_in[i].size == BYTE) && (load_packet_in[i].address[`XLEN-1:1] == storeq_reg[j].address[`XLEN-1:1])) begin
-										tmp_order_pos = storeq_reg[j].order_idx;
+										tmp_order_pos = (storeq_reg[j].order_idx >= tmp_order_pos)? storeq_reg[j].order_idx : tmp_order_pos;
 										load_packet_main[i].valid = 1;
 										tmp_value = load_packet_in[i].address[0] ? storeq_reg[j].value[15:8] : storeq_reg[j].value[7:0];
 										load_packet_main[i].value = load_packet_in[i].sign ? tmp_value :
@@ -253,13 +254,13 @@ module storeq(
 									end
 								WORD:	begin 
 									  if((load_packet_in[i].size == WORD) && (load_packet_in[i].address == storeq_reg[j].address)) begin
-										tmp_order_pos = storeq_reg[j].order_idx;
+										tmp_order_pos = (storeq_reg[j].order_idx >= tmp_order_pos)? storeq_reg[j].order_idx : tmp_order_pos;
 										load_packet_main[i].valid = 1;
 										load_packet_main[i].value = storeq_reg[j].value;
 										load_packet_main[i].dest_tag = load_packet_in[i].dest_tag;
 									  end 
 									  else if((load_packet_in[i].size == HALF) && (load_packet_in[i].address[`XLEN-1:2] == storeq_reg[j].address[`XLEN-1:2])) begin
-										tmp_order_pos = storeq_reg[j].order_idx;
+										tmp_order_pos = (storeq_reg[j].order_idx >= tmp_order_pos)? storeq_reg[j].order_idx : tmp_order_pos;
 										load_packet_main[i].valid = 1;
 										tmp_value = load_packet_in[i].address[1] ? storeq_reg[j].value[31:16] : storeq_reg[j].value[15:0];
 										load_packet_main[i].value = load_packet_in[i].sign ? tmp_value :
@@ -267,7 +268,7 @@ module storeq(
 										load_packet_main[i].dest_tag = load_packet_in[i].dest_tag;
 									  end
 									  else if((load_packet_in[i].size == BYTE) && (load_packet_in[i].address[`XLEN-1:2] == storeq_reg[j].address[`XLEN-1:2])) begin
-										tmp_order_pos = storeq_reg[j].order_idx;
+										tmp_order_pos = (storeq_reg[j].order_idx >= tmp_order_pos)? storeq_reg[j].order_idx : tmp_order_pos;
 										load_packet_main[i].valid = 1;
 										tmp_value                = (load_packet_in[i].address[1:0] == 2'b11) ? storeq_reg[j].value[31:24] : 
 													   (load_packet_in[i].address[1:0] == 2'b10) ? storeq_reg[j].value[23:16] :
@@ -278,7 +279,7 @@ module storeq(
 									  end
 									end
 							endcase
-					     	end			
+					     	//end			
 					end
 				end
 			end

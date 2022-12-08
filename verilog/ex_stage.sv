@@ -439,7 +439,7 @@ module ex_stage(
 	VICTIM_CACHE_ROW [`N_WR_PORTS-1:0] store_victim_cache_in;
 	VICTIM_CACHE_ROW [`N_RD_PORTS-1:0] load_victim_cache_out;
 	VICTIM_CACHE_ROW [`N_WR_PORTS-1:0] store_victim_cache_out;
-	logic [`MSHR_SIZE-1:0][`XLEN-1:0] victim_cache_hit_in;
+	MSHR_ROW [`MSHR_SIZE-1:0] victim_cache_hit_in;
 	logic [`MSHR_SIZE-1:0] victim_cache_hit_valid_in;
 	logic [`MSHR_SIZE-1:0] victim_cache_hit_valid_out;
 	logic [`MSHR_SIZE-1:0][63:0] victim_cache_hit_out;

@@ -10,7 +10,7 @@ module dcache(
     output VICTIM_CACHE_ROW [`N_WR_PORTS-1:0] store_victim_cache_in3,
     input VICTIM_CACHE_ROW [`N_RD_PORTS-1:0] load_victim_cache_out,
     input VICTIM_CACHE_ROW [`N_WR_PORTS-1:0] store_victim_cache_out,
-    output logic [`MSHR_SIZE-1:0][`XLEN-1:0] victim_cache_hit_in,
+    output MSHR_ROW [`MSHR_SIZE-1:0] victim_cache_hit_in,
     output logic [`MSHR_SIZE-1:0] victim_cache_hit_valid_in,
     input logic [`MSHR_SIZE-1:0] victim_cache_hit_valid_out,
     input logic [`MSHR_SIZE-1:0][63:0] victim_cache_hit_out,
@@ -178,6 +178,7 @@ begin
             end
     	end	
     end
+
    if(victim_cache_full_evict && store_victim_cache_out[0].valid && store_victim_cache_out[0].dirty && !tmp_check)
     begin
 	tmp3 = 0;
@@ -504,7 +505,8 @@ always_comb
 begin
     for(int i = 0; i < `MSHR_SIZE; i++)
     begin
-        victim_cache_hit_in[i] = mshr_next3[i].address;
+        //victim_cache_hit_in[i] = mshr_next3[i].address;
+        victim_cache_hit_in[i] = mshr_next3[i];
         if(mshr_next3[i].valid && (!mshr_next3[i].l1_hit))
             victim_cache_hit_valid_in[i] = 1;
         else
@@ -1249,7 +1251,8 @@ module victim_cache(
     input clock, 
     input reset,
     input MSHR_ROW [`N_WR_PORTS-1:0] store_victim_mshr_in,
-    input logic [`MSHR_SIZE-1:0][`XLEN-1:0] victim_cache_hit_in,
+   // input logic [`MSHR_SIZE-1:0][`XLEN-1:0] victim_cache_hit_in,
+    input MSHR_ROW [`MSHR_SIZE-1:0]victim_cache_hit_in,
     input logic [`MSHR_SIZE-1:0] victim_cache_hit_valid_in,
     output logic [`MSHR_SIZE-1:0] victim_cache_hit_valid_out,
     output logic [`MSHR_SIZE-1:0][63:0] victim_cache_hit_out,
@@ -1392,17 +1395,41 @@ begin
     victim_cache_hit_out = 0;
     for(int i = 0; i < `MSHR_SIZE; i++)
     begin
-        for(int j = 0; j < 4; j++)
+        for(int j = 0; j < 6; j++)
         begin
+	if (j<4) begin
             if(victim_cache_hit_valid_in[i] &&
             victim_cache[j].valid &&
-            victim_cache[j].tag == victim_cache_hit_in[i][`XLEN-1:`CACHE_LINE_BITS+3] &&
-            victim_cache[j].line_idx == victim_cache_hit_in[i][`CACHE_LINE_BITS+3-1:3]
+            victim_cache[j].tag == victim_cache_hit_in[i].address[`XLEN-1:`CACHE_LINE_BITS+3] &&
+            victim_cache[j].line_idx == victim_cache_hit_in[i].address[`CACHE_LINE_BITS+3-1:3]
             )
             begin
                 victim_cache_hit_valid_out[i] = 1;
                 victim_cache_hit_out[i] = victim_cache[j].data;
             end
+	end else if (j==4) begin
+		if (victim_cache_hit_valid_in[i] &&
+            load_victim_cache_out[0].valid &&
+            load_victim_cache_out[0].tag == victim_cache_hit_in[i].address[`XLEN-1:`CACHE_LINE_BITS+3] &&
+            load_victim_cache_out[0].line_idx == victim_cache_hit_in[i].address[`CACHE_LINE_BITS+3-1:3] &&
+	    victim_cache_hit_in[i].load
+		)
+            begin
+                victim_cache_hit_valid_out[i] = 1;
+                victim_cache_hit_out[i] = load_victim_cache_out[0].data;
+            end
+	end else begin
+		if (victim_cache_hit_valid_in[i] &&
+            store_victim_cache_out[0].valid &&
+            store_victim_cache_out[0].tag == victim_cache_hit_in[i].address[`XLEN-1:`CACHE_LINE_BITS+3] &&
+            store_victim_cache_out[0].line_idx == victim_cache_hit_in[i].address[`CACHE_LINE_BITS+3-1:3] &&
+		victim_cache_hit_in[i].load
+		)
+            begin
+                victim_cache_hit_valid_out[i] = 1;
+                victim_cache_hit_out[i] = store_victim_cache_out[0].data;
+            end
+	end
         end
     end
 end

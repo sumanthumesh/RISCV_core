@@ -676,7 +676,7 @@ begin
         begin
             for(int j = 0; j < `MSHR_SIZE; j++)
             begin
-                if(mshr_next7[j].valid && mshr_next7[j].load && mshr_next7[j].victim_hit && mshr_next7[j].order_idx == i && !tmp6)
+                if(mshr_next7[j].valid && mshr_next7[j].load && mshr_next7[j].victim_hit && mshr_next7[j].order_idx == i && !tmp6 && load_packet_out_idx1< 1)
                 begin
                     // This means that the data for this particular MSHR entry is present in the victim cache.
                     line_idx1 = mshr_next7[j].address[`CACHE_LINE_BITS+3-1:3];

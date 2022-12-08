@@ -157,7 +157,7 @@ module storeq(
 						BYTE:	begin 
 							  if((load_packet_in[i].size == BYTE) && (load_packet_in[i].address == storeq_copy[j].address)) begin
 								load_packet_copy_out[i].valid = 1;
-								load_packet_copy_out[i].value = load_packet_in[i].sign ? storeq_copy[j].value :
+								load_packet_copy_out[i].value = load_packet_in[i].sign ? storeq_copy[j].value[7:0] :
 														    {{(`XLEN-8){storeq_copy[j].value[7]}},storeq_copy[j].value[7:0]};
 								load_packet_copy_out[i].dest_tag = load_packet_in[i].dest_tag;
 							  end
@@ -165,7 +165,7 @@ module storeq(
 						HALF:	begin 
 							  if((load_packet_in[i].size == HALF) && (load_packet_in[i].address == storeq_copy[j].address)) begin
 								load_packet_copy_out[i].valid = 1;
-								load_packet_copy_out[i].value = load_packet_in[i].sign ? storeq_copy[j].value :
+								load_packet_copy_out[i].value = load_packet_in[i].sign ? storeq_copy[j].value[15:0] :
 														    {{(`XLEN-16){storeq_copy[j].value[15]}},storeq_copy[j].value[15:0]};
 								load_packet_copy_out[i].dest_tag = load_packet_in[i].dest_tag;
 							  end 
@@ -230,7 +230,7 @@ module storeq(
 									  if((load_packet_in[i].size == BYTE) && (load_packet_in[i].address == storeq_reg[j].address)) begin
 										tmp_order_pos = (storeq_reg[j].order_idx >= tmp_order_pos)? storeq_reg[j].order_idx : tmp_order_pos;
 										load_packet_main[i].valid = 1;
-										load_packet_main[i].value = load_packet_in[i].sign ? storeq_reg[j].value :
+										load_packet_main[i].value = load_packet_in[i].sign ? storeq_reg[j].value[7:0] :
 																    {{(`XLEN-8){storeq_reg[j].value[7]}},storeq_reg[j].value[7:0]};
 										load_packet_main[i].dest_tag = load_packet_in[i].dest_tag;
 									  end
@@ -239,7 +239,7 @@ module storeq(
 									  if((load_packet_in[i].size == HALF) && (load_packet_in[i].address == storeq_reg[j].address)) begin
 										tmp_order_pos = (storeq_reg[j].order_idx >= tmp_order_pos)? storeq_reg[j].order_idx : tmp_order_pos;
 										load_packet_main[i].valid = 1;
-										load_packet_main[i].value = load_packet_in[i].sign ? storeq_reg[j].value :
+										load_packet_main[i].value = load_packet_in[i].sign ? storeq_reg[j].value[15:0] :
 																    {{(`XLEN-16){storeq_reg[j].value[15]}},storeq_reg[j].value[15:0]};
 										load_packet_main[i].dest_tag = load_packet_in[i].dest_tag;
 									  end 
@@ -340,7 +340,7 @@ module storeq(
 			for(int j=0; j<`N_SC; j++) begin
 				//if(store_packet_dcache[0].valid && (storeq_copy[j].address == store_packet_dcache[0].address) && (storeq_copy[j].store_pos == store_packet_dcache[0].store_pos)) begin 
 				if(store_packet_dcache[0].valid && (storeq_copy[j].address == store_packet_dcache[0].address)) begin 
-					storeq_copy[j]=0;	
+					storeq_copy[j] <= `SD 0;	
 				end
 			end
 
@@ -379,3 +379,4 @@ module storeq(
 		end
 	end
 endmodule
+

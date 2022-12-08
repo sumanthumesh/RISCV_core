@@ -13,7 +13,7 @@ module map_table(
 	output logic [`N_WAY-1:0][`CDB_BITS-1:0] pr_old
 );
 
-	PR_PACKET [`XLEN-1:0] map_reg;
+	PR_PACKET [`XLEN-1:0] map_reg,map_reg_next;
 	logic [`XLEN_BITS : 0] i;
 	logic [`XLEN_BITS : 0] j;
 	logic [3 : 0] n,n1,n2,k,k1;
@@ -27,25 +27,32 @@ module map_table(
 				map_reg[i].status <= `SD 1;	
 			end
 		end else begin
+				map_reg <= `SD map_reg_next;
+		end
+	end
+
+	always_comb begin
+			map_reg_next = map_reg;
 			if(branch_haz) begin
 				for(int i=0; i<`XLEN; i=i+1) begin
-					map_reg[i].phy_reg <= `SD arch_reg[i];
-					map_reg[i].status <= `SD 1;
+					map_reg_next[i].phy_reg =  arch_reg[i];
+					map_reg_next[i].status =  1;
 				end
 			end
 			for (n1=0; n1<`N_WAY; n1=n1+1) begin
-				map_reg[arch_reg_complete[n1]].status <= `SD 1;
+				map_reg_next[arch_reg_complete[n1]].status =  1;
+			end	
+			for (n1=0; n1<`N_WAY; n1=n1+1) begin
 				if(dis_packet[n1].valid && (pr_freelist[n1] !=0)) begin //updating the map table in dispatch stage based on the inst
 					if (dis_packet[n1].dest!=0) begin
-						map_reg[dis_packet[n1].dest].status <= `SD 0;
-						map_reg[dis_packet[n1].dest].phy_reg <= `SD pr_freelist[n1];
+						map_reg_next[dis_packet[n1].dest].status =  0;
+						map_reg_next[dis_packet[n1].dest].phy_reg =  pr_freelist[n1];
 					end else begin 
-						map_reg[dis_packet[n1].dest].status <= `SD 1;
-						map_reg[dis_packet[n1].dest].phy_reg <= `SD 1;
+						map_reg_next[dis_packet[n1].dest].status =  1;
+						map_reg_next[dis_packet[n1].dest].phy_reg =  1;
 					end
 				end
 			end	
-		end
 	end
 	
 	always_comb begin //outputs to reservation station tags
@@ -144,3 +151,4 @@ module map_table(
 
 
 endmodule
+

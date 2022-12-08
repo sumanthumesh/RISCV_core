@@ -528,4 +528,13 @@ module testbench;
 		end
 	end
 
+	int timeout_counter;
+	always_ff@(posedge clock) begin
+		if(timeout_counter > 1000000) begin
+			$display("Hard Timeout");
+			$finish;
+		end
+		timeout_counter = timeout_counter + 1;
+	end
+
 endmodule  // module testbench

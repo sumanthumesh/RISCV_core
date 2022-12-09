@@ -274,7 +274,31 @@ module ex_stage(
 	output logic [`XLEN-1:0] dcache2mem_addr,
 	output logic [1:0] dcache2mem_command,
 	output logic [63:0] dcache2mem_data,
-	output logic all_mshr_requests_processed_reg
+	output logic all_mshr_requests_processed_reg,
+	output LOAD_PACKET_RET [`N_RD_PORTS-1:0] load_packet_in_dcache,
+	output STORE_PACKET_RET [`N_WR_PORTS-1:0] store_packet_in_dcache, //from fifo b/w lsq and cache
+	input LOAD_PACKET_EX_STAGE [`N_RD_PORTS-1:0] load_packet_out_dcache,// to complete stage
+	input STORE_PACKET_EX_STAGE [`N_WR_PORTS-1:0] store_packet_out_dcache, //ack to lsq
+        input VICTIM_CACHE_ROW [`N_RD_PORTS-1:0] load_victim_cache_in,
+        input VICTIM_CACHE_ROW [`N_WR_PORTS-1:0] store_victim_cache_in ,
+        output VICTIM_CACHE_ROW [`N_RD_PORTS-1:0] load_victim_cache_out,
+        output VICTIM_CACHE_ROW [`N_WR_PORTS-1:0] store_victim_cache_out,
+        input MSHR_ROW [`MSHR_SIZE-1:0] victim_cache_hit_in,
+        input [`MSHR_SIZE-1:0] victim_cache_hit_valid_in,
+        output logic [`MSHR_SIZE-1:0] victim_cache_hit_valid_out,
+        output logic [`MSHR_SIZE-1:0][63:0] victim_cache_hit_out,
+        input victim_cache_full_evict,
+        input victim_cache_partial_evict,
+        input [`XLEN-1:0] dcache2mem_addr_dcache,
+        input [1:0] dcache2mem_command_dcache,
+        input [63:0] dcache2mem_data_dcache,
+        output logic [3:0] mem2dcache_response_dcache,
+        output logic[63:0] mem2dcache_data_dcache,
+        output logic [3:0] mem2dcache_tag_dcache,
+        input all_mshr_requests_processed_reg_dcache,
+        input MSHR_ROW [`N_WR_PORTS-1:0] store_victim_mshr_in,
+	output flush_dcache,
+        input flush_victim
 );
 	// Pass-throughs
 	always_comb begin
@@ -287,9 +311,17 @@ module ex_stage(
 		end
 	end
 
+	assign dcache2mem_addr = dcache2mem_addr_dcache; 
+	assign dcache2mem_command = dcache2mem_command_dcache; 
+	assign dcache2mem_data = dcache2mem_data_dcache;
+	assign mem2dcache_response_dcache = mem2dcache_response;
+	assign mem2dcache_data_dcache = mem2dcache_data;
+	assign mem2dcache_tag_dcache = mem2dcache_tag;
+	assign all_mshr_requests_processed_reg = all_mshr_requests_processed_reg_dcache;
+	assign flush_dcache = flush;
+
+
 	logic [`EX_ALU_UNITS-1 : 0] [`XLEN-1:0] opa_mux_out, opb_mux_out;
-	logic flush_victim;
-	 MSHR_ROW [`N_WR_PORTS-1:0] store_victim_mshr_in;
 	logic [`EX_BRANCH_UNITS-1 : 0] [`XLEN-1:0] opa_mux_out_br, opb_mux_out_br;
 	ALU_FUNC [`EX_ALU_UNITS-1:0] alu_func;
 	logic [`EX_ALU_UNITS-1:0][$clog2(`N_WAY):0] issue_ex_packet_in_idx;
@@ -431,20 +463,6 @@ module ex_stage(
 	logic [`STOREQ_DCACHE_FIFO_SIZE-1:0] head_fifo,head_fifo_next;
 	logic [`STOREQ_DCACHE_FIFO_SIZE-1:0] tail_fifo,tail_fifo_next;
 	logic tmp_store1,tmp_store2,tmp_ld;
-	LOAD_PACKET_RET [`N_RD_PORTS-1:0] load_packet_in_dcache;
-	STORE_PACKET_RET [`N_WR_PORTS-1:0] store_packet_in_dcache; //from fifo b/w lsq and cache
-	LOAD_PACKET_EX_STAGE [`N_RD_PORTS-1:0] load_packet_out_dcache;// to complete stage
-	STORE_PACKET_EX_STAGE [`N_WR_PORTS-1:0] store_packet_out_dcache; //ack to lsq
-	VICTIM_CACHE_ROW [`N_RD_PORTS-1:0] load_victim_cache_in;
-	VICTIM_CACHE_ROW [`N_WR_PORTS-1:0] store_victim_cache_in;
-	VICTIM_CACHE_ROW [`N_RD_PORTS-1:0] load_victim_cache_out;
-	VICTIM_CACHE_ROW [`N_WR_PORTS-1:0] store_victim_cache_out;
-	MSHR_ROW [`MSHR_SIZE-1:0] victim_cache_hit_in;
-	logic [`MSHR_SIZE-1:0] victim_cache_hit_valid_in;
-	logic [`MSHR_SIZE-1:0] victim_cache_hit_valid_out;
-	logic [`MSHR_SIZE-1:0][63:0] victim_cache_hit_out;
-	logic victim_cache_full_evict;
-	logic victim_cache_partial_evict;
 
 	always_comb begin
 		store_ex_packet_in= 0;
@@ -565,34 +583,34 @@ module ex_stage(
 		end
 	end
 
-		dcache dcache_dut(
-		    .clock(clock),
-		    .reset(reset),
-		    .load_packet_in(load_packet_in_dcache),
-		    .store_packet_in(store_packet_in_dcache),
-		    .load_packet_out(load_packet_out_dcache),
-		    .store_packet_out(store_packet_out_dcache),
-		    .load_victim_cache_in3(load_victim_cache_in),
-		    .store_victim_cache_in3(store_victim_cache_in),
-		    .load_victim_cache_out(load_victim_cache_out),
-		    .store_victim_cache_out(store_victim_cache_out),
-		    .victim_cache_hit_in(victim_cache_hit_in),
-		    .victim_cache_hit_valid_in(victim_cache_hit_valid_in),
-		    .victim_cache_hit_valid_out(victim_cache_hit_valid_out),
-		    .victim_cache_hit_out(victim_cache_hit_out),
-		    .victim_cache_full_evict_next2(victim_cache_full_evict),
-		    .victim_cache_partial_evict_next(victim_cache_partial_evict),
-		    .dcache2mem_addr(dcache2mem_addr),
-		    .dcache2mem_command(dcache2mem_command),
-		    .mem2dcache_response(mem2dcache_response),
-		    .mem2dcache_data(mem2dcache_data),
-		    .mem2dcache_tag(mem2dcache_tag),
-		    .dcache2mem_data(dcache2mem_data),
-		    .store_victim_mshr_in(store_victim_mshr_in),
-			.flush(flush),
-			.all_mshr_requests_processed_reg(all_mshr_requests_processed_reg),
-			.flush_victim(flush_victim)
-		);
+//		dcache dcache_dut(
+//		    .clock(clock),
+//		    .reset(reset),
+//		    .load_packet_in(load_packet_in_dcache),
+//		    .store_packet_in(store_packet_in_dcache),
+//		    .load_packet_out(load_packet_out_dcache),
+//		    .store_packet_out(store_packet_out_dcache),
+//		    .load_victim_cache_in3(load_victim_cache_in),
+//		    .store_victim_cache_in3(store_victim_cache_in),
+//		    .load_victim_cache_out(load_victim_cache_out),
+//		    .store_victim_cache_out(store_victim_cache_out),
+//		    .victim_cache_hit_in(victim_cache_hit_in),
+//		    .victim_cache_hit_valid_in(victim_cache_hit_valid_in),
+//		    .victim_cache_hit_valid_out(victim_cache_hit_valid_out),
+//		    .victim_cache_hit_out(victim_cache_hit_out),
+//		    .victim_cache_full_evict_next2(victim_cache_full_evict),
+//		    .victim_cache_partial_evict_next(victim_cache_partial_evict),
+//		    .dcache2mem_addr(dcache2mem_addr),
+//		    .dcache2mem_command(dcache2mem_command),
+//		    .mem2dcache_response(mem2dcache_response),
+//		    .mem2dcache_data(mem2dcache_data),
+//		    .mem2dcache_tag(mem2dcache_tag),
+//		    .dcache2mem_data(dcache2mem_data),
+//		    .store_victim_mshr_in(store_victim_mshr_in),
+//			.flush(flush),
+//			.all_mshr_requests_processed_reg(all_mshr_requests_processed_reg),
+//			.flush_victim(flush_victim)
+//		);
 		
 		
 		victim_cache vc0(

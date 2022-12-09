@@ -129,6 +129,30 @@ module testbench;
 	//assign imem_data = dcache2mem_data;
 	//assign imem_addr = mode_mem ? dcache2mem_addr : proc2Imem_addr;
 
+	 LOAD_PACKET_RET [`N_RD_PORTS-1:0] load_packet_in_dcache;
+	 STORE_PACKET_RET [`N_WR_PORTS-1:0] store_packet_in_dcache; //from fifo b/w lsq and cache
+	LOAD_PACKET_EX_STAGE [`N_RD_PORTS-1:0] load_packet_out_dcache;// to complete stage
+	STORE_PACKET_EX_STAGE [`N_WR_PORTS-1:0] store_packet_out_dcache; //ack to lsq
+        VICTIM_CACHE_ROW [`N_RD_PORTS-1:0] load_victim_cache_in;
+        VICTIM_CACHE_ROW [`N_WR_PORTS-1:0] store_victim_cache_in ;
+         VICTIM_CACHE_ROW [`N_RD_PORTS-1:0] load_victim_cache_out;
+         VICTIM_CACHE_ROW [`N_WR_PORTS-1:0] store_victim_cache_out;
+        MSHR_ROW [`MSHR_SIZE-1:0] victim_cache_hit_in;
+        logic [`MSHR_SIZE-1:0] victim_cache_hit_valid_in;
+         logic [`MSHR_SIZE-1:0] victim_cache_hit_valid_out;
+         logic [`MSHR_SIZE-1:0][63:0] victim_cache_hit_out;
+        logic victim_cache_full_evict;
+        logic victim_cache_partial_evict;
+        logic [`XLEN-1:0] dcache2mem_addr_dcache;
+        logic [1:0] dcache2mem_command_dcache;
+        logic [63:0] dcache2mem_data_dcache;
+         logic [3:0] mem2dcache_response_dcache;
+         logic[63:0] mem2dcache_data_dcache;
+         logic [3:0] mem2dcache_tag_dcache;
+        logic all_mshr_requests_processed_reg_dcache;
+        MSHR_ROW [`N_WR_PORTS-1:0] store_victim_mshr_in;
+        logic flush_victim;
+        logic flush_dcache;
 
 
 	top_r10k dut(
@@ -159,7 +183,32 @@ module testbench;
 		.mem_data(mem_data),
 		.mem_addr(mem_addr),
 		.flush(flush),
-		.all_mshr_requests_processed_reg(all_mshr_requests_processed_reg)
+		.all_mshr_requests_processed_reg(all_mshr_requests_processed_reg),
+	        .load_packet_in_dcache(load_packet_in_dcache),
+	        .store_packet_in_dcache(store_packet_in_dcache), //from fifo b/w lsq and cache
+	        .load_packet_out_dcache(load_packet_out_dcache),// to complete stage
+	        .store_packet_out_dcache(store_packet_out_dcache), //ack to lsq
+                .load_victim_cache_in(load_victim_cache_in),
+                .store_victim_cache_in(store_victim_cache_in),
+                .load_victim_cache_out(load_victim_cache_out),
+                .store_victim_cache_out(store_victim_cache_out),
+                .victim_cache_hit_in(victim_cache_hit_in),
+                .victim_cache_hit_valid_in(victim_cache_hit_valid_in),
+                .victim_cache_hit_valid_out(victim_cache_hit_valid_out),
+                .victim_cache_hit_out(victim_cache_hit_out),
+                .victim_cache_full_evict(victim_cache_full_evict),
+                .victim_cache_partial_evict(victim_cache_partial_evict),
+                .dcache2mem_addr_dcache(dcache2mem_addr_dcache),
+                .dcache2mem_command_dcache(dcache2mem_command_dcache),
+                .dcache2mem_data_dcache(dcache2mem_data_dcache),
+                .mem2dcache_response_dcache(mem2dcache_response_dcache),
+                .mem2dcache_data_dcache(mem2dcache_data_dcache),
+                .mem2dcache_tag_dcache(mem2dcache_tag_dcache),
+                .all_mshr_requests_processed_reg_dcache(all_mshr_requests_processed_reg_dcache),
+                .store_victim_mshr_in(store_victim_mshr_in),
+                .flush_dcache(flush_dcache),
+                .flush_victim(flush_victim)
+
 	);
 
 //	program_dispatch pd0 (
@@ -172,6 +221,34 @@ module testbench;
 //		.branch_inst(branch_inst)
 //		);
 	
+		dcache dcache_dut(
+		    .clock(clock),
+		    .reset(reset),
+		    .load_packet_in(load_packet_in_dcache),
+		    .store_packet_in(store_packet_in_dcache),
+		    .load_packet_out(load_packet_out_dcache),
+		    .store_packet_out(store_packet_out_dcache),
+		    .load_victim_cache_in3(load_victim_cache_in),
+		    .store_victim_cache_in3(store_victim_cache_in),
+		    .load_victim_cache_out(load_victim_cache_out),
+		    .store_victim_cache_out(store_victim_cache_out),
+		    .victim_cache_hit_in(victim_cache_hit_in),
+		    .victim_cache_hit_valid_in(victim_cache_hit_valid_in),
+		    .victim_cache_hit_valid_out(victim_cache_hit_valid_out),
+		    .victim_cache_hit_out(victim_cache_hit_out),
+		    .victim_cache_full_evict_next2(victim_cache_full_evict),
+		    .victim_cache_partial_evict_next(victim_cache_partial_evict),
+		    .dcache2mem_addr(dcache2mem_addr_dcache),
+		    .dcache2mem_command(dcache2mem_command_dcache),
+		    .mem2dcache_response(mem2dcache_response_dcache),
+		    .mem2dcache_data(mem2dcache_data_dcache),
+		    .mem2dcache_tag(mem2dcache_tag_dcache),
+		    .dcache2mem_data(dcache2mem_data_dcache),
+		    .store_victim_mshr_in(store_victim_mshr_in),
+			.flush(flush_dcache),
+			.all_mshr_requests_processed_reg(all_mshr_requests_processed_reg_dcache),
+			.flush_victim(flush_victim)
+		);
 	
 	
 	// Instantiate the Data Memory

@@ -13,7 +13,7 @@
 #
 #
 
-SOURCE = test_progs/rv32_fib_rec.s
+SOURCE = test_progs/rv32_btest1.s
 
 CRT = crt.s
 LINKERS = linker.lds
@@ -101,6 +101,7 @@ TESTBENCH =     sys_defs.svh	\
 				ISA.svh \
 		testbench/mem.sv \
 		testbench/testbench.sv  \
+		verilog/dcache.sv	\
 		testbench/pipe_print.c
 ##SIMFILES =	verilog/icache.sv	\
 ##		verilog/icache_queue.sv	\
@@ -116,7 +117,7 @@ SIMFILES =	verilog/top_r10k.sv	\
 		verilog/rob_syn.sv \
 		verilog/regfile.sv \
 		verilog/icache.sv	\
-		verilog/dcache.sv	\
+		verilog/vcache.sv	\
 		verilog/issue_stage.sv \
 		verilog/storeq.sv \
 		verilog/instruction_decoder.sv \

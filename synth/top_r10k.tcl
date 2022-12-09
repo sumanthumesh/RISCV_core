@@ -17,11 +17,11 @@ suppress_message {"VER-130"}
 #/* The following five lines must be updated for every      */
 #/* new design                                              */
 #/***********************************************************/
-analyze -f sverilog [list "../sys_defs.svh" "../ISA.svh" "../verilog/regfile.sv" "../verilog/issue_stage.sv" "../verilog/top_r10k.sv" "../verilog/top_rob.sv" "../verilog/map_table.sv" "../verilog/architecture_table.sv" "../verilog/ex_stage.sv" "../verilog/free_list.sv" "../verilog/reservation_station.sv" "../verilog/rob.sv" ]
+analyze -f sverilog [list "../sys_defs.svh" "../ISA.svh" "../verilog/regfile.sv" "../verilog/issue_stage.sv" "../verilog/top_r10k.sv" "../verilog/top_rob.sv" "../verilog/map_table.sv" "../verilog/architecture_table.sv" "../verilog/ex_stage.sv" "../verilog/free_list.sv" "../verilog/reservation_station.sv" "../verilog/rob_syn.sv" "../verilog/icache.sv" "../verilog/vcache.sv" "../verilog/storeq.sv" "../verilog/instruction_decoder.sv" "../verilog/instruction_buffer.sv" ]
 elaborate top_r10k 
 set design_name top_r10k
 set clock_name clock
-set CLK_PERIOD 20
+set CLK_PERIOD 25
 
 
 #/***********************************************************/
@@ -114,9 +114,9 @@ if {  $dc_shell_status != [list] } {
   uniquify
   ungroup -all -flatten
   redirect $chk_file { check_design }
-  compile -map_effort high 
-##  compile_ultra  
-##  compile_ultra -incremental
+ compile -map_effort medium 
+ ## compile_ultra  
+ ## compile_ultra -incremental
 
   write -hier -format verilog -output $netlist_file $design_name
   write -hier -format ddc -output $ddc_file $design_name
@@ -132,5 +132,6 @@ if {  $dc_shell_status != [list] } {
 } else {
    quit
 }
+
 
 

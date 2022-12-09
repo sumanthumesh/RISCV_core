@@ -31,7 +31,31 @@ module top_r10k (
 	output logic [1:0] mem_command,
 	output logic [63:0] mem_data, 
 	output logic [`XLEN-1:0] mem_addr,
-	output logic all_mshr_requests_processed_reg
+	output logic all_mshr_requests_processed_reg,
+	output LOAD_PACKET_RET [`N_RD_PORTS-1:0] load_packet_in_dcache,
+	output STORE_PACKET_RET [`N_WR_PORTS-1:0] store_packet_in_dcache, //from fifo b/w lsq and cache
+	input LOAD_PACKET_EX_STAGE [`N_RD_PORTS-1:0] load_packet_out_dcache,// to complete stage
+	input STORE_PACKET_EX_STAGE [`N_WR_PORTS-1:0] store_packet_out_dcache, //ack to lsq
+        input VICTIM_CACHE_ROW [`N_RD_PORTS-1:0] load_victim_cache_in,
+        input VICTIM_CACHE_ROW [`N_WR_PORTS-1:0] store_victim_cache_in ,
+        output VICTIM_CACHE_ROW [`N_RD_PORTS-1:0] load_victim_cache_out,
+        output VICTIM_CACHE_ROW [`N_WR_PORTS-1:0] store_victim_cache_out,
+        input MSHR_ROW [`MSHR_SIZE-1:0] victim_cache_hit_in,
+        input [`MSHR_SIZE-1:0] victim_cache_hit_valid_in,
+        output logic [`MSHR_SIZE-1:0] victim_cache_hit_valid_out,
+        output logic [`MSHR_SIZE-1:0][63:0] victim_cache_hit_out,
+        input victim_cache_full_evict,
+        input victim_cache_partial_evict,
+        input [`XLEN-1:0] dcache2mem_addr_dcache,
+        input [1:0] dcache2mem_command_dcache,
+        input [63:0] dcache2mem_data_dcache,
+        output logic [3:0] mem2dcache_response_dcache,
+        output logic[63:0] mem2dcache_data_dcache,
+        output logic [3:0] mem2dcache_tag_dcache,
+        input all_mshr_requests_processed_reg_dcache,
+        input MSHR_ROW [`N_WR_PORTS-1:0] store_victim_mshr_in,
+	output flush_dcache,
+        input flush_victim
 	);
 
 	RS_PACKET_DISPATCH [`N_WAY-1:0] rs_packet_dispatch;
@@ -76,8 +100,6 @@ module top_r10k (
 	logic [`N_WAY-1:0][`XLEN-1:0] buff2proc_data;
 	logic [`N_WAY-1:0] buff2proc_valid;
     logic [`XLEN-1:0] proc2Icache_addr; 
-    logic [`N_WAY-1:0][`XLEN-1:0] Icache_data_out; 
-    logic [`N_WAY-1:0] Icache_valid_out;    
 	logic [`N_WAY-1:0][`XLEN-1:0] out_PC;
 	logic [`N_WAY-1:0][`XLEN-1:0] out_NPC;
 	INST [`N_WAY-1:0] out_inst;
@@ -378,9 +400,34 @@ ex_stage ex0 (
 	        .mem2dcache_response(mem2proc_response),
 	        .mem2dcache_data(mem2proc_data),
 	        .mem2dcache_tag(mem2proc_tag),
-	    .dcache2mem_data(dcache2mem_data),
+	        .dcache2mem_data(dcache2mem_data),
 		.flush(flush_ex_stage),
-		.all_mshr_requests_processed_reg(all_mshr_requests_processed_reg)
+		.all_mshr_requests_processed_reg(all_mshr_requests_processed_reg),
+	        .load_packet_in_dcache(load_packet_in_dcache),
+	        .store_packet_in_dcache(store_packet_in_dcache), //from fifo b/w lsq and cache
+	        .load_packet_out_dcache(load_packet_out_dcache),// to complete stage
+	        .store_packet_out_dcache(store_packet_out_dcache), //ack to lsq
+                .load_victim_cache_in(load_victim_cache_in),
+                .store_victim_cache_in(store_victim_cache_in),
+                .load_victim_cache_out(load_victim_cache_out),
+                .store_victim_cache_out(store_victim_cache_out),
+                .victim_cache_hit_in(victim_cache_hit_in),
+                .victim_cache_hit_valid_in(victim_cache_hit_valid_in),
+                .victim_cache_hit_valid_out(victim_cache_hit_valid_out),
+                .victim_cache_hit_out(victim_cache_hit_out),
+                .victim_cache_full_evict(victim_cache_full_evict),
+                .victim_cache_partial_evict(victim_cache_partial_evict),
+                .dcache2mem_addr_dcache(dcache2mem_addr_dcache),
+                .dcache2mem_command_dcache(dcache2mem_command_dcache),
+                .dcache2mem_data_dcache(dcache2mem_data_dcache),
+                .mem2dcache_response_dcache(mem2dcache_response_dcache),
+                .mem2dcache_data_dcache(mem2dcache_data_dcache),
+                .mem2dcache_tag_dcache(mem2dcache_tag_dcache),
+                .all_mshr_requests_processed_reg_dcache(all_mshr_requests_processed_reg_dcache),
+                .store_victim_mshr_in(store_victim_mshr_in),
+                .flush_dcache(flush_dcache),
+                .flush_victim(flush_victim)
+
 );
 endmodule
 

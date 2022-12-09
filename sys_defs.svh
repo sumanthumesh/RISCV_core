@@ -318,7 +318,7 @@ typedef struct packed {
 //OOO
 `define N_WAY_3
 `define CDB_BITS 7
-`define N_ROB 64
+`define N_ROB 16
 `define N_SQ 32
 `define N_SC 8
 `define FIFO_BITS 6
